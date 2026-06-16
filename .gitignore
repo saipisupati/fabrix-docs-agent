@@ -1,0 +1,15 @@
+# Python
+venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# Environment / secrets
+.env
+*.key
+
+# Generated data - this is rebuilt from data/raw/, not source of truth
+data/chroma_db/
+
+# OS
+.DS_Store

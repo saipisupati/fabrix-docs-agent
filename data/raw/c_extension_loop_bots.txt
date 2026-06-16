@@ -1,0 +1,32 @@
+Bot @c:count-loop
+Bot Position In Pipeline: Block
+Start a looping block that counts from 'start' to 'end' with 'increment' numerical values
+This bot expects a Restricted CFXQL.
+Each parameter may be specified using '=' operator and AND logical operation
+Following are the parameters expected for this Bot
+Parameter Name	Type	Default Value	Description
+name	Text		Name of the block
+start	Text	0	Starting count (default 0). variable 'loop_index' will start with this value
+end*	Text		Ending count. loop will stop when the 'loop_index' is 1 less than end value
+increment	Text	1	Increment count, must be a postive integer >= 1
+This bot also accepts wildcard parameters. Any additional name = 'value' parameters are passed to the bot.
+Example Usage
+@c:count-loop start = 0 & end = 10 & increment = 1
+    --> @dm:empty
+    --> @dm:addrow message = "This is row number ${loop_index}"
+    --> @dm:save name = "temp-df-${loop_index}"
+--> @c:new-block  (2)
+    --> @dm:concat names = "temp-df-.*" 
+    -> #dm:query-persistent-stream *
+
+Bot @c:data-loop
+Bot Position In Pipeline: Block
+Start a looping block using 'dataset' name of the saved dataset, and unique values from 'columns'
+This bot expects a Restricted CFXQL.
+Each parameter may be specified using '=' operator and AND logical operation
+Following are the parameters expected for this Bot
+Parameter Name	Type	Default Value	Description
+name	Text		Name of the block
+columns*	Text		Comma separated list of columns in saved dataset
+dataset*	Text		Name of the saved dataset to load
+return_empty	Text	no	Return an empty dataframe if an error occurs loading the dataset

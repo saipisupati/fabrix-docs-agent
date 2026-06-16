@@ -1,0 +1,28 @@
+Bot *exec:if-condition
+Bot Position In Pipeline: Sink
+Run the subsequent bots only if CFXQL query matches. end-if bot must be called to exit this block This bot expects a Full CFXQL.
+Bot applies the Query on the data that is already loaded from previous bot or from a source.
+
+
+Bot #dm:query-persistent-stream
+Bot Position In Pipeline: Sink
+Query the data in a persistent stream via CFXQL.
+This bot expects Full CFXQL.
+Bot translates the Query to native query of the Data source supported by this extension.
+This is a data sink which expects the following input parameters to be passed via input dataframe.
+Input Dataframe Column Name	Type	Default Value	Description
+name*	Text		Name of the Persistent Stream
+max_rows	Text	1000	Max rows in each batch. Ignored when 'aggs' is used
+limit	Text	1000	Limit total output rows. If set to 0, will retrieve all rows from the stream that match the query. Ignored when 'aggs' is used
+sort_by_col	Text		Name of the column to sort
+sort_type	Text	desc	Must be one of 'asc' or 'desc'
+aggs	Text		Specified as 'sum:field_name'. Supported functions are sum, cardinality, min, max, mean, value_count
+groupby	Text		Comma seperated list of columns to groupby; used only when 'aggs' is used
+max_aggregation_groups	Text	1000	Fetches upto 1000 groups aggregation results by default. Larger values (10,000+) results in use of more memory to compute
+retry_attempts_on_no_data	Text	0	Number of retries with 2 seconds wait for each retry when there is no data. Default is 0
+Example usage:
+Simple Query
+With Aggregations
+@dm:empty
+    --> @dm:addrow name="dli-log-stats" and max_rows="2"
+    --> #dm:query-persistent-stream *
