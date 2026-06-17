@@ -1,7 +1,7 @@
 # Fabrix Docs Agent
 
 A retrieval-augmented generation (RAG) agent that answers questions about
-Fabrix.ai documentation (https://docs.fabrix.ai/) — covering the RDA bot
+Fabrix.ai documentation, covering the RDA bot
 catalog, CFXQL reference, and platform guides.
 
 ## Status
