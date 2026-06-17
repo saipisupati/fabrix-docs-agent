@@ -1,3 +1,4 @@
+
 """
 ingest_qdrant.py — builds the Qdrant vector store from raw documentation files.
 
@@ -23,22 +24,31 @@ SWAP POINT below. The rest of the pipeline does not need to change.
 
 import os
 import re
+import sys
 import pickle
 from qdrant_client import QdrantClient
 from qdrant_client.models import Distance, VectorParams, PointStruct
 from sklearn.feature_extraction.text import TfidfVectorizer
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 
+sys.path.insert(0, os.path.dirname(__file__))
+from chunk_heuristic import chunk_by_heuristic_sections
+from clean_markdown import clean_markdown, extract_bot_metadata
+
+
 RAW_DIR = os.path.join(os.path.dirname(__file__), "..", "data", "raw")
 QDRANT_DIR = os.path.join(os.path.dirname(__file__), "..", "data", "qdrant_db")
 VECTORIZER_PATH = os.path.join(QDRANT_DIR, "vectorizer.pkl")
 COLLECTION_NAME = "fabrix_docs"
 
-# Files that should use bot-catalog chunking (one chunk per bot entry)
-# rather than size-based or section-based chunking. Update this list as
-# more bot catalog pages get added to data/raw/.
-BOT_CATALOG_FILES = {"c_extension_loop_bots.txt", "exec_and_dm_sink_bots.txt"}
+# Which chunking strategy to use for the CFXQL reference. Change this
+# one line to compare strategies:
+#   "hand_rolled" - hardcoded splits, works great here, won't generalize
+#   "heuristic"    - generic header detection, works on any doc, noisier
+#   "size_based"   - original naive approach, ignores structure
+CHUNKING_STRATEGY = "heuristic"
 
+BOT_CATALOG_FILES = {"c_extension_loop_bots.txt", "exec_and_dm_sink_bots.txt"}
 BOT_START = re.compile(r'(?=Bot [@#*][^\s]+)')
 BOT_NAME = re.compile(r'Bot ([@#*][^\s]+)')
 
@@ -91,28 +101,68 @@ def chunk_cfxql_reference(text, source_name):
     return chunks
 
 
-def chunk_bot_catalog(text, source_name):
-    """Split bot catalog pages into one chunk per bot entry, extracting metadata
-    (bot name, prefix, CFXQL type) directly from the templated structure."""
+def chunk_bot_catalog_markdown(filepath, source_name):
+    """Markdown-aware bot catalog chunking: cleans HTML/CSS noise, splits
+    on ## headers (one per bot), and extracts bot_name/prefix from each
+    header. Generalizes across any bot catalog file without per-file
+    customization - tested successfully on cfxdm.md (182 bots), kafka.md
+    (2 bots), and jira.md (5 bots)."""
+    from langchain_text_splitters import MarkdownHeaderTextSplitter
+
+    with open(filepath, encoding="utf-8") as f:
+        raw_text = f.read()
+
+    cleaned_text = clean_markdown(raw_text)
+
+    headers_to_split_on = [("##", "h2")]
+    splitter = MarkdownHeaderTextSplitter(headers_to_split_on=headers_to_split_on)
+    raw_chunks = splitter.split_text(cleaned_text)
+
     chunks = []
-    for part in BOT_START.split(text):
-        part = part.strip()
-        if not part:
-            continue
-        name_match = BOT_NAME.search(part)
-        bot_name = name_match.group(1) if name_match else "unknown"
-        prefix = bot_name[0] if bot_name[0] in "@#*" else "unknown"
-        if "Restricted CFXQL" in part:
+    for chunk in raw_chunks:
+        h2 = chunk.metadata.get("h2", "")
+        if not h2.startswith("Bot "):
+            continue  # skip the intro chunk before the first bot
+
+        bot_meta = extract_bot_metadata(h2)
+
+        # determine cfxql_type the same way as the plain-text version
+        if "Restricted CFXQL" in chunk.page_content:
             cfxql_type = "Restricted"
-        elif "Full CFXQL" in part:
+        elif "Full CFXQL" in chunk.page_content:
             cfxql_type = "Full"
         else:
             cfxql_type = "unspecified"
-        chunks.append({"text": part, "metadata": {
-            "bot_name": bot_name, "prefix": prefix, "cfxql_type": cfxql_type,
-            "type": "bot", "source": source_name
-        }})
+
+        chunks.append({
+            "text": chunk.page_content,
+            "metadata": {
+                "bot_name": bot_meta["bot_name"],
+                "prefix": bot_meta["prefix"],
+                "cfxql_type": cfxql_type,
+                "type": "bot",
+                "source": source_name,
+            }
+        })
+
     return chunks
+
+def chunk_cfxql_heuristic(text, source_name):
+    """Wraps the generic heuristic chunker, then adds a best-guess
+    cfxql_type tag based on the section header, so metadata filtering
+    still works the same way as the other strategies."""
+    raw_chunks = chunk_by_heuristic_sections(text, source_name)
+    for chunk in raw_chunks:
+        header = chunk["metadata"].get("section_header", "").lower()
+        if "restricted" in header or "restricted cfxql" in chunk["text"][:50].lower():
+            chunk["metadata"]["cfxql_type"] = "Restricted"
+        elif "full" in header or "full cfxql" in chunk["text"][:50].lower():
+            chunk["metadata"]["cfxql_type"] = "Full"
+        else:
+            chunk["metadata"]["cfxql_type"] = "unspecified"
+        chunk["metadata"]["bot_name"] = "n/a"
+        chunk["metadata"]["prefix"] = "n/a"
+    return raw_chunks
 
 
 def load_and_chunk_all():
@@ -120,22 +170,24 @@ def load_and_chunk_all():
     for filename in sorted(os.listdir(RAW_DIR)):
         if not filename.endswith(".txt"):
             continue
-        path = os.path.join(RAW_DIR, filename)
-        with open(path) as f:
+        with open(os.path.join(RAW_DIR, filename)) as f:
             text = f.read()
 
         if filename in BOT_CATALOG_FILES:
             chunks = chunk_bot_catalog(text, filename)
         elif filename == "cfxql_reference.txt":
-            chunks = chunk_cfxql_reference(text, filename)  # section-aware
+            if CHUNKING_STRATEGY == "hand_rolled":
+                chunks = chunk_cfxql_reference(text, filename)
+            elif CHUNKING_STRATEGY == "heuristic":
+                chunks = chunk_cfxql_heuristic(text, filename)
+            else:
+                chunks = chunk_narrative(text, filename)
         else:
-            chunks = chunk_narrative(text, filename)  # generic fallback
+            chunks = chunk_narrative(text, filename)
 
         all_chunks.extend(chunks)
-        print(f"  {filename}: {len(chunks)} chunks")
-
+        print(f"  {filename}: {len(chunks)} chunks  (strategy={CHUNKING_STRATEGY if filename == 'cfxql_reference.txt' else 'n/a'})")
     return all_chunks
-
 
 def main():
     print("Loading and chunking documents from data/raw/ ...")
