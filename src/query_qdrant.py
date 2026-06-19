@@ -5,27 +5,34 @@ and now actually generates a real answer using a free model via OpenRouter.
 Requires: OPENROUTER_API_KEY environment variable set.
 """
 
+import requests
 import os
 import sys
-import pickle
 import time
 from qdrant_client import QdrantClient
 from qdrant_client.models import Filter, FieldCondition, MatchValue
 from openai import OpenAI
 
 QDRANT_DIR = os.path.join(os.path.dirname(__file__), "..", "data", "qdrant_db")
-VECTORIZER_PATH = os.path.join(QDRANT_DIR, "vectorizer.pkl")
 COLLECTION_NAME = "fabrix_docs"
 
 # free model via OpenRouter - swap this string to try others, e.g.:
 # "qwen/qwen3-next-80b-a3b-instruct:free"
 # "openai/gpt-oss-20b:free"
-MODEL = "openrouter/free"
+MODEL = "gpt-4o-mini"
 
-def load_vectorizer():
-    with open(VECTORIZER_PATH, "rb") as f:
-        return pickle.load(f)
+EMBEDDING_MODEL = "sentence-transformers/all-minilm-l6-v2"
 
+def embed_question(question):
+    response = requests.post(
+        "https://openrouter.ai/api/v1/embeddings",
+        headers={
+            "Authorization": f"Bearer {os.environ['OPENROUTER_API_KEY']}",
+            "Content-Type": "application/json",
+        },
+        json={"model": EMBEDDING_MODEL, "input": [question]},
+    )
+    return response.json()["data"][0]["embedding"]
 
 def build_filter(filter_dict):
     if not filter_dict:
@@ -37,8 +44,8 @@ def build_filter(filter_dict):
     return Filter(must=conditions)
 
 
-def retrieve(question, vectorizer, client, top_k=3, filter_dict=None):
-    query_vector = vectorizer.transform([question]).toarray().tolist()[0]
+def retrieve(question, client, top_k=3, filter_dict=None):
+    query_vector = embed_question(question)
     results = client.query_points(
         collection_name=COLLECTION_NAME,
         query=query_vector,
@@ -80,8 +87,7 @@ ANSWER:"""
 
 def generate(prompt, max_retries=3):
     client = OpenAI(
-        api_key=os.environ["OPENROUTER_API_KEY"],
-        base_url="https://openrouter.ai/api/v1",
+        api_key=os.environ["OPENAI_API_KEY"],
     )
     for attempt in range(max_retries):
         try:
@@ -99,10 +105,9 @@ def generate(prompt, max_retries=3):
 
 
 def ask(question, top_k=3, filter_dict=None):
-    vectorizer = load_vectorizer()
     client = QdrantClient(path=QDRANT_DIR)
 
-    chunks = retrieve(question, vectorizer, client, top_k=top_k, filter_dict=filter_dict)
+    chunks = retrieve(question, client, top_k=top_k, filter_dict=filter_dict)
 
     print(f'\nQuestion: "{question}"')
     if filter_dict:

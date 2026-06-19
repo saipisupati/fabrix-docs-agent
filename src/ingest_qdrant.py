@@ -37,6 +37,11 @@ from clean_markdown import clean_markdown, extract_bot_metadata
 
 
 RAW_DIR = os.path.join(os.path.dirname(__file__), "..", "data", "raw")
+
+# Real bot catalog source - the actual markdown files from the
+# confirmed-public Bots/ folder. Set this to your real path.
+REAL_BOTS_DIR = "/Users/supersaiyan.06/Downloads/rdaf_docs/rdaf_docs/bot_library/target/docs/Bots"
+
 QDRANT_DIR = os.path.join(os.path.dirname(__file__), "..", "data", "qdrant_db")
 VECTORIZER_PATH = os.path.join(QDRANT_DIR, "vectorizer.pkl")
 COLLECTION_NAME = "fabrix_docs"
@@ -46,7 +51,7 @@ COLLECTION_NAME = "fabrix_docs"
 #   "hand_rolled" - hardcoded splits, works great here, won't generalize
 #   "heuristic"    - generic header detection, works on any doc, noisier
 #   "size_based"   - original naive approach, ignores structure
-CHUNKING_STRATEGY = "heuristic"
+CHUNKING_STRATEGY = "hand_rolled"
 
 BOT_CATALOG_FILES = {"c_extension_loop_bots.txt", "exec_and_dm_sink_bots.txt"}
 BOT_START = re.compile(r'(?=Bot [@#*][^\s]+)')
@@ -173,9 +178,7 @@ def load_and_chunk_all():
         with open(os.path.join(RAW_DIR, filename)) as f:
             text = f.read()
 
-        if filename in BOT_CATALOG_FILES:
-            chunks = chunk_bot_catalog(text, filename)
-        elif filename == "cfxql_reference.txt":
+        if filename == "cfxql_reference.txt":
             if CHUNKING_STRATEGY == "hand_rolled":
                 chunks = chunk_cfxql_reference(text, filename)
             elif CHUNKING_STRATEGY == "heuristic":
@@ -187,8 +190,23 @@ def load_and_chunk_all():
 
         all_chunks.extend(chunks)
         print(f"  {filename}: {len(chunks)} chunks  (strategy={CHUNKING_STRATEGY if filename == 'cfxql_reference.txt' else 'n/a'})")
-    return all_chunks
 
+    # Load the REAL bot catalog (.md files), if the folder exists.
+    if os.path.isdir(REAL_BOTS_DIR):
+        md_files = sorted(f for f in os.listdir(REAL_BOTS_DIR) if f.endswith(".md"))
+        print(f"\nLoading real bot catalog from {REAL_BOTS_DIR} ...")
+        for filename in md_files:
+            filepath = os.path.join(REAL_BOTS_DIR, filename)
+            try:
+                chunks = chunk_bot_catalog_markdown(filepath, filename)
+                all_chunks.extend(chunks)
+            except Exception as e:
+                print(f"  FAILED on {filename}: {e}")
+        print(f"  Loaded {len(md_files)} real bot files")
+    else:
+        print(f"\n(Real bots directory not found at {REAL_BOTS_DIR}, skipping)")
+
+    return all_chunks
 def main():
     print("Loading and chunking documents from data/raw/ ...")
     all_chunks = load_and_chunk_all()
