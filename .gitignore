@@ -13,6 +13,7 @@ data/chroma_db/
 
 # Local logs
 ingestion_log.txt
+tests/eval_baseline_results.txt
 
 # OS
 .DS_Store
