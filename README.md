@@ -4,24 +4,28 @@ A retrieval-augmented generation (RAG) agent that answers questions about Fabrix
 
 ## Status
 
-Early prototype, the pipeline (chunk → embed → store → retrieve → generate) works end-to-end on a small sample in `data/raw/`, bot catalog markdown chunking is validated across 214 files but not yet wired into the main ingest path, generation runs via OpenRouter but embeddings are still TF-IDF placeholder,
+Working prototype, full pipeline (chunk → embed → store → retrieve → generate) runs end-to-end against the real corpus: 214 bot catalog files (~1,834 bots) plus the CFXQL reference, ~1,844 chunks total, embeddings use `sentence-transformers/all-minilm-l6-v2` via OpenRouter, generation uses OpenAI `gpt-4o-mini`, a separate remote ingest path targets a shared Qdrant server (see below), currently in progress,
 
-## How it works
+**Known limitation:** not self-contained yet, bot catalog and CFXQL source paths are hardcoded in the scripts (`REAL_BOTS_DIR`, `CFXQL_FILE`), update those before running on another machine,
 
-**Primary path (Qdrant)**
+## How it works (local path — primary)
 
-1. **Ingest** (`src/ingest_qdrant.py`) — loads `.txt` files from `data/raw/`, chunks by doc type (bot catalog, CFXQL reference, or generic narrative), embeds with TF-IDF, stores in `data/qdrant_db/`
-2. **Query** (`src/query_qdrant.py`) — retrieves top-k chunks from Qdrant, builds a grounded prompt, generates an answer via OpenRouter (`OPENROUTER_API_KEY` required)
+1. **Chunk** (`src/ingest_qdrant.py` → `load_and_chunk_all()`) — loads sample files from `data/raw/` plus the real bot catalog from `REAL_BOTS_DIR`, bot files use `chunk_bot_catalog_markdown()` (cleans HTML/CSS, splits on `##` headers, one chunk per bot), CFXQL uses `CHUNKING_STRATEGY` (default: `hand_rolled`),
+2. **Embed + store** (`src/ingest_with_real_embeddings.py`) — embeds all chunks in batches via OpenRouter, stores in local Qdrant at `data/qdrant_db/`, requires `OPENROUTER_API_KEY`,
+3. **Query + generate** (`src/query_qdrant.py`) — embeds the question with the same model, retrieves top-k chunks, builds a grounded prompt, generates via `gpt-4o-mini`, requires `OPENROUTER_API_KEY` and `OPENAI_API_KEY`,
 
-**Bot catalog (markdown, separate for now)**
+**CFXQL chunking strategies** (`CHUNKING_STRATEGY` in `ingest_qdrant.py`):
+- `hand_rolled` (default) — hardcoded splits at this doc's headers, most accurate, doesn't generalize,
+- `heuristic` — generic header detection on plain text, generalizes but noisier,
+- `size_based` — character-count splitting, breaks the `comparison_01` eval case, avoid,
 
-- `src/clean_markdown.py` — strips frontmatter, CSS, and HTML from `.md` bot pages
-- `src/ingest_qdrant.py` → `chunk_bot_catalog_markdown()` — splits on `##` headers, one chunk per bot, extracts `bot_name` / `prefix` / `cfxql_type`
-- `src/batch_ingest_bots.py` — batch-runs markdown chunking across an entire `Bots/` folder (214 files validated)
+## Remote path (in progress)
 
-**CFXQL reference chunking** — configurable via `CHUNKING_STRATEGY` in `ingest_qdrant.py`: `hand_rolled`, `heuristic` (default), or `size_based`
+`src/ingest_and_test_remote.py` uploads raw markdown to a hosted Qdrant server (`10.95.121.54:8000`), chunking and embedding happen server-side using `BAAI/bge-large-en-v1.5`, requires VPN, uses a different embedding model than the local path, some large bot files still timeout at 120s,
 
-**Legacy path (Chroma)** — `src/ingest.py` / `src/query.py`, original prototype, LLM call not yet wired up,
+## Legacy path (not used)
+
+`src/ingest.py` / `src/query.py` — original Chroma + TF-IDF prototype, kept for reference, needs `chromadb` installed separately,
 
 ## Setup
 
@@ -29,33 +33,48 @@ Early prototype, the pipeline (chunk → embed → store → retrieve → genera
 python3 -m venv venv
 source venv/bin/activate
 pip install -r requirements.txt
-export OPENROUTER_API_KEY=your_key_here   # needed for query_qdrant.py
+export OPENROUTER_API_KEY=your_key_here   # embeddings
+export OPENAI_API_KEY=your_key_here       # generation
 ```
 
 ## Running it
 
+**Local (recommended)**
+
 ```bash
-# sample ingest (3 files in data/raw/)
-python src/ingest_qdrant.py
+# chunk + embed + store
+python3 src/ingest_with_real_embeddings.py
 
 # query with generation
-python src/query_qdrant.py "what parameters does the count loop bot take?"
+python3 src/query_qdrant.py "what parameters does the count loop bot take?"
 
-# batch chunk all bot markdown files (does not embed/store yet)
-python src/batch_ingest_bots.py /path/to/Bots/
+# eval suite (manual grading)
+python3 tests/run_eval.py
+```
 
-# run eval suite (manual grading)
-python tests/run_eval.py
+**Remote (VPN required)**
+
+```bash
+python3 src/ingest_and_test_remote.py
+```
+
+**Utilities**
+
+```bash
+# chunk-only validation across a Bots/ folder (no embed/store)
+python3 src/batch_ingest_bots.py /path/to/Bots/
 ```
 
 ## Eval
 
-`tests/eval_set.py` has 7 hand-built cases (lookup, comparison, multi-part, negative/hallucination), `tests/run_eval.py` runs each through `query_qdrant.ask()` for pass/fail grading,
+`tests/eval_set.py` — 7 hand-built cases (lookup, comparison, multi-part, negative/hallucination), `tests/run_eval.py` runs each through `query_qdrant.ask()` for manual pass/fail/partial grading, not automated yet,
 
-## Open questions
+## Open questions / known issues
 
-- Swap TF-IDF for a real embedding model (see SWAP POINT in `ingest_qdrant.py`, comparison scripts in `src/test_embedding_comparison.py`)
-- Wire `batch_ingest_bots.py` output into the Qdrant ingest path
-- Switch CFXQL reference to markdown chunking (`src/test_markdown_chunking.py`)
-- Consolidate Chroma vs Qdrant into one path
-- Expand `data/raw/` beyond the current 3-file sample
+- Hardcoded local paths (`REAL_BOTS_DIR`, `CFXQL_FILE`) — should move to env vars,
+- Two embedding models across paths (MiniLM local, BGE-large remote), no shared config,
+- Remote ingestion timeouts on larger bot catalog files,
+- Eval scoring is manual,
+- Legacy Chroma path and unused sample `.txt` bot files in `data/raw/` should be removed,
+- `ingest_qdrant.py` `main()` still has TF-IDF code — use `ingest_with_real_embeddings.py` instead,
+- `data/qdrant_db/` is tracked in git and grows with each re-ingest,

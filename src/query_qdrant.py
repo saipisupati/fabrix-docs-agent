@@ -1,8 +1,9 @@
 """
-query_qdrant.py — retrieves relevant chunks from Qdrant, builds a prompt,
-and now actually generates a real answer using a free model via OpenRouter.
+query_qdrant.py — retrieve relevant chunks from Qdrant and generate an answer.
 
-Requires: OPENROUTER_API_KEY environment variable set.
+Requires:
+    OPENROUTER_API_KEY — query embedding (sentence-transformers/all-minilm-l6-v2)
+    OPENAI_API_KEY       — generation (gpt-4o-mini)
 """
 
 import requests
@@ -16,9 +17,6 @@ from openai import OpenAI
 QDRANT_DIR = os.path.join(os.path.dirname(__file__), "..", "data", "qdrant_db")
 COLLECTION_NAME = "fabrix_docs"
 
-# free model via OpenRouter - swap this string to try others, e.g.:
-# "qwen/qwen3-next-80b-a3b-instruct:free"
-# "openai/gpt-oss-20b:free"
 MODEL = "gpt-4o-mini"
 
 EMBEDDING_MODEL = "sentence-transformers/all-minilm-l6-v2"

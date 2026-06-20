@@ -8,8 +8,11 @@ __pycache__/
 .env
 *.key
 
-# Generated data - this is rebuilt from data/raw/, not source of truth
+# Generated data - rebuilt from ingest, not source of truth
 data/chroma_db/
+
+# Local logs
+ingestion_log.txt
 
 # OS
 .DS_Store

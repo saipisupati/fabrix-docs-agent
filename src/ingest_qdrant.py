@@ -1,25 +1,13 @@
 
 """
-ingest_qdrant.py — builds the Qdrant vector store from raw documentation files.
+ingest_qdrant.py — chunking logic for the Fabrix docs corpus.
 
-Run this once (and again any time data/raw/ changes):
-    python src/ingest_qdrant.py
+Primary ingest (chunk + embed + store):
+    python src/ingest_with_real_embeddings.py
 
-What it does:
-  1. Loads every .txt file in data/raw/
-  2. Chunks each file based on its type:
-     - bot catalog files -> one chunk per bot entry
-     - cfxql_reference.txt -> section-aware chunking (Full vs Restricted,
-       split at the doc's own headers, not by raw character count)
-     - anything else -> generic size-based chunking with overlap
-  3. Embeds every chunk
-  4. Stores chunks + embeddings + metadata in a local Qdrant collection
-     at data/qdrant_db/
-
-NOTE ON EMBEDDINGS: this currently uses TfidfVectorizer as a placeholder
-embedding method (no API key required, runs fully offline). Swap in a real
-embedding model once the provider is confirmed - see the comment marked
-SWAP POINT below. The rest of the pipeline does not need to change.
+This file owns load_and_chunk_all() and all chunking strategies.
+main() below is a legacy TF-IDF-only path — do not use it with
+query_qdrant.py, which expects MiniLM embeddings from OpenRouter.
 """
 
 import os

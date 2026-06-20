@@ -1,8 +1,10 @@
 """
-ingest_with_real_embeddings.py —> replaces TF-IDF with a real embedding
-model (sentence-transformers/all-MiniLM-L6-v2) across the FULL real dataset (1867 chunks).
+ingest_with_real_embeddings.py — chunk + embed + store for local Qdrant.
 
-Requires: OPENROUTER_API_KEY environment variable set.
+Calls load_and_chunk_all() from ingest_qdrant.py, embeds via OpenRouter
+(sentence-transformers/all-minilm-l6-v2), stores in data/qdrant_db/.
+
+Requires: OPENROUTER_API_KEY
 """
 
 import os

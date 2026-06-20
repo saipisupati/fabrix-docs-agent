@@ -1,5 +1,6 @@
-chromadb
-langchain
-langchain-community
+qdrant-client
+scikit-learn
+openai
+requests
+numpy
 langchain-text-splitters
-langchain-mistralai

@@ -1,6 +1,9 @@
 """
-ingest_and_test_remote.py —> talks to hosted Qdrant REST API to
-create a collection, ingest real files, and test retrieval.
+ingest_and_test_remote.py — ingest into hosted Qdrant via REST API.
+
+Creates a collection, uploads cfxql.md + bot catalog .md files (server
+handles chunking/embedding with BAAI/bge-large-en-v1.5), runs sample
+retrieval tests. Requires VPN access to BASE_URL.
 """
 
 import os
@@ -33,7 +36,7 @@ def create_collection():
     return response.ok
 
 
-def upload_file(filepath, timeout=30):
+def upload_file(filepath, timeout=120):
     filename = os.path.basename(filepath)
     with open(filepath, "rb") as f:
         try:
