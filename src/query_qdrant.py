@@ -6,24 +6,23 @@ Requires:
     OPENAI_API_KEY       — generation (gpt-4o-mini)
 """
 
-import requests
 import os
 import sys
 import time
-from qdrant_client import QdrantClient
-from qdrant_client.models import Filter, FieldCondition, MatchValue
+
+import requests
 from openai import OpenAI
+from qdrant_client import QdrantClient
+from qdrant_client.models import FieldCondition, Filter, MatchValue
 
-QDRANT_DIR = os.path.join(os.path.dirname(__file__), "..", "data", "qdrant_db")
-COLLECTION_NAME = "fabrix_docs"
+sys.path.insert(0, os.path.dirname(__file__))
+from config import COLLECTION_NAME, EMBEDDING_MODEL, EMBEDDINGS_URL, LLM_MODEL, QDRANT_DIR
 
-MODEL = "gpt-4o-mini"
-
-EMBEDDING_MODEL = "sentence-transformers/all-minilm-l6-v2"
+MODEL = LLM_MODEL
 
 def embed_question(question):
     response = requests.post(
-        "https://openrouter.ai/api/v1/embeddings",
+        EMBEDDINGS_URL,
         headers={
             "Authorization": f"Bearer {os.environ['OPENROUTER_API_KEY']}",
             "Content-Type": "application/json",
