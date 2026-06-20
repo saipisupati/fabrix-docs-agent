@@ -10,13 +10,13 @@ import os
 import sys
 import requests
 
+sys.path.insert(0, os.path.dirname(__file__))
+from config import BOTS_DIR, CFXQL_FILE
+
 BASE_URL = "http://10.95.121.54:8000"
 
 EMBEDDING_MODEL = "BAAI/bge-large-en-v1.5"
 COLLECTION_NAME = "sai_fabrix_docs_v1"
-
-REAL_BOTS_DIR = "/Users/supersaiyan.06/Downloads/rdaf_docs/rdaf_docs/bot_library/target/docs/Bots"
-CFXQL_FILE = "/Users/supersaiyan.06/Downloads/rdaf_docs/rdaf_docs/bot_library/target/docs/reference_guides/cfxql.md"
 
 SAMPLE_QUESTIONS = [
     "what does the kafka poll-topic bot do?",
@@ -57,11 +57,11 @@ def ingest_all():
     ok, status = upload_file(CFXQL_FILE)
     print(f"  -> {status} {'OK' if ok else 'FAILED'}")
 
-    print(f"\nIngesting bot catalog from {REAL_BOTS_DIR} ...")
-    md_files = sorted(f for f in os.listdir(REAL_BOTS_DIR) if f.endswith(".md"))
+    print(f"\nIngesting bot catalog from BOTS_DIR={BOTS_DIR} ...")
+    md_files = sorted(f for f in os.listdir(BOTS_DIR) if f.endswith(".md"))
     succeeded, failed = 0, 0
     for i, filename in enumerate(md_files, 1):
-        filepath = os.path.join(REAL_BOTS_DIR, filename)
+        filepath = os.path.join(BOTS_DIR, filename)
         ok, status = upload_file(filepath)
         if ok:
             succeeded += 1
@@ -105,6 +105,8 @@ def run_sample_questions():
 
 
 def main():
+    print(f"Using BOTS_DIR={BOTS_DIR}")
+    print(f"Using CFXQL_FILE={CFXQL_FILE}")
     if not create_collection():
         print("Collection creation failed, stopping.")
         sys.exit(1)

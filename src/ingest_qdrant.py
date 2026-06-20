@@ -22,13 +22,10 @@ from langchain_text_splitters import RecursiveCharacterTextSplitter
 sys.path.insert(0, os.path.dirname(__file__))
 from chunk_heuristic import chunk_by_heuristic_sections
 from clean_markdown import clean_markdown, extract_bot_metadata
+from config import BOTS_DIR
 
 
 RAW_DIR = os.path.join(os.path.dirname(__file__), "..", "data", "raw")
-
-# Real bot catalog source - the actual markdown files from the
-# confirmed-public Bots/ folder. Set this to your real path.
-REAL_BOTS_DIR = "/Users/supersaiyan.06/Downloads/rdaf_docs/rdaf_docs/bot_library/target/docs/Bots"
 
 QDRANT_DIR = os.path.join(os.path.dirname(__file__), "..", "data", "qdrant_db")
 VECTORIZER_PATH = os.path.join(QDRANT_DIR, "vectorizer.pkl")
@@ -179,20 +176,20 @@ def load_and_chunk_all():
         all_chunks.extend(chunks)
         print(f"  {filename}: {len(chunks)} chunks  (strategy={CHUNKING_STRATEGY if filename == 'cfxql_reference.txt' else 'n/a'})")
 
-    # Load the REAL bot catalog (.md files), if the folder exists.
-    if os.path.isdir(REAL_BOTS_DIR):
-        md_files = sorted(f for f in os.listdir(REAL_BOTS_DIR) if f.endswith(".md"))
-        print(f"\nLoading real bot catalog from {REAL_BOTS_DIR} ...")
+    # Load bot catalog (.md files), if the folder exists.
+    if os.path.isdir(BOTS_DIR):
+        md_files = sorted(f for f in os.listdir(BOTS_DIR) if f.endswith(".md"))
+        print(f"\nLoading bot catalog from BOTS_DIR={BOTS_DIR} ...")
         for filename in md_files:
-            filepath = os.path.join(REAL_BOTS_DIR, filename)
+            filepath = os.path.join(BOTS_DIR, filename)
             try:
                 chunks = chunk_bot_catalog_markdown(filepath, filename)
                 all_chunks.extend(chunks)
             except Exception as e:
                 print(f"  FAILED on {filename}: {e}")
-        print(f"  Loaded {len(md_files)} real bot files")
+        print(f"  Loaded {len(md_files)} bot files")
     else:
-        print(f"\n(Real bots directory not found at {REAL_BOTS_DIR}, skipping)")
+        print(f"\n(BOTS_DIR not found at {BOTS_DIR}, skipping bot catalog)")
 
     return all_chunks
 def main():
