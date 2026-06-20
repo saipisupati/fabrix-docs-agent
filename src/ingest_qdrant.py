@@ -1,41 +1,35 @@
 
 """
-ingest_qdrant.py — chunking logic for the Fabrix docs corpus.
+ingest_qdrant.py — chunk, embed, and store the Fabrix docs corpus in local Qdrant.
 
-Primary ingest (chunk + embed + store):
-    python src/ingest_with_real_embeddings.py
+    python src/ingest_qdrant.py
 
-This file owns load_and_chunk_all() and all chunking strategies.
-main() below is a legacy TF-IDF-only path — do not use it with
-query_qdrant.py, which expects MiniLM embeddings from OpenRouter.
+Requires: OPENROUTER_API_KEY
 """
 
 import os
 import re
 import sys
-import pickle
+import requests
 from qdrant_client import QdrantClient
 from qdrant_client.models import Distance, VectorParams, PointStruct
-from sklearn.feature_extraction.text import TfidfVectorizer
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 
 sys.path.insert(0, os.path.dirname(__file__))
 from chunk_heuristic import chunk_by_heuristic_sections
 from clean_markdown import clean_markdown, extract_bot_metadata
-from config import BOTS_DIR
-
+from config import (
+    BOTS_DIR,
+    COLLECTION_NAME,
+    EMBED_BATCH_SIZE,
+    EMBEDDING_MODEL,
+    EMBEDDINGS_URL,
+    QDRANT_DIR,
+    QDRANT_UPLOAD_BATCH_SIZE,
+)
 
 RAW_DIR = os.path.join(os.path.dirname(__file__), "..", "data", "raw")
 
-QDRANT_DIR = os.path.join(os.path.dirname(__file__), "..", "data", "qdrant_db")
-VECTORIZER_PATH = os.path.join(QDRANT_DIR, "vectorizer.pkl")
-COLLECTION_NAME = "fabrix_docs"
-
-# Which chunking strategy to use for the CFXQL reference. Change this
-# one line to compare strategies:
-#   "hand_rolled" - hardcoded splits, works great here, won't generalize
-#   "heuristic"    - generic header detection, works on any doc, noisier
-#   "size_based"   - original naive approach, ignores structure
 CHUNKING_STRATEGY = "hand_rolled"
 
 BOT_CATALOG_FILES = {"c_extension_loop_bots.txt", "exec_and_dm_sink_bots.txt"}
@@ -55,10 +49,7 @@ def chunk_narrative(text, source_name):
 
 
 def chunk_cfxql_reference(text, source_name):
-    """Section-aware chunking for the CFXQL reference specifically.
-    Splits at the doc's own Full CFXQL / Restricted CFXQL headers instead
-    of raw character count, so cfxql_type metadata is accurate per chunk
-    and Full/Restricted content never mix in the same chunk."""
+    """Section-aware chunking for the CFXQL reference specifically."""
     intro_and_bot_types, rest = text.split("Full CFXQL\n", 1)
     full_section, restricted_section = rest.split("Restricted CFXQL\n", 1)
     full_section = "Full CFXQL\n" + full_section
@@ -92,31 +83,23 @@ def chunk_cfxql_reference(text, source_name):
 
 
 def chunk_bot_catalog_markdown(filepath, source_name):
-    """Markdown-aware bot catalog chunking: cleans HTML/CSS noise, splits
-    on ## headers (one per bot), and extracts bot_name/prefix from each
-    header. Generalizes across any bot catalog file without per-file
-    customization - tested successfully on cfxdm.md (182 bots), kafka.md
-    (2 bots), and jira.md (5 bots)."""
+    """Markdown-aware bot catalog chunking."""
     from langchain_text_splitters import MarkdownHeaderTextSplitter
 
     with open(filepath, encoding="utf-8") as f:
         raw_text = f.read()
 
     cleaned_text = clean_markdown(raw_text)
-
-    headers_to_split_on = [("##", "h2")]
-    splitter = MarkdownHeaderTextSplitter(headers_to_split_on=headers_to_split_on)
+    splitter = MarkdownHeaderTextSplitter(headers_to_split_on=[("##", "h2")])
     raw_chunks = splitter.split_text(cleaned_text)
 
     chunks = []
     for chunk in raw_chunks:
         h2 = chunk.metadata.get("h2", "")
         if not h2.startswith("Bot "):
-            continue  # skip the intro chunk before the first bot
+            continue
 
         bot_meta = extract_bot_metadata(h2)
-
-        # determine cfxql_type the same way as the plain-text version
         if "Restricted CFXQL" in chunk.page_content:
             cfxql_type = "Restricted"
         elif "Full CFXQL" in chunk.page_content:
@@ -137,10 +120,9 @@ def chunk_bot_catalog_markdown(filepath, source_name):
 
     return chunks
 
+
 def chunk_cfxql_heuristic(text, source_name):
-    """Wraps the generic heuristic chunker, then adds a best-guess
-    cfxql_type tag based on the section header, so metadata filtering
-    still works the same way as the other strategies."""
+    """Wraps the generic heuristic chunker with cfxql_type tags."""
     raw_chunks = chunk_by_heuristic_sections(text, source_name)
     for chunk in raw_chunks:
         header = chunk["metadata"].get("section_header", "").lower()
@@ -174,9 +156,9 @@ def load_and_chunk_all():
             chunks = chunk_narrative(text, filename)
 
         all_chunks.extend(chunks)
-        print(f"  {filename}: {len(chunks)} chunks  (strategy={CHUNKING_STRATEGY if filename == 'cfxql_reference.txt' else 'n/a'})")
+        strategy = CHUNKING_STRATEGY if filename == "cfxql_reference.txt" else "n/a"
+        print(f"  {filename}: {len(chunks)} chunks  (strategy={strategy})")
 
-    # Load bot catalog (.md files), if the folder exists.
     if os.path.isdir(BOTS_DIR):
         md_files = sorted(f for f in os.listdir(BOTS_DIR) if f.endswith(".md"))
         print(f"\nLoading bot catalog from BOTS_DIR={BOTS_DIR} ...")
@@ -192,55 +174,94 @@ def load_and_chunk_all():
         print(f"\n(BOTS_DIR not found at {BOTS_DIR}, skipping bot catalog)")
 
     return all_chunks
-def main():
-    print("Loading and chunking documents from data/raw/ ...")
-    all_chunks = load_and_chunk_all()
-    print(f"Total chunks: {len(all_chunks)}\n")
 
+
+def embed_batch(texts, max_retries=3):
+    for attempt in range(max_retries):
+        try:
+            response = requests.post(
+                EMBEDDINGS_URL,
+                headers={
+                    "Authorization": f"Bearer {os.environ['OPENROUTER_API_KEY']}",
+                    "Content-Type": "application/json",
+                },
+                json={"model": EMBEDDING_MODEL, "input": texts},
+                timeout=60,
+            )
+            if response.status_code != 200:
+                raise RuntimeError(f"{response.status_code}: {response.text[:200]}")
+            data = response.json()["data"]
+            data.sort(key=lambda d: d["index"])
+            return [d["embedding"] for d in data]
+        except Exception as e:
+            if attempt < max_retries - 1:
+                print(f"    Retry {attempt + 1}/{max_retries} after error: {e}")
+            else:
+                raise
+
+
+def embed_all_chunks(all_chunks):
     texts = [c["text"] for c in all_chunks]
-    metadatas = [c["metadata"] for c in all_chunks]
+    all_vectors = []
+    num_batches = (len(texts) + EMBED_BATCH_SIZE - 1) // EMBED_BATCH_SIZE
 
-    print("Embedding chunks...")
-    # ============================================================
-    # SWAP POINT: replace this block with a real embedding model
-    # once the provider is confirmed, e.g.:
-    #
-    #   from langchain_mistralai import MistralAIEmbeddings
-    #   embedder = MistralAIEmbeddings(model="mistral-embed")
-    #   chunk_vectors = embedder.embed_documents(texts)
-    #
-    # Nothing else in this file needs to change.
-    # ============================================================
-    vectorizer = TfidfVectorizer()
-    chunk_vectors = vectorizer.fit_transform(texts).toarray().tolist()
-    vector_size = len(chunk_vectors[0])
+    for batch_num in range(num_batches):
+        start = batch_num * EMBED_BATCH_SIZE
+        end = min(start + EMBED_BATCH_SIZE, len(texts))
+        batch_texts = texts[start:end]
+        print(f"  Embedding batch {batch_num + 1}/{num_batches} ({len(batch_texts)} chunks)...")
+        all_vectors.extend(embed_batch(batch_texts))
 
+    return all_vectors
+
+
+def store_in_qdrant(all_chunks, vectors):
+    vector_size = len(vectors[0])
     os.makedirs(QDRANT_DIR, exist_ok=True)
-    with open(VECTORIZER_PATH, "wb") as f:
-        pickle.dump(vectorizer, f)
 
-    print(f"Setting up Qdrant collection (vector size={vector_size})...")
+    with open(os.path.join(QDRANT_DIR, "embedding_model.txt"), "w") as f:
+        f.write(EMBEDDING_MODEL)
+
+    print(f"\nSetting up Qdrant collection (vector size={vector_size})...")
     client = QdrantClient(path=QDRANT_DIR)
-
     if client.collection_exists(COLLECTION_NAME):
         client.delete_collection(COLLECTION_NAME)
-
     client.create_collection(
         collection_name=COLLECTION_NAME,
         vectors_config=VectorParams(size=vector_size, distance=Distance.COSINE),
     )
 
-    # Qdrant stores chunks as "points": an id, a vector, and a payload
-    # (payload = metadata + the original text, since Qdrant doesn't
-    # have a separate "documents" field the way Chroma does)
-    points = []
-    for i, (vec, meta, text) in enumerate(zip(chunk_vectors, metadatas, texts)):
-        payload = {**meta, "text": text}
-        points.append(PointStruct(id=i, vector=vec, payload=payload))
+    points = [
+        PointStruct(id=i, vector=vec, payload={**chunk["metadata"], "text": chunk["text"]})
+        for i, (chunk, vec) in enumerate(zip(all_chunks, vectors))
+    ]
 
-    client.upsert(collection_name=COLLECTION_NAME, points=points)
+    for i in range(0, len(points), QDRANT_UPLOAD_BATCH_SIZE):
+        batch = points[i:i + QDRANT_UPLOAD_BATCH_SIZE]
+        client.upsert(collection_name=COLLECTION_NAME, points=batch)
+        print(f"  Uploaded {min(i + QDRANT_UPLOAD_BATCH_SIZE, len(points))}/{len(points)} points")
 
-    count = client.count(COLLECTION_NAME).count
+    return client.count(COLLECTION_NAME).count
+
+
+def main():
+    if "OPENROUTER_API_KEY" not in os.environ:
+        print("Error: OPENROUTER_API_KEY is required.")
+        sys.exit(1)
+
+    print("Loading and chunking documents...")
+    all_chunks = load_and_chunk_all()
+    print(f"Total chunks: {len(all_chunks)}\n")
+
+    if not all_chunks:
+        print("No chunks produced — check BOTS_DIR and data/raw/.")
+        sys.exit(1)
+
+    print(f"Embedding with {EMBEDDING_MODEL} (batches of {EMBED_BATCH_SIZE})...")
+    vectors = embed_all_chunks(all_chunks)
+    print(f"Done embedding. Vector size: {len(vectors[0])}")
+
+    count = store_in_qdrant(all_chunks, vectors)
     print(f"\nDone. Stored {count} chunks at {QDRANT_DIR}")
 
 

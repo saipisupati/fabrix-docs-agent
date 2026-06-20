@@ -10,6 +10,9 @@ EMBEDDING_MODEL = os.environ.get(
 LLM_MODEL = os.environ.get("LLM_MODEL", "gpt-4o-mini")
 EMBEDDINGS_URL = "https://openrouter.ai/api/v1/embeddings"
 
+EMBED_BATCH_SIZE = 100
+QDRANT_UPLOAD_BATCH_SIZE = 200
+
 _DEFAULT_BOTS_DIR = (
     "/Users/supersaiyan.06/Downloads/rdaf_docs/rdaf_docs/bot_library/target/docs/Bots"
 )
