@@ -1,8 +1,27 @@
-"""Shared paths and model settings. Override via environment variables."""
+"""Shared paths and model settings. Override via environment variables or .env file."""
 
 import os
 
-QDRANT_DIR = os.path.join(os.path.dirname(__file__), "..", "data", "qdrant_db")
+_PROJECT_ROOT = os.path.join(os.path.dirname(__file__), "..")
+_ENV_PATH = os.path.join(_PROJECT_ROOT, ".env")
+
+
+def load_dotenv():
+    """Load project-root .env into os.environ (does not override existing vars)."""
+    if not os.path.isfile(_ENV_PATH):
+        return
+    with open(_ENV_PATH, encoding="utf-8") as f:
+        for line in f:
+            line = line.strip()
+            if not line or line.startswith("#") or "=" not in line:
+                continue
+            key, value = line.split("=", 1)
+            os.environ.setdefault(key.strip(), value.strip().strip('"').strip("'"))
+
+
+load_dotenv()
+
+QDRANT_DIR = os.path.join(_PROJECT_ROOT, "data", "qdrant_db")
 COLLECTION_NAME = "fabrix_docs"
 EMBEDDING_MODEL = os.environ.get(
     "EMBEDDING_MODEL", "sentence-transformers/all-minilm-l6-v2"

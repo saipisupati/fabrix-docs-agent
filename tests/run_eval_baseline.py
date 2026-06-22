@@ -28,19 +28,6 @@ RESULTS_PATH = os.path.join(os.path.dirname(__file__), "eval_baseline_results.tx
 TOP_K = 5
 
 
-def load_dotenv():
-    env_path = os.path.join(os.path.dirname(__file__), "..", ".env")
-    if not os.path.isfile(env_path):
-        return
-    with open(env_path, encoding="utf-8") as f:
-        for line in f:
-            line = line.strip()
-            if not line or line.startswith("#") or "=" not in line:
-                continue
-            key, value = line.split("=", 1)
-            os.environ.setdefault(key.strip(), value.strip().strip('"').strip("'"))
-
-
 def chunk_ref(chunk):
     meta = chunk["metadata"]
     if meta.get("type") == "bot":
@@ -152,8 +139,6 @@ def format_case_report(case, chunks, score):
 
 
 def main():
-    load_dotenv()
-
     if "OPENROUTER_API_KEY" not in os.environ:
         print("SKIP: OPENROUTER_API_KEY not set")
         sys.exit(0)

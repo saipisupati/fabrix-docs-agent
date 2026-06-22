@@ -8,7 +8,6 @@ Requires: OPENROUTER_API_KEY
 """
 
 import os
-import re
 import sys
 import requests
 from qdrant_client import QdrantClient
@@ -32,9 +31,8 @@ RAW_DIR = os.path.join(os.path.dirname(__file__), "..", "data", "raw")
 
 CHUNKING_STRATEGY = "hand_rolled"
 
-BOT_CATALOG_FILES = {"c_extension_loop_bots.txt", "exec_and_dm_sink_bots.txt"}
-BOT_START = re.compile(r'(?=Bot [@#*][^\s]+)')
-BOT_NAME = re.compile(r'Bot ([@#*][^\s]+)')
+# Legacy sample bot pages in data/raw/ — superseded by BOTS_DIR markdown catalog
+SKIP_RAW_FILES = {"c_extension_loop_bots.txt", "exec_and_dm_sink_bots.txt"}
 
 
 def chunk_narrative(text, source_name):
@@ -141,6 +139,9 @@ def load_and_chunk_all():
     all_chunks = []
     for filename in sorted(os.listdir(RAW_DIR)):
         if not filename.endswith(".txt"):
+            continue
+        if filename in SKIP_RAW_FILES:
+            print(f"  {filename}: skipped (superseded by BOTS_DIR markdown catalog)")
             continue
         with open(os.path.join(RAW_DIR, filename)) as f:
             text = f.read()

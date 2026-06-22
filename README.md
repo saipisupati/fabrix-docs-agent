@@ -30,9 +30,16 @@ Working prototype — full pipeline (chunk → embed → store → retrieve → 
 python3 -m venv venv
 source venv/bin/activate
 pip install -r requirements.txt
-export OPENROUTER_API_KEY=your_key_here   # embeddings
-export OPENAI_API_KEY=your_key_here       # generation
 ```
+
+Create a `.env` file in the project root (gitignored):
+
+```bash
+OPENROUTER_API_KEY=your_key_here   # embeddings
+OPENAI_API_KEY=your_key_here       # generation
+```
+
+All scripts load `.env` automatically via `src/config.py`. You can still `export` vars in your shell instead if you prefer.
 
 ### Optional environment variables
 
