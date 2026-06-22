@@ -6,7 +6,7 @@ See [docs/NOTES.md](docs/NOTES.md) for project log and findings.
 
 ## Status
 
-Working prototype — full pipeline (chunk → embed → store → retrieve → generate) runs end-to-end against the real corpus: **540 of 543** MD source files (214 bot catalog + 325 narrative guides across 8 folders + `cfxql.md`) — **~6,331 chunks** total. Three root-level files not ingested: `Datasets.md`, `Formatting-Templates.md`, `index.md`. Embeddings use `sentence-transformers/all-minilm-l6-v2` via OpenRouter; generation uses OpenAI `gpt-4o-mini`. A separate remote ingest path targets a shared Qdrant server (see below).
+Working prototype — full pipeline (chunk → embed → store → retrieve → generate) runs end-to-end against the real doc set: **540 of 543** MD source files (214 bot catalog + 325 narrative guides across 8 folders + `cfxql.md`) — **~6,331 chunks** total. Three root-level files not ingested: `Datasets.md`, `Formatting-Templates.md`, `index.md`. Embeddings use `sentence-transformers/all-minilm-l6-v2` via OpenRouter; generation uses OpenAI `gpt-4o-mini`. A separate remote ingest path targets a shared Qdrant server (see below).
 
 ## How it works (local path — primary)
 
