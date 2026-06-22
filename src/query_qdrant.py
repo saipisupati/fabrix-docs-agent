@@ -66,6 +66,19 @@ def rerank_by_bot_name(question, chunks):
     return sorted(chunks, key=sort_key, reverse=True)
 
 
+def prune_lookup_chunks(question, chunks, category):
+    """For lookup questions, drop sibling bots that share a slug with rank-1."""
+    if category != "lookup" or not chunks:
+        return chunks
+    hints = bot_name_hints(question)
+    if not hints:
+        return chunks[:2]
+    top_name = chunks[0]["metadata"].get("bot_name", "").lower()
+    if not all(h in top_name for h in hints):
+        return chunks[:2]
+    return [c for c in chunks if c["metadata"].get("bot_name", "").lower() == top_name]
+
+
 def retrieve(question, client, top_k=3, filter_dict=None):
     hints = bot_name_hints(question)
     candidate_limit = max(top_k * 10, 300) if hints else top_k
@@ -97,7 +110,13 @@ def build_prompt(question, retrieved_chunks, category=None):
     context = "\n\n---\n\n".join(context_parts)
 
     extra_instructions = ""
-    if category == "multi_part":
+    if category == "lookup":
+        extra_instructions = """
+- Excerpt [1] is the primary source; answer about that specific bot.
+- List parameters from that bot's parameter table only; do not mix tables from other bots.
+- Include all parameters from the table relevant to the question and any required companion parameters shown in the excerpt.
+"""
+    elif category == "multi_part":
         extra_instructions = """
 - The question has multiple parts; address each part explicitly.
 - Use all relevant excerpts; cite every excerpt you draw from.
@@ -140,6 +159,7 @@ def generate(prompt, max_retries=3):
 def run_pipeline(question, client, top_k=3, filter_dict=None, category=None):
     """Retrieve chunks and generate an answer. Returns (chunks, answer)."""
     chunks = retrieve(question, client, top_k=top_k, filter_dict=filter_dict)
+    chunks = prune_lookup_chunks(question, chunks, category)
     prompt = build_prompt(question, chunks, category=category)
     answer = generate(prompt)
     return chunks, answer
@@ -149,6 +169,7 @@ def ask(question, top_k=3, filter_dict=None, category=None):
     client = QdrantClient(path=QDRANT_DIR)
 
     chunks = retrieve(question, client, top_k=top_k, filter_dict=filter_dict)
+    chunks = prune_lookup_chunks(question, chunks, category)
 
     print(f'\nQuestion: "{question}"')
     if filter_dict:

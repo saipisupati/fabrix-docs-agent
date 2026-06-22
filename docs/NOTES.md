@@ -226,6 +226,7 @@ fabrix-docs-agent/
 - Retrieval fixes: category filters, bot-name re-rank, expanded candidate pool → **5/5 PASS** baseline
 - Generation re-check: multi_part_01 PARTIAL (correct bot + Full CFXQL; omits end-if detail)
 - Generation polish: multi-part prompt instructions, `eval_scoring.py`, `run_eval_generation.py`
+- Lookup fix: prune sibling bots + lookup prompt → **7/7 generation PASS**
 
 ---
 
@@ -262,3 +263,15 @@ Latest automated output: `tests/eval_baseline_results.txt` (gitignored).
 | negative_02 | PASS | |
 
 **Changes:** category-aware prompt for `multi_part` in `query_qdrant.build_prompt()`; shared scoring in `tests/eval_scoring.py`.
+
+### Generation eval — 2026-06-22 (lookup context pruning)
+
+**PASS=7, PARTIAL=0, FAIL=0**
+
+| Case | Grade | Fix |
+|------|-------|-----|
+| lookup_01 | **PASS** | `prune_lookup_chunks()` drops sibling `@exec:count-loop`; lookup prompt uses [1] only |
+| lookup_02 | PASS | Companion-params prompt line |
+| multi_part_01 | **PASS** | 100% facts (incl. already-loaded data) |
+
+**Changes:** `prune_lookup_chunks()` in `run_pipeline`/`ask`; lookup-specific prompt instructions.
