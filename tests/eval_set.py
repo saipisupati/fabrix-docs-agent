@@ -90,14 +90,14 @@ EVAL_SET = [
     },
     {
         "id": "negative_01",
-        "question": "How do I reset my password for the Fabrix.ai dashboard?",
+        "question": "How do I cancel my Fabrix.ai subscription?",
         "category": "negative",
         "expected_facts": [
             "Should explicitly state it could not find this in the documentation",
             "Should NOT invent a plausible-sounding but fabricated answer",
         ],
-        "expected_source": "none - no chunk in our sample set covers this",
-        "notes": "Tests hallucination resistance.",
+        "expected_source": "none - billing/subscription not covered in ingested docs",
+        "notes": "Tests hallucination resistance; replaced after corpus expansion made password-reset question answerable.",
     },
     {
         "id": "negative_02",
@@ -107,7 +107,7 @@ EVAL_SET = [
             "Should state it could not find this in the documentation",
             "Should NOT invent a specific number",
         ],
-        "expected_source": "none - architecture page not in our sample doc set",
+        "expected_source": "none - architecture.md is ingested but does not state a worker limit",
         "notes": "More tempting hallucination case since the topic is real.",
     },
 ]

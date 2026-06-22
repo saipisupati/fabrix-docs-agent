@@ -35,10 +35,21 @@ QDRANT_UPLOAD_BATCH_SIZE = 200
 _DEFAULT_BOTS_DIR = (
     "/Users/supersaiyan.06/Downloads/rdaf_docs/rdaf_docs/bot_library/target/docs/Bots"
 )
+_DEFAULT_DOCS_ROOT = os.path.dirname(_DEFAULT_BOTS_DIR)
 _DEFAULT_CFXQL_FILE = (
     "/Users/supersaiyan.06/Downloads/rdaf_docs/rdaf_docs/bot_library/target/docs/"
     "reference_guides/cfxql.md"
 )
+_DEFAULT_DOCS_INCLUDE_DIRS = (
+    "beginners_guide,reference_guides,installation_guides,Pipelines,"
+    "Datasource_Integrations,ai_fabric,Extensions,rda_releases"
+)
 
 BOTS_DIR = os.environ.get("BOTS_DIR", _DEFAULT_BOTS_DIR)
+DOCS_ROOT = os.environ.get("DOCS_ROOT", _DEFAULT_DOCS_ROOT)
 CFXQL_FILE = os.environ.get("CFXQL_FILE", _DEFAULT_CFXQL_FILE)
+DOCS_INCLUDE_DIRS = [
+    d.strip()
+    for d in os.environ.get("DOCS_INCLUDE_DIRS", _DEFAULT_DOCS_INCLUDE_DIRS).split(",")
+    if d.strip()
+]

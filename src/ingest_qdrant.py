@@ -1,6 +1,6 @@
 
 """
-ingest_qdrant.py — chunk, embed, and store the Fabrix docs corpus in local Qdrant.
+ingest_qdrant.py —-> chunk, embed, and store the Fabrix docs corpus in local Qdrant.
 
     python src/ingest_qdrant.py
 
@@ -21,6 +21,8 @@ from config import (
     BOTS_DIR,
     CFXQL_FILE,
     COLLECTION_NAME,
+    DOCS_INCLUDE_DIRS,
+    DOCS_ROOT,
     EMBED_BATCH_SIZE,
     EMBEDDING_MODEL,
     EMBEDDINGS_URL,
@@ -31,6 +33,8 @@ from config import (
 RAW_DIR = os.path.join(os.path.dirname(__file__), "..", "data", "raw")
 
 CHUNKING_STRATEGY = "hand_rolled"
+MAX_CHUNK_CHARS = 8000
+MAX_EMBED_BATCH_CHARS = 120_000
 
 # Legacy sample bot pages in data/raw/ — superseded by BOTS_DIR markdown catalog
 SKIP_RAW_FILES = {"c_extension_loop_bots.txt", "exec_and_dm_sink_bots.txt"}
@@ -161,6 +165,85 @@ def chunk_cfxql_markdown(filepath):
     return chunks
 
 
+def chunk_narrative_markdown(filepath, rel_source, doc_section):
+    """Markdown-aware chunking for platform/narrative docs (non-bot)."""
+    from langchain_text_splitters import MarkdownHeaderTextSplitter
+
+    with open(filepath, encoding="utf-8") as f:
+        text = f.read()
+
+    cleaned = clean_markdown(text)
+    splitter = MarkdownHeaderTextSplitter(
+        headers_to_split_on=[("##", "h2"), ("###", "h3"), ("####", "h4")]
+    )
+    chunks = []
+    for chunk in splitter.split_text(cleaned):
+        if not chunk.page_content.strip():
+            continue
+        chunks.append({
+            "text": chunk.page_content,
+            "metadata": {
+                "type": "narrative",
+                "source": rel_source,
+                "doc_section": doc_section,
+                "cfxql_type": "n/a",
+                "bot_name": "n/a",
+                "prefix": "n/a",
+                **chunk.metadata,
+            },
+        })
+    return chunks
+
+
+def _cfxql_rel_path():
+    if os.path.isfile(CFXQL_FILE):
+        return os.path.relpath(CFXQL_FILE, DOCS_ROOT).replace("\\", "/")
+    return "reference_guides/cfxql.md"
+
+
+def load_narrative_docs():
+    """Walk DOCS_INCLUDE_DIRS under DOCS_ROOT; skip cfxql.md (ingested separately)."""
+    all_chunks = []
+    skip_rel = {_cfxql_rel_path()}
+    print(f"\nLoading narrative docs from DOCS_ROOT={DOCS_ROOT}")
+    print(f"  include: {DOCS_INCLUDE_DIRS}")
+
+    for subdir in DOCS_INCLUDE_DIRS:
+        dir_path = os.path.join(DOCS_ROOT, subdir)
+        if not os.path.isdir(dir_path):
+            print(f"  {subdir}: skipped (not found)")
+            continue
+
+        folder_files = 0
+        folder_chunks = 0
+        errors = []
+        for root, _, files in os.walk(dir_path):
+            for filename in sorted(files):
+                if not filename.endswith(".md"):
+                    continue
+                filepath = os.path.join(root, filename)
+                rel_source = os.path.relpath(filepath, DOCS_ROOT).replace("\\", "/")
+                if rel_source in skip_rel:
+                    continue
+                doc_section = rel_source.split("/")[0]
+                try:
+                    chunks = chunk_narrative_markdown(filepath, rel_source, doc_section)
+                    all_chunks.extend(chunks)
+                    folder_files += 1
+                    folder_chunks += len(chunks)
+                except Exception as e:
+                    errors.append((rel_source, str(e)))
+        print(f"  {subdir}: {folder_files} files, {folder_chunks} chunks", end="")
+        if errors:
+            print(f", {len(errors)} errors")
+            for rel, err in errors:
+                print(f"    FAILED {rel}: {err}")
+        else:
+            print()
+
+    return all_chunks
+
+
 def chunk_cfxql_heuristic(text, source_name):
     """Wraps the generic heuristic chunker with cfxql_type tags."""
     raw_chunks = chunk_by_heuristic_sections(text, source_name)
@@ -229,7 +312,30 @@ def load_and_chunk_all():
     else:
         print(f"\n(BOTS_DIR not found at {BOTS_DIR}, skipping bot catalog)")
 
+    if DOCS_INCLUDE_DIRS and os.path.isdir(DOCS_ROOT):
+        all_chunks.extend(load_narrative_docs())
+    elif DOCS_INCLUDE_DIRS:
+        print(f"\n(DOCS_ROOT not found at {DOCS_ROOT}, skipping narrative docs)")
+
     return all_chunks
+
+
+def split_oversized_chunks(chunks):
+    """Split any chunk exceeding MAX_CHUNK_CHARS before embedding."""
+    splitter = RecursiveCharacterTextSplitter(
+        chunk_size=MAX_CHUNK_CHARS, chunk_overlap=100
+    )
+    normalized = []
+    for chunk in chunks:
+        if len(chunk["text"]) <= MAX_CHUNK_CHARS:
+            normalized.append(chunk)
+            continue
+        for part in splitter.split_text(chunk["text"]):
+            normalized.append({"text": part, "metadata": dict(chunk["metadata"])})
+    oversized = sum(1 for c in chunks if len(c["text"]) > MAX_CHUNK_CHARS)
+    if oversized:
+        print(f"  Split {oversized} oversized chunks (>{MAX_CHUNK_CHARS} chars)")
+    return normalized
 
 
 def embed_batch(texts, max_retries=3):
@@ -246,7 +352,10 @@ def embed_batch(texts, max_retries=3):
             )
             if response.status_code != 200:
                 raise RuntimeError(f"{response.status_code}: {response.text[:200]}")
-            data = response.json()["data"]
+            body = response.json()
+            if "data" not in body:
+                raise RuntimeError(f"Unexpected response: {str(body)[:200]}")
+            data = body["data"]
             data.sort(key=lambda d: d["index"])
             return [d["embedding"] for d in data]
         except Exception as e:
@@ -258,17 +367,27 @@ def embed_batch(texts, max_retries=3):
 
 def embed_all_chunks(all_chunks):
     texts = [c["text"] for c in all_chunks]
+    batches = list(_char_limited_batches(texts, MAX_EMBED_BATCH_CHARS, EMBED_BATCH_SIZE))
     all_vectors = []
-    num_batches = (len(texts) + EMBED_BATCH_SIZE - 1) // EMBED_BATCH_SIZE
-
-    for batch_num in range(num_batches):
-        start = batch_num * EMBED_BATCH_SIZE
-        end = min(start + EMBED_BATCH_SIZE, len(texts))
-        batch_texts = texts[start:end]
-        print(f"  Embedding batch {batch_num + 1}/{num_batches} ({len(batch_texts)} chunks)...")
+    for batch_num, batch_texts in enumerate(batches, 1):
+        print(f"  Embedding batch {batch_num}/{len(batches)} ({len(batch_texts)} chunks)...")
         all_vectors.extend(embed_batch(batch_texts))
-
     return all_vectors
+
+
+def _char_limited_batches(texts, max_chars, max_items):
+    """Yield batches capped by total characters and item count."""
+    batch = []
+    batch_chars = 0
+    for text in texts:
+        if batch and (batch_chars + len(text) > max_chars or len(batch) >= max_items):
+            yield batch
+            batch = []
+            batch_chars = 0
+        batch.append(text)
+        batch_chars += len(text)
+    if batch:
+        yield batch
 
 
 def store_in_qdrant(all_chunks, vectors):
@@ -306,7 +425,7 @@ def main():
         sys.exit(1)
 
     print("Loading and chunking documents...")
-    all_chunks = load_and_chunk_all()
+    all_chunks = split_oversized_chunks(load_and_chunk_all())
     print(f"Total chunks: {len(all_chunks)}\n")
 
     if not all_chunks:

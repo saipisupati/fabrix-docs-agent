@@ -116,6 +116,11 @@ def build_prompt(question, retrieved_chunks, category=None):
 - List parameters from that bot's parameter table only; do not mix tables from other bots.
 - Include all parameters from the table relevant to the question and any required companion parameters shown in the excerpt.
 """
+    elif category == "negative":
+        extra_instructions = """
+- Only answer if an excerpt explicitly documents the exact procedure or fact asked about.
+- If excerpts are only tangentially related (e.g. admin setup vs end-user password reset), say "I couldn't find that in the documentation."
+"""
     elif category == "multi_part":
         extra_instructions = """
 - The question has multiple parts; address each part explicitly.
@@ -126,6 +131,7 @@ def build_prompt(question, retrieved_chunks, category=None):
     return f"""You are a helpful assistant for Fabrix.ai documentation.
 Answer the user's question using ONLY the documentation excerpts provided below.
 If the answer is not in the excerpts, say "I couldn't find that in the documentation."
+Do not infer answers from loosely related excerpts; if none directly address the question, abstain.
 Always cite which excerpt your answer comes from using [1], [2], etc.
 {extra_instructions}
 DOCUMENTATION EXCERPTS:

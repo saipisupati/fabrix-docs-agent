@@ -6,11 +6,11 @@ See [docs/NOTES.md](docs/NOTES.md) for project log and findings.
 
 ## Status
 
-Working prototype — full pipeline (chunk → embed → store → retrieve → generate) runs end-to-end against the real corpus: 214 bot catalog files (~1,834 bots) plus the CFXQL reference (`cfxql.md`), ~1,847 chunks total. Embeddings use `sentence-transformers/all-minilm-l6-v2` via OpenRouter; generation uses OpenAI `gpt-4o-mini`. A separate remote ingest path targets a shared Qdrant server (see below).
+Working prototype — full pipeline (chunk → embed → store → retrieve → generate) runs end-to-end against the real corpus: **540 of 543** MD source files (214 bot catalog + 325 narrative guides across 8 folders + `cfxql.md`) — **~6,331 chunks** total. Three root-level files not ingested: `Datasets.md`, `Formatting-Templates.md`, `index.md`. Embeddings use `sentence-transformers/all-minilm-l6-v2` via OpenRouter; generation uses OpenAI `gpt-4o-mini`. A separate remote ingest path targets a shared Qdrant server (see below).
 
 ## How it works (local path — primary)
 
-1. **Chunk + embed + store** (`src/ingest_qdrant.py`) — loads sample files from `data/raw/` plus the real bot catalog from `BOTS_DIR`, chunks with strategy-specific logic, embeds via OpenRouter, and stores in local Qdrant at `data/qdrant_db/`. Requires `OPENROUTER_API_KEY`.
+1. **Chunk + embed + store** (`src/ingest_qdrant.py`) — loads the bot catalog from `BOTS_DIR`, CFXQL from `CFXQL_FILE`, and narrative guides from `DOCS_INCLUDE_DIRS` under `DOCS_ROOT`, chunks with strategy-specific logic, embeds via OpenRouter, and stores in local Qdrant at `data/qdrant_db/`. Requires `OPENROUTER_API_KEY`.
 2. **Query + generate** (`src/query_qdrant.py`) — embeds the question with the same model, retrieves top-k chunks, builds a grounded prompt, generates via `gpt-4o-mini`. Requires `OPENROUTER_API_KEY` and `OPENAI_API_KEY`.
 
 **CFXQL chunking strategies** (`CHUNKING_STRATEGY` in `ingest_qdrant.py`):
@@ -48,6 +48,8 @@ All scripts load `.env` automatically via `src/config.py`. You can still `export
 | Variable | Purpose | Default |
 |----------|---------|---------|
 | `BOTS_DIR` | Path to bot catalog `.md` files | machine-specific path in `config.py` |
+| `DOCS_ROOT` | Root of MD doc export (parent of `Bots/`) | machine-specific path in `config.py` |
+| `DOCS_INCLUDE_DIRS` | Comma-separated narrative folders to ingest | 8 folders (see `config.py`) |
 | `CFXQL_FILE` | Path to CFXQL reference markdown | machine-specific path in `config.py` |
 | `EMBEDDING_MODEL` | OpenRouter embedding model | `sentence-transformers/all-minilm-l6-v2` |
 | `LLM_MODEL` | OpenAI generation model | `gpt-4o-mini` |
@@ -86,6 +88,9 @@ python3 src/ingest_and_test_remote.py
 ```bash
 # chunk-only validation across a Bots/ folder (no embed/store)
 python3 src/batch_ingest_bots.py /path/to/Bots/
+
+# chunk-only validation across narrative folders (no embed/store)
+python3 scripts/batch_ingest_narrative.py
 ```
 
 ## Eval
