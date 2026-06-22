@@ -68,6 +68,9 @@ python3 src/query_qdrant.py "what parameters does the count loop bot take?"
 # retrieval-only baseline (no generation, writes tests/eval_baseline_results.txt)
 python3 tests/run_eval_baseline.py
 
+# automated generation eval (writes tests/eval_generation_results.txt)
+python3 tests/run_eval_generation.py
+
 # full pipeline eval (manual grading)
 python3 tests/run_eval.py
 ```
@@ -89,6 +92,7 @@ python3 src/batch_ingest_bots.py /path/to/Bots/
 
 - `tests/eval_set.py` — 7 hand-built cases (lookup, comparison, multi-part, negative/hallucination)
 - `tests/run_eval_baseline.py` — automated retrieval-only scoring against `eval_set.py` (source hit + fact coverage in top-k chunks). Requires `OPENROUTER_API_KEY` and an ingested `data/qdrant_db/`. Results go to `tests/eval_baseline_results.txt` (gitignored).
+- `tests/run_eval_generation.py` — automated full-pipeline scoring (retrieve + generate + fact coverage on answer). Requires `OPENROUTER_API_KEY`, `OPENAI_API_KEY`, and ingested `data/qdrant_db/`. Results go to `tests/eval_generation_results.txt` (gitignored).
 - `tests/run_eval.py` — runs each case through `query_qdrant.ask()` for manual pass/fail/partial grading
 
 ## Open questions / known issues

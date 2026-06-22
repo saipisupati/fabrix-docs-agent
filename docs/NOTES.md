@@ -188,7 +188,9 @@ fabrix-docs-agent/
 │   └── audit_eval_sources.py
 └── tests/
     ├── eval_set.py
+    ├── eval_scoring.py
     ├── run_eval_baseline.py
+    ├── run_eval_generation.py
     └── run_eval.py
 ```
 
@@ -223,6 +225,7 @@ fabrix-docs-agent/
 - Housekeeping: gitignore `data/qdrant_db/`, README chunk count 1838, `docs/NOTES.md`
 - Retrieval fixes: category filters, bot-name re-rank, expanded candidate pool → **5/5 PASS** baseline
 - Generation re-check: multi_part_01 PARTIAL (correct bot + Full CFXQL; omits end-if detail)
+- Generation polish: multi-part prompt instructions, `eval_scoring.py`, `run_eval_generation.py`
 
 ---
 
@@ -243,3 +246,19 @@ Latest automated output: `tests/eval_baseline_results.txt` (gitignored).
 | negative_02 | **PASS** | Abstains correctly |
 
 **Takeaway:** Retrieval fixes unblocked generation on if-condition (was FAIL). Remaining gap on multi_part_01 is generation brevity, not wrong source.
+
+### Generation eval — 2026-06-22 (automated, after prompt fix)
+
+**PASS=5, PARTIAL=1, FAIL=1** — see `tests/eval_generation_results.txt`
+
+| Case | Grade | Notes |
+|------|-------|-------|
+| lookup_01 | FAIL | LLM cited wrong params (`count` vs start/end/increment) despite correct retrieval |
+| lookup_02 | PASS | |
+| comparison_01 | PASS | |
+| comparison_02 | PASS | |
+| multi_part_01 | PARTIAL | 75% facts; manual run was PASS with fuller answer |
+| negative_01 | PASS | |
+| negative_02 | PASS | |
+
+**Changes:** category-aware prompt for `multi_part` in `query_qdrant.build_prompt()`; shared scoring in `tests/eval_scoring.py`.

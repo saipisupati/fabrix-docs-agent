@@ -88,7 +88,7 @@ def retrieve(question, client, top_k=3, filter_dict=None):
     return rerank_by_bot_name(question, chunks)[:top_k]
 
 
-def build_prompt(question, retrieved_chunks):
+def build_prompt(question, retrieved_chunks, category=None):
     context_parts = []
     for i, chunk in enumerate(retrieved_chunks, 1):
         meta = chunk["metadata"]
@@ -96,11 +96,19 @@ def build_prompt(question, retrieved_chunks):
         context_parts.append(f"[{i}] Source: {source}\n{chunk['text']}")
     context = "\n\n---\n\n".join(context_parts)
 
+    extra_instructions = ""
+    if category == "multi_part":
+        extra_instructions = """
+- The question has multiple parts; address each part explicitly.
+- Use all relevant excerpts; cite every excerpt you draw from.
+- Include related requirements (e.g. companion bots, exit conditions) when they appear in the excerpts.
+"""
+
     return f"""You are a helpful assistant for Fabrix.ai documentation.
 Answer the user's question using ONLY the documentation excerpts provided below.
 If the answer is not in the excerpts, say "I couldn't find that in the documentation."
 Always cite which excerpt your answer comes from using [1], [2], etc.
-
+{extra_instructions}
 DOCUMENTATION EXCERPTS:
 {context}
 
@@ -129,7 +137,15 @@ def generate(prompt, max_retries=3):
                 raise
 
 
-def ask(question, top_k=3, filter_dict=None):
+def run_pipeline(question, client, top_k=3, filter_dict=None, category=None):
+    """Retrieve chunks and generate an answer. Returns (chunks, answer)."""
+    chunks = retrieve(question, client, top_k=top_k, filter_dict=filter_dict)
+    prompt = build_prompt(question, chunks, category=category)
+    answer = generate(prompt)
+    return chunks, answer
+
+
+def ask(question, top_k=3, filter_dict=None, category=None):
     client = QdrantClient(path=QDRANT_DIR)
 
     chunks = retrieve(question, client, top_k=top_k, filter_dict=filter_dict)
@@ -143,7 +159,7 @@ def ask(question, top_k=3, filter_dict=None):
         ref = meta.get("bot_name") if meta.get("type") == "bot" else meta.get("source")
         print(f"  [{i}] score={c['score']:.3f}  {ref}")
 
-    prompt = build_prompt(question, chunks)
+    prompt = build_prompt(question, chunks, category=category)
     print("\nAsking the model...")
     answer = generate(prompt)
 

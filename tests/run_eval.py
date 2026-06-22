@@ -27,7 +27,7 @@ def run_case(case):
         print(f"  - {fact}")
 
     print("\n--- ACTUAL PIPELINE OUTPUT ---")
-    ask(case["question"], **retrieval_params(case))
+    ask(case["question"], category=case["category"], **retrieval_params(case))
 
     print("--- GRADE THIS ONE ---")
     print("  PASS  = all expected facts present, no contradictions/hallucination")

@@ -12,7 +12,6 @@ Writes: tests/eval_baseline_results.txt
 """
 
 import os
-import re
 import sys
 from datetime import datetime, timezone
 
@@ -21,93 +20,11 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 from qdrant_client import QdrantClient
 
 from config import QDRANT_DIR
+from eval_scoring import chunk_ref, grade_retrieval, score_retrieval
 from eval_set import EVAL_SET, FILTER_BY_CATEGORY, TOP_K_BY_CATEGORY, retrieval_params
 from query_qdrant import retrieve
 
 RESULTS_PATH = os.path.join(os.path.dirname(__file__), "eval_baseline_results.txt")
-
-
-def chunk_ref(chunk):
-    meta = chunk["metadata"]
-    if meta.get("type") == "bot":
-        return meta.get("bot_name", "?")
-    return meta.get("source", "?")
-
-
-def expected_source_hit(case, chunks):
-    expected = case["expected_source"].lower()
-    if expected.startswith("none"):
-        return None
-
-    refs = [chunk_ref(c).lower() for c in chunks]
-
-    if expected.startswith("@") or expected.startswith("*"):
-        return any(expected in ref or ref in expected for ref in refs)
-
-    if "cfxql" in expected:
-        has_ref = any("cfxql" in ref for ref in refs)
-        if "full" in expected and "restricted" in expected:
-            types = [c["metadata"].get("cfxql_type", "").lower() for c in chunks]
-            return has_ref and "full" in types and "restricted" in types
-        return has_ref
-
-    return any(expected in ref for ref in refs)
-
-
-def fact_tokens(fact):
-    stop = {
-        "should", "state", "could", "find", "this", "that", "not", "the", "and",
-        "does", "must", "are", "for", "with", "from", "into", "only", "all", "has",
-        "have", "what", "how", "explicitly", "invent", "plausible", "sounding",
-        "fabricated", "specific", "number",
-    }
-    return [
-        w for w in re.findall(r"[a-z0-9]+", fact.lower())
-        if len(w) > 2 and w not in stop
-    ]
-
-
-def fact_hit(fact, text):
-    tokens = fact_tokens(fact)
-    if not tokens:
-        return True
-    hits = sum(1 for token in tokens if token in text)
-    return hits >= max(1, int(len(tokens) * 0.5))
-
-
-def score_retrieval(case, chunks):
-    if case["category"] == "negative":
-        return {
-            "source_hit": None,
-            "facts_found": [],
-            "facts_missing": [],
-            "fact_score": None,
-            "note": "Negative cases are graded on generation, not retrieval",
-        }
-
-    text = " ".join(c["text"] for c in chunks).lower()
-    found = [fact for fact in case["expected_facts"] if fact_hit(fact, text)]
-    missing = [fact for fact in case["expected_facts"] if fact not in found]
-    total = len(case["expected_facts"])
-
-    return {
-        "source_hit": expected_source_hit(case, chunks),
-        "facts_found": found,
-        "facts_missing": missing,
-        "fact_score": len(found) / total if total else 1.0,
-    }
-
-
-def grade_case(score):
-    if score.get("note"):
-        return "SKIP"
-    source_ok = score["source_hit"]
-    fact_score = score["fact_score"]
-    if source_ok and fact_score >= 0.8:
-        return "PASS"
-    if source_ok or fact_score >= 0.5:
-        return "PARTIAL"
-    return "FAIL"
 
 
 def format_case_report(case, chunks, score):
@@ -133,7 +50,7 @@ def format_case_report(case, chunks, score):
         lines.append("  Missing facts:")
         for fact in score["facts_missing"]:
             lines.append(f"    - {fact}")
-    lines.append(f"  Grade: {grade_case(score)}")
+    lines.append(f"  Grade: {grade_retrieval(score)}")
     return lines
 
 
@@ -158,7 +75,7 @@ def main():
         params = retrieval_params(case)
         chunks = retrieve(case["question"], client, **params)
         score = score_retrieval(case, chunks)
-        grades[grade_case(score)] += 1
+        grades[grade_retrieval(score)] += 1
         report_lines.extend(format_case_report(case, chunks, score))
         report_lines.append("")
 

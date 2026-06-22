@@ -15,6 +15,7 @@ data/qdrant_db/
 # Local logs
 ingestion_log.txt
 tests/eval_baseline_results.txt
+tests/eval_generation_results.txt
 
 # OS
 .DS_Store
