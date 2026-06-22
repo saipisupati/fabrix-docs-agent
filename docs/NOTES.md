@@ -18,7 +18,7 @@ Example from [docs.fabrix.ai/Bots/search_bots/](https://docs.fabrix.ai/Bots/sear
 
 **Bot @c:timed-loop** — starts a looping block that waits x seconds before running again.
 
-Parameter table: name, type, default, description — e.g. `interval`, `stop_after`, `max_iterations`.
+Parameter table: name, type, default, description. e.g. `interval`, `stop_after`, `max_iterations`.
 
 Also shows example pipelines using the bot.
 
@@ -32,7 +32,7 @@ Also shows example pipelines using the bot.
 
 ### CFXQL reference
 
-**Full CFXQL** — SQL-like language for what each bot does with data:
+**Full CFXQL** — SQL-like language for what each bot should do with data:
 
 - Filter/condition clause: `is`, `not in`, `!=`, AND/OR grouping
 - GET clause: select/rename output columns
@@ -44,10 +44,10 @@ Also shows example pipelines using the bot.
 
 ## Original plan (4 phases)
 
-1. Start with bot catalog + CFXQL — basic retrieve-and-answer pipeline end-to-end
-2. Add citations to source pages + mock test questions for accuracy
+1. Start with bot catalog + CFXQL, get a basic retrieve-and-answer pipeline working end-to-end
+2. Add citations back to source pages + mock test questions for accuracy
 3. Improve chunking for pipeline/narrative docs
-4. Agent routes questions to product area; handles multi-part questions; integrate with docs site
+4. Agent routes questions to correct product area, handles multi-part questions, integrate with docs site
 
 Later ideas: generate docs, verify against screenshots, graph DB for file relationships, version hashing for doc updates.
 
@@ -55,14 +55,14 @@ Later ideas: generate docs, verify against screenshots, graph DB for file relati
 
 ## Open questions
 
-- **RAG + vector DB?** Yes — current approach is classic RAG (chunk → embed → store → retrieve → generate)
+- **RAG + vector DB?** Yes, classic RAG (chunk -> embed -> store -> retrieve -> generate)
 - **Framework?** LangChain used for chunking utilities; LlamaIndex not evaluated deeply
 - **Embedding model?** Mistral embed tested; **MiniLM-L6-v2** won local comparison; generation via **gpt-4o-mini** (OpenAI)
-- **Doc source?** Internal MD export via VPN (942 files), not web scraper — ask for documentation files, convert to MD
+- **Doc source?** Internal MD export via VPN (942 files), not web scraper
 - **Repo/org conventions?** TBD
 - **Dev environment?** Python venv; Faizan's server is Docker + fastembed
 
-Main task from stakeholders: **find the right tool/framework for cost and accuracy** — CFX has Qdrant, start there; test OpenRouter free models.
+Main task from stakeholders: find the right tool/framework for cost and accuracy. CFX has Qdrant, start there; test OpenRouter free models.
 
 ---
 
@@ -71,7 +71,7 @@ Main task from stakeholders: **find the right tool/framework for cost and accura
 | Stage | Ingest | Embed | Store | Generate |
 |-------|--------|-------|-------|----------|
 | v0 | `ingest.py` | TF-IDF | Chroma | stub |
-| v1 | `ingest_with_real_embeddings.py` | TF-IDF → MiniLM | Qdrant | openrouter/free |
+| v1 | `ingest_with_real_embeddings.py` | TF-IDF -> MiniLM | Qdrant | openrouter/free |
 | v2 (current) | `ingest_qdrant.py` | MiniLM via OpenRouter | Qdrant | gpt-4o-mini |
 | remote (WIP) | `ingest_and_test_remote.py` | BGE-large (server) | Faizan's Qdrant | TBD |
 
@@ -83,27 +83,27 @@ Corpus (evolution):
 | Phase 1 | + `beginners_guide`, `reference_guides` | **2,856** (+1,009 narrative) |
 | Full | + 6 more folders (see `DOCS_INCLUDE_DIRS`) | **6,331** (+4,484 narrative after oversized splits); **540/543** source files |
 
-Source files: **540 ingested** of **543** in export (214 bot + 325 narrative + 1 CFXQL; skipped `Datasets.md`, `Formatting-Templates.md`, `index.md`). Narrative breakdown (325 files, pre-oversized-split): beginners_guide 1,002 · reference_guides 7 · installation_guides 1,434 · Pipelines 108 · Datasource_Integrations 464 · ai_fabric 481 · Extensions 220 · rda_releases 69. `split_oversized_chunks()` split 225 chunks >8k chars before embed.
+Source files: **540 ingested** of **543** in export (214 bot + 325 narrative + 1 CFXQL; skipped `Datasets.md`, `Formatting-Templates.md`, `index.md`). Narrative breakdown (325 files, pre-oversized-split): beginners_guide 1,002 chunks, reference_guides 7, installation_guides 1,434, Pipelines 108, Datasource_Integrations 464, ai_fabric 481, Extensions 220, rda_releases 69. `split_oversized_chunks()` split 225 chunks >8k chars before embed.
 
 ---
 
 ## Chunking learnings
 
-1. **Size-based splitting breaks CFXQL** — 11 fragmented chunks, all tagged generic `reference`; comparison answers were wrong/backwards
-2. **Hand-rolled section splits fix CFXQL** — split at `Full CFXQL` / `Restricted CFXQL` headers → 4 clean chunks with correct `cfxql_type` metadata; flipped wrong answer to correct **without changing embeddings or LLM**
-3. **Markdown-aware splitting generalizes** — `MarkdownHeaderTextSplitter` on real `cfxql.md` → 13 chunks with `{h2, h4}` metadata, zero false positives
-4. **Bot catalog** — `clean_markdown.py` strips YAML/CSS/HTML; split on `##` → one chunk per bot; validated 214 files, 0 errors, 1,834 chunks
-5. **Prefix distribution** — @ 84%, * 14%, # 2%
-6. **Generalization options** — markdown headers (best), plain-text heuristics (noisy), recursive splitter tuning, LLM chunking (expensive)
+1. **Size-based splitting breaks CFXQL** -- 11 fragmented chunks, all tagged generic `reference`; comparison answers were wrong/backwards
+2. **Hand-rolled section splits fix CFXQL** -- split at `Full CFXQL` / `Restricted CFXQL` headers -> 4 clean chunks with correct `cfxql_type` metadata; flipped wrong answer to correct without changing embeddings or the LLM
+3. **Markdown-aware splitting generalizes** -- `MarkdownHeaderTextSplitter` on real `cfxql.md` -> 13 chunks with `{h2, h4}` metadata, zero false positives
+4. **Bot catalog** -- `clean_markdown.py` strips YAML/CSS/HTML; split on `##` -> one chunk per bot; validated 214 files, 0 errors, 1,834 chunks
+5. **Prefix distribution** -- @ 84%, * 14%, # 2%
+6. **Generalization options** -- markdown headers (best), plain-text heuristics (noisy), recursive splitter tuning, LLM chunking (expensive)
 
 ---
 
 ## Embedding learnings
 
-- TF-IDF works on tiny samples, **fails at scale** (~1,800+ chunks) — conceptual CFXQL questions retrieve unrelated bots
+- TF-IDF works on tiny samples, fails at scale (~1,800+ chunks) -- conceptual CFXQL questions retrieve unrelated bots
 - Real embeddings (MiniLM, Mistral, Nemotron) correctly rank Full/Restricted CFXQL chunks
-- **Surprise:** MiniLM-L6-v2 (smallest/cheapest) avg rank **1.00** on 3 CFXQL questions; BGE-large tied worst at **2.00**
-- Free OpenRouter models unstable (404/429); `openrouter/free` auto-router worked for early tests
+- Surprising result: MiniLM-L6-v2 (smallest/cheapest model) avg rank **1.00** on 3 CFXQL questions; BGE-large tied for worst at **2.00**
+- Free OpenRouter models are unstable (404/429); `openrouter/free` auto-router worked reliably by routing around congested providers
 
 ---
 
@@ -111,15 +111,15 @@ Source files: **540 ingested** of **543** in export (214 bot + 325 narrative + 1
 
 ### Early run (small corpus, TF-IDF, section-aware CFXQL, openrouter/free)
 
-6/7 cases graded manually — mostly PASS including comparison_01/02, negative cases, multi_part_01 (minor end-if omission).
+6/7 cases graded manually -- mostly PASS including comparison_01/02, negative cases, multi_part_01 (minor end-if omission).
 
 ### Retrieval baseline 2026-06-22 (before sample-txt skip)
 
-PASS=2, PARTIAL=3 — `c_extension_loop_bots.txt` sample file outranked real bot chunks.
+PASS=2, PARTIAL=3 -- `c_extension_loop_bots.txt` sample file outranked real bot chunks.
 
 ### Retrieval baseline 2026-06-22 (after sample-txt skip, top_k=5)
 
-PASS=2, PARTIAL=3 — lookup_01 fixed (@c:count-loop rank 1); lookup_02 and multi_part_01 still PARTIAL (bots may be missing from markdown catalog).
+PASS=2, PARTIAL=3 -- lookup_01 fixed (@c:count-loop rank 1); lookup_02 and multi_part_01 still PARTIAL (bots may be missing from markdown catalog).
 
 ### Retrieval baseline 2026-06-22 (per-category top_k: lookup=5, comparison=10, multi_part=8)
 
@@ -130,11 +130,11 @@ PASS=2, PARTIAL=3 — lookup_01 fixed (@c:count-loop rank 1); lookup_02 and mult
 | lookup_01 | PASS | @c:count-loop rank 1 |
 | lookup_02 | PARTIAL | @c:data-loop not in top-5 despite being in catalog |
 | comparison_01 | PASS | |
-| comparison_02 | **PASS** | Fixed by comparison top_k=10 (was PARTIAL at top_k=5) |
+| comparison_02 | PASS | Fixed by comparison top_k=10 (was PARTIAL at top_k=5) |
 | multi_part_01 | PARTIAL | *exec:if-condition not in top-8; @exec:end-if rank 1 |
 | negative_* | SKIP | Graded via generation eval below |
 
-**Catalog audit (same day):** All three eval bot names exist in `BOTS_DIR` — `@c:count-loop` and `@c:data-loop` in `control.md`, `*exec:if-condition` in `exec.md`. Lookup/multi_part PARTIAL grades are retrieval ranking issues, not missing docs.
+**Catalog audit (same day):** All three eval bot names exist in `BOTS_DIR` -- `@c:count-loop` and `@c:data-loop` in `control.md`, `*exec:if-condition` in `exec.md`. Lookup/multi_part PARTIAL grades are retrieval ranking issues, not missing docs.
 
 ### Retrieval baseline 2026-06-22 (filters + bot-name re-rank)
 
@@ -143,10 +143,10 @@ PASS=2, PARTIAL=3 — lookup_01 fixed (@c:count-loop rank 1); lookup_02 and mult
 | Case | Grade | Fix applied |
 |------|-------|-------------|
 | lookup_01 | PASS | unchanged |
-| lookup_02 | **PASS** | `type=bot` filter + re-rank on `data-loop` hint (fetch 300 candidates) |
+| lookup_02 | PASS | `type=bot` filter + re-rank on `data-loop` hint (fetch 300 candidates) |
 | comparison_01 | PASS | unchanged |
 | comparison_02 | PASS | unchanged |
-| multi_part_01 | **PASS** | re-rank on `if-condition` hint (chunk was rank ~272 in vector search) |
+| multi_part_01 | PASS | re-rank on `if-condition` hint (chunk was rank ~272 in vector search) |
 | negative_* | SKIP | generation eval below |
 
 **Retrieval changes:** `FILTER_BY_CATEGORY` in `eval_set.py`; `bot_name_hints()` + `rerank_by_bot_name()` + expanded candidate pool in `query_qdrant.retrieve()`.
@@ -154,28 +154,30 @@ PASS=2, PARTIAL=3 — lookup_01 fixed (@c:count-loop rank 1); lookup_02 and mult
 ### CFXQL markdown ingest + re-baseline 2026-06-22
 
 - Swapped `data/raw/cfxql_reference.txt` (4 chunks) for `CFXQL_FILE` / `cfxql.md` (13 chunks) via `MarkdownHeaderTextSplitter`
-- Re-ingested: **1847 chunks**; baseline still **PASS=5 PARTIAL=0**
+- Re-ingested: **1,847 chunks**; baseline still PASS=5 PARTIAL=0
 
 ### Corpus expansion 2026-06-22
 
 - Added `DOCS_ROOT` + `DOCS_INCLUDE_DIRS` in `config.py`; `chunk_narrative_markdown()` + `load_narrative_docs()` in `ingest_qdrant.py`
-- `scripts/batch_ingest_narrative.py` — chunk-only validation (no embed/Qdrant)
+- `scripts/batch_ingest_narrative.py` -- chunk-only validation (no embed/Qdrant)
 - Char-limited embed batches + oversized-chunk splitting (fixes OpenRouter 131k input limit)
-- Negative-category abstention prompt in `query_qdrant.build_prompt()`
-- Ingested all 8 narrative folders → **6,331 chunks** in local Qdrant
+- Tightened negative-category abstention prompt in `query_qdrant.build_prompt()`
+- Ingested all 8 narrative folders -> **6,331 chunks** in local Qdrant
 
-**Retrieval baseline (full corpus):** **PASS=5, PARTIAL=0, SKIP=2** — no regressions vs 1,847-chunk baseline.
+**Retrieval baseline (full corpus):** PASS=5, PARTIAL=0, SKIP=2 -- no regressions vs 1,847-chunk baseline.
 
-**Generation eval (full corpus, before eval fix):** **PASS=5, PARTIAL=1, FAIL=1**
+**Generation eval (full corpus, before eval fix):** PASS=5, PARTIAL=1, FAIL=1
 
 | Case | Grade | Notes |
 |------|-------|-------|
-| multi_part_01 | PARTIAL | 75% — missing "already-loaded data" fact (LLM variance; same run PASS on re-test) |
-| negative_01 | **FAIL** | Password-reset question now answerable from `dashboards_configuration.md` + install guides |
+| multi_part_01 | PARTIAL | 75% -- missing "already-loaded data" fact (LLM variance; same run PASS on re-test) |
+| negative_01 | FAIL | Password-reset question now answerable from `dashboards_configuration.md` + install guides |
 
-**Eval drift fix:** Replaced `negative_01` question with *"How do I cancel my Fabrix.ai subscription?"* (billing not in corpus). Updated `negative_02` `expected_source` note (`architecture.md` is ingested but has no worker limit).
+**Eval drift fix:** Replaced `negative_01` with "How do I cancel my Fabrix.ai subscription?" (billing not in corpus). Updated `negative_02` `expected_source` note (`architecture.md` is ingested but has no worker limit content).
 
-**Generation eval (after eval fix):** **PASS=7, PARTIAL=0, FAIL=0** — `multi_part_01` 100% facts on re-run (confirms variance, not regression).
+**Generation eval (after eval fix):** PASS=7, PARTIAL=0, FAIL=0 -- multi_part_01 100% facts on re-run, confirms variance not regression.
+
+---
 
 ## Calls / blockers
 
@@ -190,7 +192,7 @@ PASS=2, PARTIAL=3 — lookup_01 fixed (@c:count-loop rank 1); lookup_02 and mult
 
 - OpenAI credentials for generation (gpt-4o-mini)
 - Remote ingestion blocked on VPN/timeouts for large files (cfxdm.md etc.)
-- Local fallback: swap TF-IDF → MiniLM on full corpus — confirmed retrieval works at scale
+- Local fallback: swap TF-IDF -> MiniLM on full corpus -- confirmed retrieval works at scale
 
 ---
 
@@ -199,16 +201,16 @@ PASS=2, PARTIAL=3 — lookup_01 fixed (@c:count-loop rank 1); lookup_02 and mult
 ```
 fabrix-docs-agent/
 ├── README.md
-├── docs/NOTES.md          ← this file
+├── docs/NOTES.md          <- this file
 ├── requirements.txt
-├── .env                   ← gitignored API keys
+├── .env                   <- gitignored API keys
 ├── data/
-│   ├── raw/               → cfxql_reference.txt only (sample bot txts skipped)
-│   └── qdrant_db/         → local vector store (gitignored)
+│   ├── raw/               -> cfxql_reference.txt only (sample bot txts skipped)
+│   └── qdrant_db/         -> local vector store (gitignored)
 ├── src/
-│   ├── config.py          → paths, models, .env loading
-│   ├── ingest_qdrant.py   → chunk + embed + store
-│   ├── query_qdrant.py    → retrieve + generate
+│   ├── config.py          -> paths, models, .env loading
+│   ├── ingest_qdrant.py   -> chunk + embed + store
+│   ├── query_qdrant.py    -> retrieve + generate
 │   ├── ingest_and_test_remote.py
 │   └── ...
 ├── scripts/
@@ -231,7 +233,7 @@ fabrix-docs-agent/
 - Tested MarkdownHeaderTextSplitter on cfxql.md (13 chunks)
 - Built clean_markdown.py + bot catalog chunking; validated cfxdm, kafka, jira
 - Batch ingested 214 bot files: 1,834 chunks, 0 errors
-- Call with Faizan —> remote Qdrant plan
+- Call with Faizan -- remote Qdrant plan
 - Embedding comparison: MiniLM beat BGE-large locally
 
 ### Thu 2026-06-18
@@ -244,24 +246,22 @@ fabrix-docs-agent/
 ### Fri 2026-06-22
 
 - Safe refactor: unified ingest, config.py, eval baseline, .env loading
-- Skipped duplicate sample bot `.txt` files (1838 chunks)
+- Skipped duplicate sample bot `.txt` files (1,838 chunks)
 - Retrieval baseline: PASS=2 PARTIAL=3 after re-ingest
-- Per-category top_k → PASS=3 PARTIAL=2; comparison_02 fixed
-- Added `scripts/audit_eval_sources.py` — all eval bots found in catalog
+- Per-category top_k -> PASS=3 PARTIAL=2; comparison_02 fixed
+- Added `scripts/audit_eval_sources.py` -- all eval bots found in catalog
 - Generation eval: negative cases PASS; multi_part_01 FAIL (end-if confusion)
-- Housekeeping: gitignore `data/qdrant_db/`, README chunk count 1838, `docs/NOTES.md`
-- Retrieval fixes: category filters, bot-name re-rank, expanded candidate pool → **5/5 PASS** baseline
+- Housekeeping: gitignore `data/qdrant_db/`, README chunk count 1,838, `docs/NOTES.md`
+- Retrieval fixes: category filters, bot-name re-rank, expanded candidate pool -> 5/5 PASS baseline
 - Generation re-check: multi_part_01 PARTIAL (correct bot + Full CFXQL; omits end-if detail)
 - Generation polish: multi-part prompt instructions, `eval_scoring.py`, `run_eval_generation.py`
-- Lookup fix: prune sibling bots + lookup prompt → **7/7 generation PASS**
-
-### Sun 2026-06-22 (corpus expansion)
-
-- Corpus ingest: **540/543** MD files → **6,331 total chunks** (local Qdrant)
-- Retrieval baseline on full corpus: **5/5 PASS**
-- Generation eval on full corpus: **5/7** then **7/7** after `negative_01` question swap
-- `negative_01` replaced (password reset → subscription cancel) — eval drift after corpus expansion
-- `negative_02` metadata note updated for ingested `architecture.md`
+- Lookup fix: prune sibling bots + lookup prompt -> 7/7 generation PASS
+- Corpus expansion: all 8 narrative folders ingested -> 6,331 total chunks (was 1,847)
+- negative_01 swapped out (password reset now in corpus) -> subscription cancel question
+- negative_02 expected_source note updated
+- Retrieval eval on full corpus: 5/5 PASS
+- Generation eval on full corpus: 7/7 PASS
+- Committed at 266d55e
 
 ---
 
@@ -271,21 +271,21 @@ fabrix-docs-agent/
 
 Latest automated output: `tests/eval_baseline_results.txt` (gitignored).
 
-**2026-06-22 (per-category top_k):** PASS=3 PARTIAL=2 — see table in Eval history above.
+**2026-06-22 (per-category top_k):** PASS=3 PARTIAL=2 -- see table in Eval history above.
 
-### Generation eval — 2026-06-22 (after retrieval fixes)
+### Generation eval -- 2026-06-22 (after retrieval fixes)
 
 | Case | Grade | Notes |
 |------|-------|-------|
-| multi_part_01 | **PARTIAL** | Correct bot + Full CFXQL; missing end-if requirement and in-memory query detail |
-| negative_01 | **PASS** | Abstains correctly |
-| negative_02 | **PASS** | Abstains correctly |
+| multi_part_01 | PARTIAL | Correct bot + Full CFXQL; missing end-if requirement and in-memory query detail |
+| negative_01 | PASS | Abstains correctly |
+| negative_02 | PASS | Abstains correctly |
 
-**Takeaway:** Retrieval fixes unblocked generation on if-condition (was FAIL). Remaining gap on multi_part_01 is generation brevity, not wrong source.
+Takeaway: retrieval fixes unblocked generation on if-condition (was FAIL). Remaining gap on multi_part_01 is generation brevity, not wrong source.
 
-### Generation eval — 2026-06-22 (automated, after prompt fix)
+### Generation eval -- 2026-06-22 (automated, after prompt fix)
 
-**PASS=5, PARTIAL=1, FAIL=1** — see `tests/eval_generation_results.txt`
+**PASS=5, PARTIAL=1, FAIL=1** -- see `tests/eval_generation_results.txt`
 
 | Case | Grade | Notes |
 |------|-------|-------|
@@ -297,35 +297,47 @@ Latest automated output: `tests/eval_baseline_results.txt` (gitignored).
 | negative_01 | PASS | |
 | negative_02 | PASS | |
 
-**Changes:** category-aware prompt for `multi_part` in `query_qdrant.build_prompt()`; shared scoring in `tests/eval_scoring.py`.
+Changes: category-aware prompt for `multi_part` in `query_qdrant.build_prompt()`; shared scoring in `tests/eval_scoring.py`.
 
-### Generation eval — 2026-06-22 (lookup context pruning)
+### Generation eval -- 2026-06-22 (lookup context pruning)
 
 **PASS=7, PARTIAL=0, FAIL=0**
 
 | Case | Grade | Fix |
 |------|-------|-----|
-| lookup_01 | **PASS** | `prune_lookup_chunks()` drops sibling `@exec:count-loop`; lookup prompt uses [1] only |
+| lookup_01 | PASS | `prune_lookup_chunks()` drops sibling `@exec:count-loop`; lookup prompt uses [1] only |
 | lookup_02 | PASS | Companion-params prompt line |
-| multi_part_01 | **PASS** | 100% facts (incl. already-loaded data) |
+| multi_part_01 | PASS | 100% facts (incl. already-loaded data) |
 
-**Changes:** `prune_lookup_chunks()` in `run_pipeline`/`ask`; lookup-specific prompt instructions.
+Changes: `prune_lookup_chunks()` in `run_pipeline`/`ask`; lookup-specific prompt instructions.
 
-### Generation eval — 2026-06-22 (full corpus, post-expansion)
+### Generation eval -- 2026-06-22 (full corpus, post-expansion)
 
-**PASS=5, PARTIAL=1, FAIL=1** — first run on 6,331-chunk index
+**PASS=5, PARTIAL=1, FAIL=1** -- first run on 6,331-chunk index
 
 | Case | Grade | Notes |
 |------|-------|-------|
-| negative_01 | **FAIL** | Retrieved `dashboards_configuration.md` password-reset steps; model answered instead of abstaining |
+| negative_01 | FAIL | Retrieved dashboards_configuration.md password-reset steps; model answered instead of abstaining |
 | multi_part_01 | PARTIAL | 75% facts |
 
-### Generation eval — 2026-06-22 (eval drift fix)
+### Generation eval -- 2026-06-22 (after eval drift fix)
 
 **PASS=7, PARTIAL=0, FAIL=0**
 
 | Case | Grade | Change |
 |------|-------|--------|
-| negative_01 | **PASS** | Question → *"How do I cancel my Fabrix.ai subscription?"* |
-| negative_02 | PASS | `expected_source` note only |
-| multi_part_01 | **PASS** | 100% facts — confirms prior PARTIAL was LLM variance |
+| negative_01 | PASS | Question swapped to "How do I cancel my Fabrix.ai subscription?" |
+| negative_02 | PASS | expected_source note only |
+| multi_part_01 | PASS | 100% facts -- confirms prior PARTIAL was LLM variance |
+
+### Eval expansion -- 2026-06-22 (beginners_guide)
+
+Added 3 `guide` cases to `eval_set.py` with filter `type: narrative` + `doc_section: beginners_guide`, `top_k=5`.
+
+| Case | Source | Retrieval | Generation |
+|------|--------|-----------|------------|
+| guide_01 | data_ingestion.md (Event Gateway endpoints) | PASS | PASS |
+| guide_02 | architecture.md (design principle) | PASS | PASS |
+| guide_03 | persistent_streams.md (NATS/Kafka) | PASS | PASS |
+
+**Retrieval:** PASS=8/8 scored (7 original + 3 guide; 2 negative SKIP). **Generation:** PASS=9, PARTIAL=1 (`multi_part_01` variance), FAIL=0 (10 cases).

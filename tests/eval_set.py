@@ -1,5 +1,5 @@
 """
-eval_set.py — a small, hand-built set of test questions with known-correct
+eval_set.py: a small, hand-built set of test questions with known-correct
 answers, used to measure whether the pipeline (chunking + retrieval +
 generation) is actually accurate, not just "looks fine when I try it."
 """
@@ -7,6 +7,7 @@ generation) is actually accurate, not just "looks fine when I try it."
 FILTER_BY_CATEGORY = {
     "lookup": {"type": "bot"},
     "multi_part": {"type": "bot"},
+    "guide": {"type": "narrative", "doc_section": "beginners_guide"},
 }
 
 TOP_K_BY_CATEGORY = {
@@ -14,6 +15,7 @@ TOP_K_BY_CATEGORY = {
     "comparison": 10,
     "multi_part": 8,
     "negative": 5,
+    "guide": 5,
 }
 DEFAULT_TOP_K = 5
 
@@ -87,6 +89,42 @@ EVAL_SET = [
         ],
         "expected_source": "*exec:if-condition",
         "notes": "Two sub-questions in one ask.",
+    },
+    {
+        "id": "guide_01",
+        "question": "What endpoint types does the RDA Event Gateway support for data ingestion?",
+        "category": "guide",
+        "expected_facts": [
+            "syslog_tcp",
+            "syslog_udp",
+            "http",
+            "tcp_json",
+            "filebeat",
+            "file",
+        ],
+        "expected_source": "beginners_guide/data_ingestion.md",
+        "notes": "Narrative eval — Event Gateway endpoint table.",
+    },
+    {
+        "id": "guide_02",
+        "question": "What is a primary design principle of RDA Fabric architecture?",
+        "category": "guide",
+        "expected_facts": [
+            "perform data operations close to data source",
+        ],
+        "expected_source": "beginners_guide/architecture.md",
+        "notes": "Narrative eval — architecture design principle.",
+    },
+    {
+        "id": "guide_03",
+        "question": "What messaging services does RDAF use for streaming data by default?",
+        "category": "guide",
+        "expected_facts": [
+            "NATS",
+            "Kafka",
+        ],
+        "expected_source": "beginners_guide/persistent_streams.md",
+        "notes": "Narrative eval — persistent streams / messaging.",
     },
     {
         "id": "negative_01",

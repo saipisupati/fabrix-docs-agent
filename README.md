@@ -95,7 +95,7 @@ python3 scripts/batch_ingest_narrative.py
 
 ## Eval
 
-- `tests/eval_set.py` — 7 hand-built cases (lookup, comparison, multi-part, negative/hallucination)
+- `tests/eval_set.py` — 10 hand-built cases (lookup, comparison, multi-part, guide/beginners_guide, negative/hallucination)
 - `tests/run_eval_baseline.py` — automated retrieval-only scoring against `eval_set.py` (source hit + fact coverage in top-k chunks). Requires `OPENROUTER_API_KEY` and an ingested `data/qdrant_db/`. Results go to `tests/eval_baseline_results.txt` (gitignored).
 - `tests/run_eval_generation.py` — automated full-pipeline scoring (retrieve + generate + fact coverage on answer). Requires `OPENROUTER_API_KEY`, `OPENAI_API_KEY`, and ingested `data/qdrant_db/`. Results go to `tests/eval_generation_results.txt` (gitignored).
 - `tests/run_eval.py` — runs each case through `query_qdrant.ask()` for manual pass/fail/partial grading
