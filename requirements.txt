@@ -4,3 +4,4 @@ openai
 requests
 numpy
 langchain-text-splitters
+fastembed

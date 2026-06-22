@@ -91,6 +91,10 @@ python3 src/batch_ingest_bots.py /path/to/Bots/
 
 # chunk-only validation across narrative folders (no embed/store)
 python3 scripts/batch_ingest_narrative.py
+
+# compare fastembed models on eval retrieval (local CPU, no Qdrant re-ingest)
+pip install fastembed
+python3 src/test_fastembed_eval.py --models BAAI/bge-small-en-v1.5
 ```
 
 ## Eval

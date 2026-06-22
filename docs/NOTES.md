@@ -341,3 +341,17 @@ Added 3 `guide` cases to `eval_set.py` with filter `type: narrative` + `doc_sect
 | guide_03 | persistent_streams.md (NATS/Kafka) | PASS | PASS |
 
 **Retrieval:** PASS=8/8 scored (7 original + 3 guide; 2 negative SKIP). **Generation:** PASS=9, PARTIAL=1 (`multi_part_01` variance), FAIL=0 (10 cases).
+
+### Fastembed local comparison -- 2026-06-22
+
+Compared fastembed models on full 6,331-chunk index via [`src/test_fastembed_eval.py`](../src/test_fastembed_eval.py) (in-memory retrieval, same filters/top_k as eval baseline).
+
+| Model | dim | Retrieval PASS | Time |
+|-------|-----|----------------|------|
+| sentence-transformers/all-MiniLM-L6-v2 | 384 | 7/8 | ~3 min |
+| **BAAI/bge-small-en-v1.5** | 384 | **8/8** | ~47 min |
+| bge-base, arctic-embed-s, mxbai, bge-large | — | not run | stopped after bge-small |
+
+MiniLM miss: `comparison_02` PARTIAL (facts 100%, `cfxql.md` not in top-k). bge-small fixed that case.
+
+**Recommendation for Dheeraj fastembed path:** `BAAI/bge-small-en-v1.5` over MiniLM (same 384 dim, 8/8 on eval harness). Production ingest still uses OpenRouter MiniLM (also 8/8 via Qdrant) until re-ingest with fastembed is agreed.
