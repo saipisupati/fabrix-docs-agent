@@ -4,6 +4,28 @@ answers, used to measure whether the pipeline (chunking + retrieval +
 generation) is actually accurate, not just "looks fine when I try it."
 """
 
+FILTER_BY_CATEGORY = {
+    "lookup": {"type": "bot"},
+    "multi_part": {"type": "bot"},
+}
+
+TOP_K_BY_CATEGORY = {
+    "lookup": 5,
+    "comparison": 10,
+    "multi_part": 8,
+    "negative": 5,
+}
+DEFAULT_TOP_K = 5
+
+
+def retrieval_params(case):
+    """top_k and filter_dict for a case (category defaults + per-case override)."""
+    return {
+        "top_k": TOP_K_BY_CATEGORY.get(case["category"], DEFAULT_TOP_K),
+        "filter_dict": case.get("filter_dict") or FILTER_BY_CATEGORY.get(case["category"]),
+    }
+
+
 EVAL_SET = [
     {
         "id": "lookup_01",

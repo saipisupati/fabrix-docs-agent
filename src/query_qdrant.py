@@ -7,6 +7,7 @@ Requires:
 """
 
 import os
+import re
 import sys
 import time
 
@@ -41,12 +42,39 @@ def build_filter(filter_dict):
     return Filter(must=conditions)
 
 
+def bot_name_hints(question):
+    """Extract bot-name slugs from natural-language questions."""
+    q = question.lower()
+    hints = re.findall(r"[a-z][a-z0-9]*(?:-[a-z0-9]+)+", q)
+    for match in re.finditer(r"(\w+)\s+loop\b", q):
+        hints.append(f"{match.group(1)}-loop")
+    for match in re.finditer(r"(\w+)\s+condition\b", q):
+        hints.append(f"{match.group(1)}-condition")
+    return list(dict.fromkeys(hints))
+
+
+def rerank_by_bot_name(question, chunks):
+    hints = bot_name_hints(question)
+    if not hints:
+        return chunks
+
+    def sort_key(chunk):
+        name = chunk["metadata"].get("bot_name", "").lower()
+        match = any(hint in name for hint in hints)
+        return (match, chunk["score"])
+
+    return sorted(chunks, key=sort_key, reverse=True)
+
+
 def retrieve(question, client, top_k=3, filter_dict=None):
+    hints = bot_name_hints(question)
+    candidate_limit = max(top_k * 10, 300) if hints else top_k
+
     query_vector = embed_question(question)
     results = client.query_points(
         collection_name=COLLECTION_NAME,
         query=query_vector,
-        limit=top_k,
+        limit=candidate_limit,
         query_filter=build_filter(filter_dict),
     )
     chunks = []
@@ -57,7 +85,7 @@ def retrieve(question, client, top_k=3, filter_dict=None):
             "metadata": {k: v for k, v in payload.items() if k != "text"},
             "score": point.score,
         })
-    return chunks
+    return rerank_by_bot_name(question, chunks)[:top_k]
 
 
 def build_prompt(question, retrieved_chunks):

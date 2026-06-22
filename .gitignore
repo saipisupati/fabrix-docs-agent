@@ -10,6 +10,7 @@ __pycache__/
 
 # Generated data - rebuilt from ingest, not source of truth
 data/chroma_db/
+data/qdrant_db/
 
 # Local logs
 ingestion_log.txt

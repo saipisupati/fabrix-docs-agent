@@ -21,11 +21,10 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 from qdrant_client import QdrantClient
 
 from config import QDRANT_DIR
-from eval_set import EVAL_SET
+from eval_set import EVAL_SET, FILTER_BY_CATEGORY, TOP_K_BY_CATEGORY, retrieval_params
 from query_qdrant import retrieve
 
 RESULTS_PATH = os.path.join(os.path.dirname(__file__), "eval_baseline_results.txt")
-TOP_K = 5
 
 
 def chunk_ref(chunk):
@@ -150,13 +149,14 @@ def main():
     client = QdrantClient(path=QDRANT_DIR)
     report_lines = [
         f"Retrieval baseline — {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M UTC')}",
-        f"top_k={TOP_K}, cases={len(EVAL_SET)}",
+        f"filters: {FILTER_BY_CATEGORY}, top_k: {TOP_K_BY_CATEGORY}, cases={len(EVAL_SET)}",
         "",
     ]
 
     grades = {"PASS": 0, "PARTIAL": 0, "FAIL": 0, "SKIP": 0}
     for case in EVAL_SET:
-        chunks = retrieve(case["question"], client, top_k=TOP_K)
+        params = retrieval_params(case)
+        chunks = retrieve(case["question"], client, **params)
         score = score_retrieval(case, chunks)
         grades[grade_case(score)] += 1
         report_lines.extend(format_case_report(case, chunks, score))

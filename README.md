@@ -2,9 +2,11 @@
 
 A retrieval-augmented generation (RAG) agent that answers questions about Fabrix.ai documentation, covering the RDA bot catalog, CFXQL reference, and platform guides.
 
+See [docs/NOTES.md](docs/NOTES.md) for project log and findings.
+
 ## Status
 
-Working prototype — full pipeline (chunk → embed → store → retrieve → generate) runs end-to-end against the real corpus: 214 bot catalog files (~1,834 bots) plus the CFXQL reference, ~1,844 chunks total. Embeddings use `sentence-transformers/all-minilm-l6-v2` via OpenRouter; generation uses OpenAI `gpt-4o-mini`. A separate remote ingest path targets a shared Qdrant server (see below).
+Working prototype — full pipeline (chunk → embed → store → retrieve → generate) runs end-to-end against the real corpus: 214 bot catalog files (~1,834 bots) plus the CFXQL reference (`cfxql.md`), ~1,847 chunks total. Embeddings use `sentence-transformers/all-minilm-l6-v2` via OpenRouter; generation uses OpenAI `gpt-4o-mini`. A separate remote ingest path targets a shared Qdrant server (see below).
 
 ## How it works (local path — primary)
 
@@ -94,4 +96,4 @@ python3 src/batch_ingest_bots.py /path/to/Bots/
 - Default `BOTS_DIR` / `CFXQL_FILE` paths in `config.py` are machine-specific — override via env vars on other machines
 - Two embedding models across paths (MiniLM local, BGE-large remote), no shared config
 - Remote ingestion timeouts on larger bot catalog files
-- `data/qdrant_db/` is tracked in git and grows with each re-ingest
+- `data/qdrant_db/` is gitignored — rebuild locally via ingest

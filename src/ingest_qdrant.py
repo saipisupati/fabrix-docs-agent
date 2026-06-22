@@ -19,6 +19,7 @@ from chunk_heuristic import chunk_by_heuristic_sections
 from clean_markdown import clean_markdown, extract_bot_metadata
 from config import (
     BOTS_DIR,
+    CFXQL_FILE,
     COLLECTION_NAME,
     EMBED_BATCH_SIZE,
     EMBEDDING_MODEL,
@@ -119,6 +120,47 @@ def chunk_bot_catalog_markdown(filepath, source_name):
     return chunks
 
 
+def chunk_cfxql_markdown(filepath):
+    """Markdown-aware chunking for the real CFXQL reference (cfxql.md)."""
+    from langchain_text_splitters import MarkdownHeaderTextSplitter
+
+    with open(filepath, encoding="utf-8") as f:
+        text = f.read()
+
+    cleaned = clean_markdown(text)
+    splitter = MarkdownHeaderTextSplitter(
+        headers_to_split_on=[("##", "h2"), ("####", "h4")]
+    )
+    source_name = os.path.basename(filepath)
+    chunks = []
+
+    for chunk in splitter.split_text(cleaned):
+        h2 = chunk.metadata.get("h2", "").lower()
+        h4 = chunk.metadata.get("h4", "").lower()
+        if "restricted" in h2 or "restricted" in h4:
+            cfxql_type = "Restricted"
+        elif "full" in h2 or "full" in h4:
+            cfxql_type = "Full"
+        elif h2 or h4:
+            cfxql_type = "intro"
+        else:
+            cfxql_type = "unspecified"
+
+        chunks.append({
+            "text": chunk.page_content,
+            "metadata": {
+                "source": source_name,
+                "type": "narrative",
+                "cfxql_type": cfxql_type,
+                "bot_name": "n/a",
+                "prefix": "n/a",
+                **chunk.metadata,
+            },
+        })
+
+    return chunks
+
+
 def chunk_cfxql_heuristic(text, source_name):
     """Wraps the generic heuristic chunker with cfxql_type tags."""
     raw_chunks = chunk_by_heuristic_sections(text, source_name)
@@ -137,11 +179,24 @@ def chunk_cfxql_heuristic(text, source_name):
 
 def load_and_chunk_all():
     all_chunks = []
+    cfxql_loaded = False
+
+    if os.path.isfile(CFXQL_FILE):
+        chunks = chunk_cfxql_markdown(CFXQL_FILE)
+        all_chunks.extend(chunks)
+        print(f"  {os.path.basename(CFXQL_FILE)}: {len(chunks)} chunks  (strategy=markdown)")
+        cfxql_loaded = True
+    else:
+        print(f"  (CFXQL_FILE not found at {CFXQL_FILE}, using data/raw/ fallback)")
+
     for filename in sorted(os.listdir(RAW_DIR)):
         if not filename.endswith(".txt"):
             continue
         if filename in SKIP_RAW_FILES:
             print(f"  {filename}: skipped (superseded by BOTS_DIR markdown catalog)")
+            continue
+        if filename == "cfxql_reference.txt" and cfxql_loaded:
+            print(f"  {filename}: skipped (using CFXQL_FILE markdown)")
             continue
         with open(os.path.join(RAW_DIR, filename)) as f:
             text = f.read()

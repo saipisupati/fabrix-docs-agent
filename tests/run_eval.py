@@ -13,7 +13,7 @@ import os
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
-from eval_set import EVAL_SET
+from eval_set import EVAL_SET, retrieval_params
 from query_qdrant import ask
 
 
@@ -27,7 +27,7 @@ def run_case(case):
         print(f"  - {fact}")
 
     print("\n--- ACTUAL PIPELINE OUTPUT ---")
-    ask(case["question"])
+    ask(case["question"], **retrieval_params(case))
 
     print("--- GRADE THIS ONE ---")
     print("  PASS  = all expected facts present, no contradictions/hallucination")
