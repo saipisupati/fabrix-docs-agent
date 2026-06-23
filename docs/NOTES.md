@@ -136,6 +136,8 @@ PASS=2, PARTIAL=3 -- lookup_01 fixed (@c:count-loop rank 1); lookup_02 and multi
 
 **Catalog audit (same day):** All three eval bot names exist in `BOTS_DIR` -- `@c:count-loop` and `@c:data-loop` in `control.md`, `*exec:if-condition` in `exec.md`. Lookup/multi_part PARTIAL grades are retrieval ranking issues, not missing docs.
 
+**Ingest source audit:** [`scripts/audit_ingest_sources.py`](../scripts/audit_ingest_sources.py) — pre-ingest checkpoint; every file under `load_and_chunk_all()` must resolve inside `DOCS_ROOT` / `BOTS_DIR`. Local audit PASSED (540 files). Optional `--verify-urls` HEAD-checks `docs.fabrix.ai`. Run before `ingest_qdrant.py`.
+
 ### Retrieval baseline 2026-06-22 (filters + bot-name re-rank)
 
 **PASS=5, PARTIAL=0, FAIL=0, SKIP=2**
@@ -214,7 +216,8 @@ fabrix-docs-agent/
 │   ├── ingest_and_test_remote.py
 │   └── ...
 ├── scripts/
-│   └── audit_eval_sources.py
+│   ├── audit_eval_sources.py
+│   └── audit_ingest_sources.py
 └── tests/
     ├── eval_set.py
     ├── eval_scoring.py
@@ -342,16 +345,29 @@ Added 3 `guide` cases to `eval_set.py` with filter `type: narrative` + `doc_sect
 
 **Retrieval:** PASS=8/8 scored (7 original + 3 guide; 2 negative SKIP). **Generation:** PASS=9, PARTIAL=1 (`multi_part_01` variance), FAIL=0 (10 cases).
 
-### Fastembed local comparison -- 2026-06-22
+### Eval expansion -- 2026-06-23 (installation_guides + ai_fabric)
 
-Compared fastembed models on full 6,331-chunk index via [`src/test_fastembed_eval.py`](../src/test_fastembed_eval.py) (in-memory retrieval, same filters/top_k as eval baseline).
+Added 2 narrative cases with per-section filters (`install`, `ai_fabric`), `top_k=5`.
 
-| Model | dim | Retrieval PASS | Time |
-|-------|-----|----------------|------|
-| sentence-transformers/all-MiniLM-L6-v2 | 384 | 7/8 | ~3 min |
-| **BAAI/bge-small-en-v1.5** | 384 | **8/8** | ~47 min |
-| bge-base, arctic-embed-s, mxbai, bge-large | — | not run | stopped after bge-small |
+| Case | Source | Retrieval |
+|------|--------|-----------|
+| install_01 | data_retention.md (daily backup schedule) | PASS |
+| ai_01 | llm_pooling.md (LLM pool purpose) | PASS |
 
-MiniLM miss: `comparison_02` PARTIAL (facts 100%, `cfxql.md` not in top-k). bge-small fixed that case.
+**Retrieval baseline (OpenRouter MiniLM + Qdrant):** PASS=**10/10** scored, SKIP=2 (12 cases total).
 
-**Recommendation for Dheeraj fastembed path:** `BAAI/bge-small-en-v1.5` over MiniLM (same 384 dim, 8/8 on eval harness). Production ingest still uses OpenRouter MiniLM (also 8/8 via Qdrant) until re-ingest with fastembed is agreed.
+### Fastembed local comparison -- 2026-06-22 / 2026-06-23
+
+Compared fastembed models on full 6,331-chunk index via [`src/test_fastembed_eval.py`](../src/test_fastembed_eval.py) (in-memory retrieval, same filters/top_k as eval baseline). **10 scored cases** as of 2026-06-23 (includes `install_01`, `ai_01`).
+
+| Model | dim | PASS/10 | Time | Notes |
+|-------|-----|---------|------|-------|
+| sentence-transformers/all-MiniLM-L6-v2 | 384 | ~7/10 | ~3 min | Prior run (8-case harness); missed `comparison_02` |
+| snowflake/snowflake-arctic-embed-xs | 384 | **9/10** | **~19 min** | Miss `comparison_01`; fixed `comparison_02`; new cases PASS |
+| **BAAI/bge-small-en-v1.5** | 384 | 8/8 (old) | ~47 min | 10-case rerun optional |
+| BAAI/bge-base-en-v1.5 | 768 | TBD | in progress | Log: `/tmp/fastembed_shootout_10.log` |
+| OpenRouter MiniLM + Qdrant (production) | 384 | **10/10** | n/a | Current ingest path |
+
+MiniLM miss (prior): `comparison_02` PARTIAL. bge-small fixed that on 8-case harness. arctic miss: `comparison_01` PARTIAL (75% facts, no `cfxql.md` in top-k).
+
+**Interim recommendation:** No local fastembed model matches production accuracy (10/10) yet. arctic-xs is 9/10 in ~19 min (middle tier vs bge-small ~47 min). Final pick pending bge-base completion.

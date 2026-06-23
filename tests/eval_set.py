@@ -8,6 +8,8 @@ FILTER_BY_CATEGORY = {
     "lookup": {"type": "bot"},
     "multi_part": {"type": "bot"},
     "guide": {"type": "narrative", "doc_section": "beginners_guide"},
+    "install": {"type": "narrative", "doc_section": "installation_guides"},
+    "ai_fabric": {"type": "narrative", "doc_section": "ai_fabric"},
 }
 
 TOP_K_BY_CATEGORY = {
@@ -16,6 +18,8 @@ TOP_K_BY_CATEGORY = {
     "multi_part": 8,
     "negative": 5,
     "guide": 5,
+    "install": 5,
+    "ai_fabric": 5,
 }
 DEFAULT_TOP_K = 5
 
@@ -125,6 +129,29 @@ EVAL_SET = [
         ],
         "expected_source": "beginners_guide/persistent_streams.md",
         "notes": "Narrative eval — persistent streams / messaging.",
+    },
+    {
+        "id": "install_01",
+        "question": "What time is daily backup configured to run for pstream data retention archival?",
+        "category": "install",
+        "expected_facts": [
+            "12AM UTC",
+            "Daily Backup",
+        ],
+        "expected_source": "installation_guides/data_retention.md",
+        "notes": "Narrative eval — data retention backup schedule.",
+    },
+    {
+        "id": "ai_01",
+        "question": "What is LLM pooling used for in Agentic AI?",
+        "category": "ai_fabric",
+        "expected_facts": [
+            "load balancing",
+            "cost optimization",
+            "multiple LLM endpoints",
+        ],
+        "expected_source": "ai_fabric/ai_administration/llm_pooling.md",
+        "notes": "Narrative eval — LLM pool purpose in Agentic AI.",
     },
     {
         "id": "negative_01",

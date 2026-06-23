@@ -61,6 +61,9 @@ Override `BOTS_DIR` and `CFXQL_FILE` when running on a machine other than the on
 **Local (recommended)**
 
 ```bash
+# pre-ingest checkpoint — fail if sources escape the public docs export
+python3 scripts/audit_ingest_sources.py
+
 # chunk + embed + store
 python3 src/ingest_qdrant.py
 
@@ -92,6 +95,12 @@ python3 src/batch_ingest_bots.py /path/to/Bots/
 # chunk-only validation across narrative folders (no embed/store)
 python3 scripts/batch_ingest_narrative.py
 
+# verify eval bot names exist in BOTS_DIR
+python3 scripts/audit_eval_sources.py
+
+# verify ingest sources stay within public docs export (optional: --verify-urls)
+python3 scripts/audit_ingest_sources.py
+
 # compare fastembed models on eval retrieval (local CPU, no Qdrant re-ingest)
 pip install fastembed
 python3 src/test_fastembed_eval.py --models BAAI/bge-small-en-v1.5
@@ -99,7 +108,7 @@ python3 src/test_fastembed_eval.py --models BAAI/bge-small-en-v1.5
 
 ## Eval
 
-- `tests/eval_set.py` — 10 hand-built cases (lookup, comparison, multi-part, guide/beginners_guide, negative/hallucination)
+- `tests/eval_set.py` — 12 hand-built cases (lookup, comparison, multi-part, guide/beginners_guide, install/installation_guides, ai_fabric, negative/hallucination)
 - `tests/run_eval_baseline.py` — automated retrieval-only scoring against `eval_set.py` (source hit + fact coverage in top-k chunks). Requires `OPENROUTER_API_KEY` and an ingested `data/qdrant_db/`. Results go to `tests/eval_baseline_results.txt` (gitignored).
 - `tests/run_eval_generation.py` — automated full-pipeline scoring (retrieve + generate + fact coverage on answer). Requires `OPENROUTER_API_KEY`, `OPENAI_API_KEY`, and ingested `data/qdrant_db/`. Results go to `tests/eval_generation_results.txt` (gitignored).
 - `tests/run_eval.py` — runs each case through `query_qdrant.ask()` for manual pass/fail/partial grading

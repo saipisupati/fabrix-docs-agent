@@ -127,7 +127,8 @@ def main():
     print(f"  {len(chunks)} chunks\n")
 
     cases = [c for c in EVAL_SET if c["category"] != "negative"]
-    print(f"Scoring {len(cases)} retrieval cases (negative cases skipped)\n")
+    n_cases = len(cases)
+    print(f"Scoring {n_cases} retrieval cases (negative cases skipped)\n")
 
     summary = []
     for model_name in args.models:
@@ -172,7 +173,7 @@ def main():
             })
 
     print(f"\n{'=' * 72}")
-    print("SUMMARY (retrieval PASS count / 8 scored cases)")
+    print(f"SUMMARY (retrieval PASS count / {n_cases} scored cases)")
     print("=" * 72)
     print(f"{'Model':<45} {'dim':>5} {'PASS':>6} {'time':>8}")
     print("-" * 72)
@@ -181,7 +182,7 @@ def main():
             print(f"{row['model']:<45} {'—':>5} {'ERR':>6} {row['seconds']:>7.0f}s")
         else:
             print(f"{row['model']:<45} {row['dim']:>5} {row['pass']:>6} {row['seconds']:>7.0f}s")
-    print("\nBaseline (OpenRouter MiniLM + Qdrant): 8/8 PASS")
+    print(f"\nProduction baseline: run tests/run_eval_baseline.py (OpenRouter MiniLM + Qdrant)")
 
 
 if __name__ == "__main__":
