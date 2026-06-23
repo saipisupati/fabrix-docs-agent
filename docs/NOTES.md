@@ -365,9 +365,9 @@ Compared fastembed models on full 6,331-chunk index via [`src/test_fastembed_eva
 | sentence-transformers/all-MiniLM-L6-v2 | 384 | ~7/10 | ~3 min | Prior run (8-case harness); missed `comparison_02` |
 | snowflake/snowflake-arctic-embed-xs | 384 | **9/10** | **~19 min** | Miss `comparison_01`; fixed `comparison_02`; new cases PASS |
 | **BAAI/bge-small-en-v1.5** | 384 | 8/8 (old) | ~47 min | 10-case rerun optional |
-| BAAI/bge-base-en-v1.5 | 768 | TBD | in progress | Log: `/tmp/fastembed_shootout_10.log` |
+| BAAI/bge-base-en-v1.5 | 768 | **9/10** | **~96 min** | Miss `install_01` PARTIAL (50% facts); fixed `comparison_01` |
 | OpenRouter MiniLM + Qdrant (production) | 384 | **10/10** | n/a | Current ingest path |
 
-MiniLM miss (prior): `comparison_02` PARTIAL. bge-small fixed that on 8-case harness. arctic miss: `comparison_01` PARTIAL (75% facts, no `cfxql.md` in top-k).
+MiniLM miss (prior): `comparison_02` PARTIAL. arctic miss: `comparison_01` PARTIAL. bge-base miss: `install_01` PARTIAL (source hit, 50% facts). bge-small: 8/8 on old 8-case harness.
 
-**Interim recommendation:** No local fastembed model matches production accuracy (10/10) yet. arctic-xs is 9/10 in ~19 min (middle tier vs bge-small ~47 min). Final pick pending bge-base completion.
+**Recommendation:** Keep **OpenRouter MiniLM + Qdrant** for ingest (10/10, fast API). No local fastembed model reached 10/10. Best local tradeoff if needed: **arctic-embed-xs** (9/10, ~19 min) over bge-base (9/10, ~96 min). Log: `/tmp/fastembed_shootout_10.log`.
