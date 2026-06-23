@@ -1,5 +1,5 @@
 """
-ingest_and_test_remote.py — ingest into hosted Qdrant via REST API.
+ingest_and_test_remote.py: ingest into hosted Qdrant via REST API.
 
 Creates a collection, uploads cfxql.md + bot catalog .md files (server
 handles chunking/embedding with BAAI/bge-large-en-v1.5), runs sample

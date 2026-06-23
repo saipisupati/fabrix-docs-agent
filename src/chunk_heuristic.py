@@ -1,5 +1,5 @@
 """
-chunk_heuristic.py — a generalizable fallback chunker for plain text docs
+chunk_heuristic.py: a generalizable fallback chunker for plain text docs
 that don't have markdown structure available.
 
 HONEST LIMITATIONS (read this before relying on it):

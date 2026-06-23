@@ -179,7 +179,7 @@ def main():
     print("-" * 72)
     for row in sorted(summary, key=lambda r: (-1 if r["pass"] is None else -r["pass"], r["model"])):
         if row["error"]:
-            print(f"{row['model']:<45} {'—':>5} {'ERR':>6} {row['seconds']:>7.0f}s")
+            print(f"{row['model']:<45} {'-':>5} {'ERR':>6} {row['seconds']:>7.0f}s")
         else:
             print(f"{row['model']:<45} {row['dim']:>5} {row['pass']:>6} {row['seconds']:>7.0f}s")
     print(f"\nProduction baseline: run tests/run_eval_baseline.py (OpenRouter MiniLM + Qdrant)")

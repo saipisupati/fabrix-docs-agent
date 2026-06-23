@@ -1,5 +1,5 @@
 """
-test_bot_catalog_chunking.py — cleans a bot catalog markdown file, then
+test_bot_catalog_chunking.py: cleans a bot catalog markdown file, then
 splits it into one chunk per bot using MarkdownHeaderTextSplitter,
 splitting on ## (the level each individual bot is marked at).
 """

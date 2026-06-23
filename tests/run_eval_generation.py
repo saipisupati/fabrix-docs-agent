@@ -1,5 +1,5 @@
 """
-run_eval_generation.py — full-pipeline generation eval against eval_set.py.
+run_eval_generation.py: full-pipeline generation eval against eval_set.py.
 
 Runs retrieve + generate for each case and scores the answer text.
 
@@ -59,12 +59,12 @@ def main():
         sys.exit(0)
 
     if not os.path.isdir(QDRANT_DIR):
-        print(f"SKIP: Qdrant DB not found at {QDRANT_DIR} — run ingest first")
+        print(f"SKIP: Qdrant DB not found at {QDRANT_DIR}: run ingest first")
         sys.exit(0)
 
     client = QdrantClient(path=QDRANT_DIR)
     report_lines = [
-        f"Generation eval — {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M UTC')}",
+        f"Generation eval: {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M UTC')}",
         f"filters: {FILTER_BY_CATEGORY}, top_k: {TOP_K_BY_CATEGORY}, cases={len(EVAL_SET)}",
         "",
     ]

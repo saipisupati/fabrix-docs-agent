@@ -1,5 +1,5 @@
 """
-run_eval.py — runs every question in eval_set.py through the real pipeline
+run_eval.py: runs every question in eval_set.py through the real pipeline
 (query_qdrant.ask) and prints the result next to the expected facts, so you
 can grade each one by eye (pass/fail/partial) and track accuracy over time.
 

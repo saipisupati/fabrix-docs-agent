@@ -1,4 +1,4 @@
-"""Deprecated — use ingest_qdrant.py instead."""
+"""Deprecated: use ingest_qdrant.py instead."""
 
 import os
 import sys

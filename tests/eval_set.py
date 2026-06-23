@@ -107,7 +107,7 @@ EVAL_SET = [
             "file",
         ],
         "expected_source": "beginners_guide/data_ingestion.md",
-        "notes": "Narrative eval — Event Gateway endpoint table.",
+        "notes": "Narrative eval: Event Gateway endpoint table.",
     },
     {
         "id": "guide_02",
@@ -117,7 +117,7 @@ EVAL_SET = [
             "perform data operations close to data source",
         ],
         "expected_source": "beginners_guide/architecture.md",
-        "notes": "Narrative eval — architecture design principle.",
+        "notes": "Narrative eval: architecture design principle.",
     },
     {
         "id": "guide_03",
@@ -128,7 +128,7 @@ EVAL_SET = [
             "Kafka",
         ],
         "expected_source": "beginners_guide/persistent_streams.md",
-        "notes": "Narrative eval — persistent streams / messaging.",
+        "notes": "Narrative eval: persistent streams / messaging.",
     },
     {
         "id": "install_01",
@@ -139,7 +139,7 @@ EVAL_SET = [
             "Daily Backup",
         ],
         "expected_source": "installation_guides/data_retention.md",
-        "notes": "Narrative eval — data retention backup schedule.",
+        "notes": "Narrative eval: data retention backup schedule.",
     },
     {
         "id": "ai_01",
@@ -151,7 +151,7 @@ EVAL_SET = [
             "multiple LLM endpoints",
         ],
         "expected_source": "ai_fabric/ai_administration/llm_pooling.md",
-        "notes": "Narrative eval — LLM pool purpose in Agentic AI.",
+        "notes": "Narrative eval: LLM pool purpose in Agentic AI.",
     },
     {
         "id": "negative_01",

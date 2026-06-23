@@ -1,5 +1,5 @@
 """
-batch_ingest_bots.py — runs chunk_bot_catalog_markdown() across every
+batch_ingest_bots.py: runs chunk_bot_catalog_markdown() across every
 .md file in the Bots/ folder, reporting total chunks and any files that
 failed to process cleanly.
 

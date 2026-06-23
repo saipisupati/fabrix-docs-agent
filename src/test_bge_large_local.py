@@ -1,6 +1,6 @@
 """
 
-test_bge_large_local.py —> focused local test of BAAI/bge-large-en-v1.5 across several real questions, since the remote Qdrant server isn't reachable yet without VPN access.
+test_bge_large_local.py : focused local test of BAAI/bge-large-en-v1.5 across several real questions, since the remote Qdrant server isn't reachable yet without VPN access.
 
 Requires: OPENROUTER_API_KEY environment variable set.
 

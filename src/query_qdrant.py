@@ -1,9 +1,9 @@
 """
-query_qdrant.py — retrieve relevant chunks from Qdrant and generate an answer.
+query_qdrant.py: retrieve relevant chunks from Qdrant and generate an answer.
 
 Requires:
-    OPENROUTER_API_KEY — query embedding (sentence-transformers/all-minilm-l6-v2)
-    OPENAI_API_KEY       — generation (gpt-4o-mini)
+    OPENROUTER_API_KEY: query embedding (sentence-transformers/all-minilm-l6-v2)
+    OPENAI_API_KEY      : generation (gpt-4o-mini)
 """
 
 import os

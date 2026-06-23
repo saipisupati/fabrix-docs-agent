@@ -1,4 +1,4 @@
-# Fabrix Docs Agent — project notes and changelog
+# Fabrix Docs Agent: project notes and changelog
 
 Living log of research, findings, meetings, and eval runs. For setup and commands see [README.md](../README.md).
 
@@ -16,7 +16,7 @@ Each extension page groups multiple bots. Every bot entry follows the same patte
 
 Example from [docs.fabrix.ai/Bots/search_bots/](https://docs.fabrix.ai/Bots/search_bots/):
 
-**Bot @c:timed-loop** — starts a looping block that waits x seconds before running again.
+**Bot @c:timed-loop**: starts a looping block that waits x seconds before running again.
 
 Parameter table: name, type, default, description. e.g. `interval`, `stop_after`, `max_iterations`.
 
@@ -32,13 +32,13 @@ Also shows example pipelines using the bot.
 
 ### CFXQL reference
 
-**Full CFXQL** — SQL-like language for what each bot should do with data:
+**Full CFXQL**: SQL-like language for what each bot should do with data:
 
 - Filter/condition clause: `is`, `not in`, `!=`, AND/OR grouping
 - GET clause: select/rename output columns
 - Used by bots working on already-loaded data frames
 
-**Restricted CFXQL** — simpler; each param specified via `=`
+**Restricted CFXQL**: simpler; each param specified via `=`
 
 ---
 
@@ -136,7 +136,7 @@ PASS=2, PARTIAL=3 -- lookup_01 fixed (@c:count-loop rank 1); lookup_02 and multi
 
 **Catalog audit (same day):** All three eval bot names exist in `BOTS_DIR` -- `@c:count-loop` and `@c:data-loop` in `control.md`, `*exec:if-condition` in `exec.md`. Lookup/multi_part PARTIAL grades are retrieval ranking issues, not missing docs.
 
-**Ingest source audit:** [`scripts/audit_ingest_sources.py`](../scripts/audit_ingest_sources.py) — pre-ingest checkpoint; every file under `load_and_chunk_all()` must resolve inside `DOCS_ROOT` / `BOTS_DIR`. Local audit PASSED (540 files). Optional `--verify-urls` HEAD-checks `docs.fabrix.ai`. Run before `ingest_qdrant.py`.
+**Ingest source audit:** [`scripts/audit_ingest_sources.py`](../scripts/audit_ingest_sources.py): pre-ingest checkpoint; every file under `load_and_chunk_all()` must resolve inside `DOCS_ROOT` / `BOTS_DIR`. Local audit PASSED (540 files). Optional `--verify-urls` HEAD-checks `docs.fabrix.ai`. Run before `ingest_qdrant.py`.
 
 ### Retrieval baseline 2026-06-22 (filters + bot-name re-rank)
 

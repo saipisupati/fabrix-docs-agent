@@ -1,5 +1,5 @@
 """
-audit_ingest_sources.py — verify ingest sources stay within the public docs export.
+audit_ingest_sources.py: verify ingest sources stay within the public docs export.
 
 Mirrors the file discovery in ingest_qdrant.load_and_chunk_all() without chunking
 or embedding. Fails if any source resolves outside DOCS_ROOT / BOTS_DIR, uses
@@ -230,7 +230,7 @@ def main():
             sys.exit(1)
         print(f"  All {len(set(rel_for_url))} sources returned OK on {PUBLIC_DOCS_BASE}\n")
 
-    print("Audit PASSED — all ingest sources are within the public docs export tree.")
+    print("Audit PASSED: all ingest sources are within the public docs export tree.")
 
 
 if __name__ == "__main__":

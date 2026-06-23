@@ -1,6 +1,6 @@
 
 """
-ingest_qdrant.py —-> chunk, embed, and store the Fabrix docs corpus in local Qdrant.
+ingest_qdrant.py: chunk, embed, and store the Fabrix docs corpus in local Qdrant.
 
     python src/ingest_qdrant.py
 
@@ -36,7 +36,7 @@ CHUNKING_STRATEGY = "hand_rolled"
 MAX_CHUNK_CHARS = 8000
 MAX_EMBED_BATCH_CHARS = 120_000
 
-# Legacy sample bot pages in data/raw/ — superseded by BOTS_DIR markdown catalog
+# Legacy sample bot pages in data/raw/: superseded by BOTS_DIR markdown catalog
 SKIP_RAW_FILES = {"c_extension_loop_bots.txt", "exec_and_dm_sink_bots.txt"}
 
 
@@ -429,7 +429,7 @@ def main():
     print(f"Total chunks: {len(all_chunks)}\n")
 
     if not all_chunks:
-        print("No chunks produced — check BOTS_DIR and data/raw/.")
+        print("No chunks produced: check BOTS_DIR and data/raw/.")
         sys.exit(1)
 
     print(f"Embedding with {EMBEDDING_MODEL} (batches of {EMBED_BATCH_SIZE})...")

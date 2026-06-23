@@ -1,5 +1,5 @@
 """
-batch_ingest_narrative.py — chunk-only validation for narrative markdown folders.
+batch_ingest_narrative.py: chunk-only validation for narrative markdown folders.
 
 Usage:
     python3 scripts/batch_ingest_narrative.py beginners_guide reference_guides

@@ -1,5 +1,5 @@
 """
-ingest.py — builds the vector store from raw documentation files.
+ingest.py: builds the vector store from raw documentation files.
 
 Run this once (and again any time data/raw/ changes):
     python src/ingest.py
@@ -13,7 +13,7 @@ What it does:
 
 NOTE ON EMBEDDINGS: this currently uses TfidfVectorizer as a placeholder
 embedding method (no API key required, runs fully offline). Swap in a real
-embedding model once the provider is confirmed — see the comment marked
+embedding model once the provider is confirmed: see the comment marked
 SWAP POINT below. The rest of the pipeline does not need to change.
 """
 

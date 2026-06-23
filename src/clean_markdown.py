@@ -1,5 +1,5 @@
 """
-clean_markdown.py — strips unnecessary text from raw markdown files before chunking:
+clean_markdown.py: strips unnecessary text from raw markdown files before chunking:
 YAML frontmatter, <style> blocks, and inline HTML tags (keeping their
 text content). This is needed because bot catalog pages contain CSS
 styling and HTML spans that would otherwise take up chunk text.

@@ -1,5 +1,5 @@
 """
-audit_eval_sources.py — verify eval expected bot names exist in BOTS_DIR markdown.
+audit_eval_sources.py: verify eval expected bot names exist in BOTS_DIR markdown.
 
 Usage:
     python scripts/audit_eval_sources.py
@@ -53,7 +53,7 @@ def search_bots_dir(bot_name):
 def main():
     print(f"BOTS_DIR: {BOTS_DIR}")
     if not os.path.isdir(BOTS_DIR):
-        print("ERROR: BOTS_DIR does not exist — set BOTS_DIR env var")
+        print("ERROR: BOTS_DIR does not exist: set BOTS_DIR env var")
         sys.exit(1)
 
     names = bot_names_from_eval()

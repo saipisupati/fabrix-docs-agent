@@ -1,5 +1,5 @@
 """
-test_markdown_with_real_embeddings.py — combines markdown-based chunking
+test_markdown_with_real_embeddings.py: combines markdown-based chunking
 with REAL semantic embeddings via OpenRouter, to see if real embeddings
 fix the gap we found with TF-IDF.
 """

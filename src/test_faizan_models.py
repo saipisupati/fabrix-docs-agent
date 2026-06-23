@@ -1,5 +1,5 @@
 """
-test_faizan_models.py —> tests 6 embedding models recommended by Faizan,
+test_faizan_models.py : tests 6 embedding models recommended by Faizan,
 across multiple real questions via OpenRouter.
 
 Requires: OPENROUTER_API_KEY environment variable set.

@@ -1,5 +1,5 @@
 """
-query.py — answers a question using the vector store built by ingest.py.
+query.py: answers a question using the vector store built by ingest.py.
 
 Usage:
     python src/query.py "what parameters does the count loop bot take?"
