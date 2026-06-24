@@ -137,7 +137,7 @@ Bot sample eval ([`run_eval_bot_sample.py`](../tests/run_eval_bot_sample.py), re
 
 Router additions for expanded eval: `extension` → Extensions, `cfxoia` → rda_releases, `servicenow` / `kubernetes` / `integrate` → Datasource_Integrations.
 
-Deployment: `uvicorn src.api:app --port 8080`; see [DOCS_SITE_INTEGRATION.md](DOCS_SITE_INTEGRATION.md).
+Deployment: `uvicorn src.api:app --port 8080`; see [DOCS_SITE_INTEGRATION.md](DOCS_SITE_INTEGRATION.md). Production checklist: [DEPLOY_CHECKLIST.md](DEPLOY_CHECKLIST.md).
 
 Blocker: docs repo access TBD for widget embed.
 

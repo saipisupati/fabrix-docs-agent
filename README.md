@@ -124,7 +124,7 @@ python3 src/test_fastembed_eval.py --models BAAI/bge-small-en-v1.5
 
 ## Docs site integration
 
-Embed the ask widget on [docs.fabrix.ai](https://docs.fabrix.ai) and point it at a hosted API. See [docs/DOCS_SITE_INTEGRATION.md](docs/DOCS_SITE_INTEGRATION.md) for the paste snippet, CORS (`DOCS_SITE_ORIGIN`), and optional API key setup.
+Embed the ask widget on [docs.fabrix.ai](https://docs.fabrix.ai) and point it at a hosted API. See [docs/DOCS_SITE_INTEGRATION.md](docs/DOCS_SITE_INTEGRATION.md) for the paste snippet, CORS (`DOCS_SITE_ORIGIN`), and optional API key setup. Production deploy steps: [docs/DEPLOY_CHECKLIST.md](docs/DEPLOY_CHECKLIST.md).
 
 ## Eval
 
