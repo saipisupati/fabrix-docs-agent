@@ -41,6 +41,8 @@ SECTION_KEYWORD_RULES = (
     (("install", "setup", "deploy", "backup", "retention"), "installation_guides"),
     (("llm", "pool", "ai fabric", "model"), "ai_fabric"),
     (("pipeline",), "Pipelines"),
+    (("extension", "extensions"), "Extensions"),
+    (("cfxoia",), "rda_releases"),
     (
         (
             "endpoint",
@@ -55,7 +57,10 @@ SECTION_KEYWORD_RULES = (
         ),
         "beginners_guide",
     ),
-    (("datasource", "integration", "kafka", "jira"), "Datasource_Integrations"),
+    (
+        ("datasource", "integration", "integrate", "kafka", "jira", "servicenow", "kubernetes"),
+        "Datasource_Integrations",
+    ),
 )
 
 

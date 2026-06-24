@@ -12,9 +12,10 @@ For setup and commands see [README.md](../README.md). This file is the project s
 |---|---|
 | **Pipeline** | `ingest_qdrant.py` → OpenRouter MiniLM embeddings → local Qdrant → `agent.py` → gpt-4o-mini |
 | **Corpus** | **6,331 chunks** from **540** MD files (214 bots + 325 narrative + CFXQL) |
-| **Retrieval eval** | **10/10** PASS on scored cases (2 negative cases SKIP retrieval) |
-| **Generation eval (oracle)** | **11 PASS, 1 PARTIAL, 0 FAIL** across 12 cases |
-| **Agent eval** | **11 PASS, 1 PARTIAL, 0 FAIL** (no category hints; matches oracle) |
+| **Retrieval eval** | **18/18** PASS on scored cases (2 negative SKIP) |
+| **Generation eval (oracle)** | **11 PASS, 1 PARTIAL, 0 FAIL** across 12 cases (original set) |
+| **Agent eval** | **19 PASS, 1 PARTIAL, 0 FAIL** across **20 cases** (all doc sections) |
+| **Bot sample eval** | **11/15 PASS** retrieval top-1 on random bot sample (seed 42) |
 | **Embedding choice** | Stay on **OpenRouter MiniLM + Qdrant** (stakeholder sign-off after fastembed shootout) |
 | **Phase** | Phase 1–2 done. Phase 4 in progress (agent + API + widget done; docs site embed TBD). Phase 3 not started. |
 
@@ -75,12 +76,16 @@ Later ideas: doc generation, screenshot verification, graph DB for file relation
 
 | Category | Cases | What it tests |
 |----------|-------|---------------|
-| lookup | 2 | Bot parameter questions (`@c:count-loop`, `@c:data-loop`) |
+| lookup | 5 | Bot parameter / behavior questions |
 | comparison | 2 | Full vs Restricted CFXQL |
 | multi_part | 1 | Bot behavior + CFXQL type in one answer |
-| guide | 3 | `beginners_guide` narrative (Event Gateway, architecture, streams) |
-| install | 1 | `installation_guides` (data retention backup schedule) |
+| guide | 3 | `beginners_guide` narrative |
+| install | 1 | `installation_guides` |
 | ai_fabric | 1 | LLM pooling purpose |
+| pipeline | 1 | `Pipelines` sample pipeline |
+| datasource | 2 | `Datasource_Integrations` (ServiceNow, Kubernetes) |
+| extensions | 1 | `Extensions` (agentic_ai) |
+| releases | 1 | `rda_releases` (cfxOIA) |
 | negative | 2 | Must abstain, not hallucinate |
 
 **Latest scores (2026-06-24):**
@@ -126,11 +131,11 @@ Router rules (`plan_query`, deterministic-first):
 5. Negative keywords → `category_hint=negative`
 6. LLM fallback (logged when fired)
 
-Agent eval ([`run_eval_agent.py`](../tests/run_eval_agent.py), no category hints): **PASS=11, PARTIAL=1, FAIL=0** (matches oracle baseline). `multi_part_01` PARTIAL is known LLM variance, not a routing issue.
+Agent eval ([`run_eval_agent.py`](../tests/run_eval_agent.py), no category hints): **20 cases** (expanded 2026-06-24) covering all ingested doc sections. Latest: **PASS=19, PARTIAL=1, FAIL=0**. `multi_part_01` PARTIAL is known LLM variance, not a routing issue.
 
-Router fix during eval: added `architecture`, `design principle`, `fabric`, `rdaf`, `messaging` to `beginners_guide` section map (`guide_02` was missing without them).
+Bot sample eval ([`run_eval_bot_sample.py`](../tests/run_eval_bot_sample.py), retrieval-only): random 15-bot spot check (seed 42) over **922** catalog bots. Latest: **PASS=11, FAIL=4** (generic slugs like `license` / `update` are the usual misses).
 
-Router fix: `negative_02` hit LLM fallback (worker limit question has no billing/subscription keywords). Added `maximum number` to negative keywords so abstention-style limit questions route deterministically.
+Router additions for expanded eval: `extension` → Extensions, `cfxoia` → rda_releases, `servicenow` / `kubernetes` / `integrate` → Datasource_Integrations.
 
 Deployment: `uvicorn src.api:app --port 8080`; see [DOCS_SITE_INTEGRATION.md](DOCS_SITE_INTEGRATION.md).
 

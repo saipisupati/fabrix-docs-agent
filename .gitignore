@@ -17,6 +17,7 @@ ingestion_log.txt
 tests/eval_baseline_results.txt
 tests/eval_generation_results.txt
 tests/eval_agent_results.txt
+tests/eval_bot_sample_results.txt
 
 # OS
 .DS_Store

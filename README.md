@@ -89,6 +89,9 @@ uvicorn src.api:app --reload --port 8080
 # agent eval (no category hints; writes tests/eval_agent_results.txt)
 python3 tests/run_eval_agent.py
 
+# random bot retrieval spot check (15 bots, seed 42)
+python3 tests/run_eval_bot_sample.py
+
 # full pipeline eval (manual grading)
 python3 tests/run_eval.py
 ```
@@ -129,6 +132,7 @@ Embed the ask widget on [docs.fabrix.ai](https://docs.fabrix.ai) and point it at
 - `tests/run_eval_baseline.py`: automated retrieval-only scoring against `eval_set.py` (source hit + fact coverage in top-k chunks). Requires `OPENROUTER_API_KEY` and an ingested `data/qdrant_db/`. Results go to `tests/eval_baseline_results.txt` (gitignored).
 - `tests/run_eval_generation.py`: oracle full-pipeline scoring (category + filter hints passed manually). Requires `OPENROUTER_API_KEY`, `OPENAI_API_KEY`, and ingested `data/qdrant_db/`. Results go to `tests/eval_generation_results.txt` (gitignored).
 - `tests/run_eval_agent.py`: agent path via `agent.answer()` with no manual filters (real-user proxy). Same keys and Qdrant DB required. Results go to `tests/eval_agent_results.txt` (gitignored).
+- `tests/run_eval_bot_sample.py`: retrieval-only random bot sample (default 15 bots, seed 42). Grades top-1 bot hit for generic parameter questions. Results go to `tests/eval_bot_sample_results.txt` (gitignored).
 - `tests/run_eval.py`: runs each case through `query_qdrant.ask()` for manual pass/fail/partial grading
 
 ## Open questions / known issues

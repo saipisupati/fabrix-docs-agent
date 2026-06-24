@@ -10,6 +10,10 @@ FILTER_BY_CATEGORY = {
     "guide": {"type": "narrative", "doc_section": "beginners_guide"},
     "install": {"type": "narrative", "doc_section": "installation_guides"},
     "ai_fabric": {"type": "narrative", "doc_section": "ai_fabric"},
+    "pipeline": {"type": "narrative", "doc_section": "Pipelines"},
+    "datasource": {"type": "narrative", "doc_section": "Datasource_Integrations"},
+    "extensions": {"type": "narrative", "doc_section": "Extensions"},
+    "releases": {"type": "narrative", "doc_section": "rda_releases"},
 }
 
 TOP_K_BY_CATEGORY = {
@@ -20,6 +24,10 @@ TOP_K_BY_CATEGORY = {
     "guide": 5,
     "install": 5,
     "ai_fabric": 5,
+    "pipeline": 5,
+    "datasource": 5,
+    "extensions": 5,
+    "releases": 5,
 }
 DEFAULT_TOP_K = 5
 
@@ -174,6 +182,98 @@ EVAL_SET = [
         ],
         "expected_source": "none - architecture.md is ingested but does not state a worker limit",
         "notes": "More tempting hallucination case since the topic is real.",
+    },
+    {
+        "id": "lookup_03",
+        "question": "What parameters does the timed-loop bot take?",
+        "category": "lookup",
+        "expected_facts": [
+            "interval",
+            "seconds between each loop iteration",
+            "max_iterations",
+            "stop_after",
+        ],
+        "expected_source": "@c:timed-loop",
+        "notes": "Bot sample: control catalog, different from count-loop.",
+    },
+    {
+        "id": "lookup_04",
+        "question": "What parameters does the post-message-to-channel bot take?",
+        "category": "lookup",
+        "expected_facts": [
+            "channel_col",
+            "message_col",
+            "as_user",
+        ],
+        "expected_source": "@slack:post-message-to-channel",
+        "notes": "Bot sample: slack integration bot.",
+    },
+    {
+        "id": "lookup_05",
+        "question": "What does the end-if bot do?",
+        "category": "lookup",
+        "expected_facts": [
+            "if-condition block",
+            "returns the dataset",
+        ],
+        "expected_source": "@exec:end-if",
+        "notes": "Bot sample: exec catalog, unique slug (run-pipeline is ambiguous).",
+    },
+    {
+        "id": "pipeline_01",
+        "question": "What inner pipeline does the aws dependency mapper pipeline run, and on what interval?",
+        "category": "pipeline",
+        "expected_facts": [
+            "aws-dependency-mapper-inner-pipeline",
+            "3660",
+        ],
+        "expected_source": "Pipelines/aws-dependency-mapper.md",
+        "notes": "Narrative eval: pipeline code block (bot badges are HTML, not chunk text).",
+    },
+    {
+        "id": "datasource_01",
+        "question": "What ServiceNow modules does Fabrix AIOps integrate with?",
+        "category": "datasource",
+        "expected_facts": [
+            "Ticketing",
+            "CMDB",
+        ],
+        "expected_source": "Datasource_Integrations/servicenow.md",
+        "notes": "Narrative eval: ServiceNow integration scope.",
+    },
+    {
+        "id": "datasource_02",
+        "question": "How can RDA collect Kubernetes cluster inventory?",
+        "category": "datasource",
+        "expected_facts": [
+            "kubectl",
+            "SSH",
+            "HTTP API",
+        ],
+        "expected_source": "Datasource_Integrations/kubernetes.md",
+        "notes": "Narrative eval: Kubernetes collection methods.",
+    },
+    {
+        "id": "extensions_01",
+        "question": "Does the agentic_ai extension require configuration?",
+        "category": "extensions",
+        "expected_facts": [
+            "automatically initialized",
+            "no configuration",
+        ],
+        "expected_source": "Extensions/extensions_A_B.md",
+        "notes": "Narrative eval: extension list entry.",
+    },
+    {
+        "id": "releases_01",
+        "question": "What does cfxOIA stand for?",
+        "category": "releases",
+        "expected_facts": [
+            "Ops Intelligence",
+            "Analytics",
+        ],
+        "expected_source": "rda_releases/cfx_rda_oia.md",
+        "notes": "Narrative eval: OIA release notes intro.",
     },
 ]
 
