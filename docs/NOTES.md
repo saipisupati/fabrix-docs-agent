@@ -349,12 +349,25 @@ Added 3 `guide` cases to `eval_set.py` with filter `type: narrative` + `doc_sect
 
 Added 2 narrative cases with per-section filters (`install`, `ai_fabric`), `top_k=5`.
 
-| Case | Source | Retrieval |
-|------|--------|-----------|
-| install_01 | data_retention.md (daily backup schedule) | PASS |
-| ai_01 | llm_pooling.md (LLM pool purpose) | PASS |
+| Case | Source | Retrieval | Generation |
+|------|--------|-----------|------------|
+| install_01 | data_retention.md (daily backup schedule) | PASS | PASS |
+| ai_01 | llm_pooling.md (LLM pool purpose) | PASS | PASS |
 
 **Retrieval baseline (OpenRouter MiniLM + Qdrant):** PASS=**10/10** scored, SKIP=2 (12 cases total).
+
+### Generation eval -- 2026-06-24 (12 cases, post install/ai expansion)
+
+**PASS=11, PARTIAL=1, FAIL=0** (12 scored). Run: `tests/eval_generation_results.txt`.
+
+| Case | Grade | Notes |
+|------|-------|-------|
+| install_01 | PASS | 100% facts (12AM UTC, Daily Backup) |
+| ai_01 | PASS | 100% facts (load balancing, cost optimization, multiple LLM endpoints) |
+| multi_part_01 | PARTIAL | 75% facts; missing in-memory query detail (known LLM variance) |
+| negative_01, negative_02 | PASS | Both abstain correctly |
+
+All other cases (lookup, comparison, guide): PASS. Full pipeline validated on expanded 12-case eval set. Staying on **OpenRouter MiniLM + Qdrant** per stakeholder sign-off.
 
 ### Fastembed local comparison -- 2026-06-22 / 2026-06-23
 
