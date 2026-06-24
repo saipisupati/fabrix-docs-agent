@@ -1,0 +1,90 @@
+#fabrix-ask-widget.fabrix-ask {
+  max-width: 40rem;
+  margin: 1rem 0;
+  font-family: system-ui, sans-serif;
+  font-size: 1rem;
+  line-height: 1.5;
+  color: #1a1a1a;
+}
+
+.fabrix-ask-form {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.fabrix-ask-input {
+  flex: 1;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-size: 1rem;
+}
+
+.fabrix-ask-input:disabled {
+  background: #f5f5f5;
+}
+
+.fabrix-ask-button {
+  padding: 0.5rem 1rem;
+  background: #2563eb;
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  font-size: 1rem;
+  cursor: pointer;
+}
+
+.fabrix-ask-button:hover:not(:disabled) {
+  background: #1d4ed8;
+}
+
+.fabrix-ask-button:disabled {
+  background: #93c5fd;
+  cursor: not-allowed;
+}
+
+.fabrix-ask-loading {
+  color: #666;
+  margin-bottom: 0.75rem;
+}
+
+.fabrix-ask-loading[hidden] {
+  display: none;
+}
+
+.fabrix-ask-error {
+  color: #b91c1c;
+  margin-bottom: 0.75rem;
+}
+
+.fabrix-ask-error[hidden] {
+  display: none;
+}
+
+.fabrix-ask-answer {
+  margin-bottom: 1rem;
+}
+
+.fabrix-ask-answer p {
+  margin: 0 0 0.75rem;
+}
+
+.fabrix-ask-sources {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.fabrix-ask-sources li {
+  margin-bottom: 0.35rem;
+}
+
+.fabrix-ask-sources a {
+  color: #2563eb;
+  text-decoration: none;
+}
+
+.fabrix-ask-sources a:hover {
+  text-decoration: underline;
+}

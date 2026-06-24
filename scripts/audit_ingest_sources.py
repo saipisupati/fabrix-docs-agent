@@ -15,17 +15,16 @@ import argparse
 import os
 import sys
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from urllib.parse import quote
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
 from config import BOTS_DIR, CFXQL_FILE, DOCS_INCLUDE_DIRS, DOCS_ROOT
+from doc_urls import PUBLIC_DOCS_BASE, public_doc_url
 
 RAW_DIR = os.path.join(os.path.dirname(__file__), "..", "data", "raw")
 SKIP_RAW_FILES = {"c_extension_loop_bots.txt", "exec_and_dm_sink_bots.txt"}
-PUBLIC_DOCS_BASE = "https://docs.fabrix.ai"
 SECRET_PATH_MARKERS = (".env", "credentials", "secrets", "private", ".pem", ".key")
 
 
@@ -88,20 +87,6 @@ def enumerate_ingest_files():
                     files.append((filepath, rel, "narrative"))
 
     return files
-
-
-def public_doc_url(rel_path):
-    """Map a repo-relative docs path to the public docs.fabrix.ai URL."""
-    path = rel_path.replace("\\", "/")
-    if path.endswith(".md"):
-        path = path[:-3]
-    parts = path.split("/")
-    if parts[-1] in ("index", "index_release"):
-        parts = parts[:-1]
-    encoded = "/".join(quote(part, safe="") for part in parts if part)
-    if not encoded:
-        return f"{PUBLIC_DOCS_BASE}/"
-    return f"{PUBLIC_DOCS_BASE}/{encoded}/"
 
 
 def head_url(url):

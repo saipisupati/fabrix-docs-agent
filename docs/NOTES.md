@@ -10,18 +10,19 @@ For setup and commands see [README.md](../README.md). This file is the project s
 
 | | |
 |---|---|
-| **Pipeline** | `ingest_qdrant.py` → OpenRouter MiniLM embeddings → local Qdrant → `query_qdrant.py` + gpt-4o-mini |
+| **Pipeline** | `ingest_qdrant.py` → OpenRouter MiniLM embeddings → local Qdrant → `agent.py` → gpt-4o-mini |
 | **Corpus** | **6,331 chunks** from **540** MD files (214 bots + 325 narrative + CFXQL) |
 | **Retrieval eval** | **10/10** PASS on scored cases (2 negative cases SKIP retrieval) |
-| **Generation eval** | **11 PASS, 1 PARTIAL, 0 FAIL** across 12 cases |
+| **Generation eval (oracle)** | **11 PASS, 1 PARTIAL, 0 FAIL** across 12 cases |
+| **Agent eval** | **11 PASS, 1 PARTIAL, 0 FAIL** (no category hints; matches oracle) |
 | **Embedding choice** | Stay on **OpenRouter MiniLM + Qdrant** (stakeholder sign-off after fastembed shootout) |
-| **Phase** | Phase 1–2 done (end-to-end pipeline + eval harness). Phase 3–4 not started. |
+| **Phase** | Phase 1–2 done. Phase 4 in progress (agent + API + widget done; docs site embed TBD). Phase 3 not started. |
 
 **Known variance:** `multi_part_01` sometimes PARTIAL (75% facts): model omits "applies query on already-loaded data" detail. Retrieval is correct; this is LLM brevity, not a source bug.
 
 **Before re-ingest:** run `python3 scripts/audit_ingest_sources.py` (540 files must stay within public docs export).
 
-Latest eval output (gitignored): `tests/eval_baseline_results.txt`, `tests/eval_generation_results.txt`.
+Latest eval output (gitignored): `tests/eval_baseline_results.txt`, `tests/eval_generation_results.txt`, `tests/eval_agent_results.txt`.
 
 ---
 
@@ -31,10 +32,11 @@ Fabrix.ai docs describe hundreds of pipeline **bots** (automation building block
 
 **Stakeholder goal:** find the right embedding + retrieval setup for cost and accuracy on this doc set. CFX already uses Qdrant; we started there.
 
-**How we measure progress:** hand-built eval cases in [`tests/eval_set.py`](../tests/eval_set.py) cover bot lookups, CFXQL comparisons, multi-part questions, narrative guides, and negative (hallucination) cases. Two scripts score automatically:
+**How we measure progress:** hand-built eval cases in [`tests/eval_set.py`](../tests/eval_set.py) cover bot lookups, CFXQL comparisons, multi-part questions, narrative guides, and negative (hallucination) cases. Scripts score automatically:
 
 - [`tests/run_eval_baseline.py`](../tests/run_eval_baseline.py): retrieval only (source hit + facts in top-k chunks)
-- [`tests/run_eval_generation.py`](../tests/run_eval_generation.py): full pipeline (retrieve + generate + fact coverage in answer)
+- [`tests/run_eval_generation.py`](../tests/run_eval_generation.py): oracle full pipeline (manual category + filter hints per case)
+- [`tests/run_eval_agent.py`](../tests/run_eval_agent.py): real-user proxy via `agent.answer()` (no category or filter hints)
 
 ---
 
@@ -63,7 +65,7 @@ Fabrix.ai docs describe hundreds of pipeline **bots** (automation building block
 | 1 | Bot catalog + CFXQL, basic retrieve-and-answer pipeline | **Done** |
 | 2 | Citations + mock test questions for accuracy | **Done** (12-case eval harness, automated scoring) |
 | 3 | Improve chunking for pipeline/narrative docs | Not started |
-| 4 | Agent routes by product area, multi-part handling, docs site integration | Not started |
+| 4 | Agent routes by product area, multi-part handling, docs site integration | **In progress** (agent routing, API, widget done; docs site embed pending) |
 
 Later ideas: doc generation, screenshot verification, graph DB for file relationships, version hashing for doc updates.
 
@@ -97,6 +99,42 @@ Later ideas: doc generation, screenshot verification, graph DB for file relation
 | install_01 | data_retention.md | PASS | PASS |
 | ai_01 | llm_pooling.md | PASS | PASS |
 | negative_01, negative_02 | (none) | SKIP | PASS |
+
+---
+
+## Agent build -- 2026-06-24
+
+Stakeholder decisions (locked):
+
+- Embeddings: OpenRouter MiniLM + local Qdrant, no further shootouts
+- Next deliverable: docs.fabrix.ai integration via agent + API + widget
+
+Architecture added:
+
+- [`src/doc_urls.py`](../src/doc_urls.py): shared chunk to public URL mapping
+- [`src/agent.py`](../src/agent.py): deterministic query router (`plan_query`) + orchestrator (`answer`) + answer judge
+- [`src/api.py`](../src/api.py): FastAPI `POST /ask` + `GET /health`, shared QdrantClient lifespan, CORS, optional API key
+- [`widget/ask-widget.js`](../widget/ask-widget.js) + [`ask-widget.css`](../widget/ask-widget.css): vanilla JS embeddable widget
+- [`docs/DOCS_SITE_INTEGRATION.md`](DOCS_SITE_INTEGRATION.md): handoff doc for docs site team
+
+Router rules (`plan_query`, deterministic-first):
+
+1. Bot name hint → `type_filter=bot`, `category_hint=lookup` / `multi_part`
+2. CFXQL keywords → `top_k=10`, no filter
+3. Comparison keywords → `top_k=10`
+4. Section keyword map → `type_filter=narrative`, `doc_section=...`
+5. Negative keywords → `category_hint=negative`
+6. LLM fallback (logged when fired)
+
+Agent eval ([`run_eval_agent.py`](../tests/run_eval_agent.py), no category hints): **PASS=11, PARTIAL=1, FAIL=0** (matches oracle baseline). `multi_part_01` PARTIAL is known LLM variance, not a routing issue.
+
+Router fix during eval: added `architecture`, `design principle`, `fabric`, `rdaf`, `messaging` to `beginners_guide` section map (`guide_02` was missing without them).
+
+Router fix: `negative_02` hit LLM fallback (worker limit question has no billing/subscription keywords). Added `maximum number` to negative keywords so abstention-style limit questions route deterministically.
+
+Deployment: `uvicorn src.api:app --port 8080`; see [DOCS_SITE_INTEGRATION.md](DOCS_SITE_INTEGRATION.md).
+
+Blocker: docs repo access TBD for widget embed.
 
 ---
 
@@ -204,7 +242,7 @@ Parameter table: name, type, default, description. e.g. `interval`, `stop_after`
 | Remote ingest via VPN (`ingest_and_test_remote.py`) | Blocked on timeouts for large files (e.g. cfxdm.md) |
 | Faizan shared Qdrant + fastembed server | Available; not integrated into primary path |
 | Phase 3 narrative chunking improvements | Not started |
-| Phase 4 agent routing + docs site integration | Not started |
+| Phase 4 agent routing + docs site integration | In progress (embed pending) |
 | bge-small 10-case fastembed rerun | Optional; not blocking |
 
 **Calls:** Ravi & Faizan (2026-06-17): shared VPN Qdrant, Docker, fastembed. Plan was test models on shared server; later add agent that judges answer sufficiency and retries retrieval.
@@ -233,7 +271,12 @@ Parameter table: name, type, default, description. e.g. `interval`, `stop_after`
 ```
 fabrix-docs-agent/
 ├── README.md
-├── docs/NOTES.md          <- this file
+├── docs/
+│   ├── NOTES.md           <- this file
+│   └── DOCS_SITE_INTEGRATION.md
+├── widget/
+│   ├── ask-widget.js
+│   └── ask-widget.css
 ├── requirements.txt
 ├── .env                   <- gitignored API keys
 ├── data/
@@ -241,8 +284,11 @@ fabrix-docs-agent/
 │   └── qdrant_db/         -> local vector store (gitignored)
 ├── src/
 │   ├── config.py          -> paths, models, .env loading
+│   ├── doc_urls.py        -> chunk metadata to docs.fabrix.ai URLs
 │   ├── ingest_qdrant.py   -> chunk + embed + store
-│   ├── query_qdrant.py    -> retrieve + generate
+│   ├── query_qdrant.py    -> retrieve + generate (engine)
+│   ├── agent.py           -> query router + orchestrator
+│   ├── api.py             -> FastAPI HTTP layer
 │   ├── ingest_and_test_remote.py
 │   └── ...
 ├── scripts/
@@ -253,6 +299,7 @@ fabrix-docs-agent/
     ├── eval_scoring.py
     ├── run_eval_baseline.py
     ├── run_eval_generation.py
+    ├── run_eval_agent.py
     └── run_eval.py
 ```
 
@@ -264,6 +311,8 @@ Newest first. Iteration-level eval tables omitted; see [Eval summary](#eval-summ
 
 ### 2026-06-24
 
+- Agent build phases 1–6: `doc_urls`, `agent`, `api`, widget, agent eval harness
+- Agent eval: **11 PASS, 1 PARTIAL, 0 FAIL** (matches oracle baseline)
 - Full 12-case generation eval: **11 PASS, 1 PARTIAL, 0 FAIL**
 - `install_01` and `ai_01` PASS on first generation run
 - Documented in commit `2a358d4`

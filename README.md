@@ -53,6 +53,8 @@ All scripts load `.env` automatically via `src/config.py`. You can still `export
 | `CFXQL_FILE` | Path to CFXQL reference markdown | machine-specific path in `config.py` |
 | `EMBEDDING_MODEL` | OpenRouter embedding model | `sentence-transformers/all-minilm-l6-v2` |
 | `LLM_MODEL` | OpenAI generation model | `gpt-4o-mini` |
+| `DOCS_SITE_ORIGIN` | CORS origin for docs.fabrix.ai | `*` (local dev) |
+| `API_KEY` | Optional `X-API-Key` auth on `POST /ask` | unset (no auth) |
 
 Override `BOTS_DIR` and `CFXQL_FILE` when running on a machine other than the one that wrote the defaults.
 
@@ -75,6 +77,17 @@ python3 tests/run_eval_baseline.py
 
 # automated generation eval (writes tests/eval_generation_results.txt)
 python3 tests/run_eval_generation.py
+
+# agent CLI (auto-routing, no manual filters)
+python3 src/agent.py "What parameters does the count loop bot take?"
+
+# API server
+uvicorn src.api:app --reload --port 8080
+# POST /ask {"question": "..."} -> {answer, sources}
+# GET  /health -> {"status": "ok"}
+
+# agent eval (no category hints; writes tests/eval_agent_results.txt)
+python3 tests/run_eval_agent.py
 
 # full pipeline eval (manual grading)
 python3 tests/run_eval.py
@@ -106,11 +119,16 @@ pip install fastembed
 python3 src/test_fastembed_eval.py --models BAAI/bge-small-en-v1.5
 ```
 
+## Docs site integration
+
+Embed the ask widget on [docs.fabrix.ai](https://docs.fabrix.ai) and point it at a hosted API. See [docs/DOCS_SITE_INTEGRATION.md](docs/DOCS_SITE_INTEGRATION.md) for the paste snippet, CORS (`DOCS_SITE_ORIGIN`), and optional API key setup.
+
 ## Eval
 
 - `tests/eval_set.py`: 12 hand-built cases (lookup, comparison, multi-part, guide/beginners_guide, install/installation_guides, ai_fabric, negative/hallucination)
 - `tests/run_eval_baseline.py`: automated retrieval-only scoring against `eval_set.py` (source hit + fact coverage in top-k chunks). Requires `OPENROUTER_API_KEY` and an ingested `data/qdrant_db/`. Results go to `tests/eval_baseline_results.txt` (gitignored).
-- `tests/run_eval_generation.py`: automated full-pipeline scoring (retrieve + generate + fact coverage on answer). Requires `OPENROUTER_API_KEY`, `OPENAI_API_KEY`, and ingested `data/qdrant_db/`. Results go to `tests/eval_generation_results.txt` (gitignored).
+- `tests/run_eval_generation.py`: oracle full-pipeline scoring (category + filter hints passed manually). Requires `OPENROUTER_API_KEY`, `OPENAI_API_KEY`, and ingested `data/qdrant_db/`. Results go to `tests/eval_generation_results.txt` (gitignored).
+- `tests/run_eval_agent.py`: agent path via `agent.answer()` with no manual filters (real-user proxy). Same keys and Qdrant DB required. Results go to `tests/eval_agent_results.txt` (gitignored).
 - `tests/run_eval.py`: runs each case through `query_qdrant.ask()` for manual pass/fail/partial grading
 
 ## Open questions / known issues

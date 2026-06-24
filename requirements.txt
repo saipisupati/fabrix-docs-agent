@@ -5,3 +5,5 @@ requests
 numpy
 langchain-text-splitters
 fastembed
+fastapi
+uvicorn

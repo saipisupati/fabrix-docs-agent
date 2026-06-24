@@ -1,17 +1,14 @@
 """
-run_eval_generation.py: full-pipeline generation eval against eval_set.py.
+run_eval_agent.py: full-pipeline agent eval against eval_set.py.
 
-Runs retrieve + generate for each case and scores the answer text.
+Runs agent.answer() for each case with no manual category or filter hints.
 
 Usage:
-    python tests/run_eval_generation.py
+    python tests/run_eval_agent.py
 
 Requires: OPENROUTER_API_KEY, OPENAI_API_KEY, existing data/qdrant_db/
-Writes: tests/eval_generation_results.txt
+Writes: tests/eval_agent_results.txt
 """
-
-# Oracle eval -- category + filter_dict passed in manually.
-# For real-user proxy eval (no hints), see tests/run_eval_agent.py.
 
 import os
 import sys
@@ -21,18 +18,18 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
 from qdrant_client import QdrantClient
 
+from agent import answer
 from config import QDRANT_DIR
 from eval_scoring import grade_generation, score_generation
-from eval_set import EVAL_SET, FILTER_BY_CATEGORY, TOP_K_BY_CATEGORY, retrieval_params
-from query_qdrant import run_pipeline
+from eval_set import EVAL_SET
 
-RESULTS_PATH = os.path.join(os.path.dirname(__file__), "eval_generation_results.txt")
+RESULTS_PATH = os.path.join(os.path.dirname(__file__), "eval_agent_results.txt")
 
 
-def format_case_report(case, answer, score):
+def format_case_report(case, answer_text, score):
     lines = [
         f"[{case['id']}] ({case['category']}) {case['question']}",
-        f"  Answer preview: {answer[:200].replace(chr(10), ' ')}...",
+        f"  Answer preview: {answer_text[:200].replace(chr(10), ' ')}...",
     ]
 
     if case["category"] == "negative":
@@ -67,25 +64,18 @@ def main():
 
     client = QdrantClient(path=QDRANT_DIR)
     report_lines = [
-        f"Generation eval: {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M UTC')}",
-        f"filters: {FILTER_BY_CATEGORY}, top_k: {TOP_K_BY_CATEGORY}, cases={len(EVAL_SET)}",
+        f"Agent eval: {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M UTC')}",
+        "mode: agent.answer() -- no manual category or filter hints",
+        f"cases={len(EVAL_SET)}",
         "",
     ]
 
     grades = {"PASS": 0, "PARTIAL": 0, "FAIL": 0}
     for case in EVAL_SET:
-        params = retrieval_params(case)
-        category = case["category"]
-        _, answer = run_pipeline(
-            case["question"],
-            client,
-            top_k=params["top_k"],
-            filter_dict=params["filter_dict"],
-            category=category,
-        )
-        score = score_generation(case, answer)
+        result = answer(case["question"], client=client)
+        score = score_generation(case, result.answer)
         grades[grade_generation(score, case)] += 1
-        report_lines.extend(format_case_report(case, answer, score))
+        report_lines.extend(format_case_report(case, result.answer, score))
         report_lines.append("")
 
     report_lines.append(
