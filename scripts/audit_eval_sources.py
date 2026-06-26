@@ -1,8 +1,7 @@
 """
-audit_eval_sources.py: verify eval expected bot names exist in BOTS_DIR markdown.
+audit_eval_sources.py, sanity check that eval cases point at bots that exist on disk.
 
-Usage:
-    python scripts/audit_eval_sources.py
+Run before eval: python3 scripts/audit_eval_sources.py
 """
 
 import os

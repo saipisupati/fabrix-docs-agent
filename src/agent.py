@@ -1,8 +1,8 @@
 """
-agent.py: docs Q&A agent with deterministic query routing and answer judge.
+agent.py, main entry point: route the question, retrieve, generate, maybe retry.
 
-Usage:
-    python3 src/agent.py "What parameters does the count loop bot take?"
+CLI: python3 src/agent.py "your question"
+plan_query picks bot vs guide vs CFXQL; answer() runs retrieval + judge loop.
 """
 
 from __future__ import annotations
@@ -81,6 +81,7 @@ class AgentResponse:
 
 
 def filter_dict_from_plan(plan):
+    # turn RetrievalPlan into Qdrant metadata filters (type, doc_section)
     out = {}
     if plan.type_filter:
         out["type"] = plan.type_filter
@@ -101,6 +102,7 @@ def _match_section(question_lower):
 
 
 def _plan_from_llm(question):
+    # last resort when keyword rules don't match anything obvious
     client = OpenAI(api_key=os.environ["OPENAI_API_KEY"])
     sections = ", ".join(DOCS_INCLUDE_DIRS)
     prompt = f"""Classify this Fabrix.ai documentation question and return JSON only.
@@ -137,6 +139,7 @@ Return JSON with keys:
 
 
 def plan_query(question):
+    # keyword rules first; LLM only when we're not sure
     q = question.lower()
 
     if bot_name_hints(question):
@@ -202,6 +205,7 @@ def _chunk_summaries(chunks):
 
 
 def is_answer_sufficient(question, answer, chunks):
+    # LLM judge: did we actually answer? returns retry_query if not
     client = OpenAI(api_key=os.environ["OPENAI_API_KEY"])
     prompt = f"""Judge whether the answer fully addresses the question using only the retrieved excerpts.
 
@@ -245,6 +249,7 @@ def _sources_from_chunks(chunks):
 
 
 def answer(question, client=None):
+    # orchestrator: plan → retrieve → generate → retry once if judge says thin
     plan = plan_query(question)
     logger.info(
         "plan_query: intent=%s type_filter=%s doc_section=%s top_k=%s category_hint=%s",

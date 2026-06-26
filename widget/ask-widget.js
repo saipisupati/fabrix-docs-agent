@@ -1,3 +1,4 @@
+// Embeddable ask box for docs.fabrix.ai: POSTs to FastAPI /ask, renders answer + source links.
 (function () {
   "use strict";
 
@@ -5,6 +6,7 @@
   var globalConfig = window.FabrixAskConfig || {};
 
   function apiUrl() {
+    // data-api-url on script tag, or FabrixAskConfig, or localhost for dev
     if (script && script.getAttribute("data-api-url")) {
       return script.getAttribute("data-api-url").replace(/\/$/, "");
     }
@@ -105,6 +107,7 @@
   mountParent().appendChild(root);
 
   form.addEventListener("submit", function (event) {
+    // POST {question} to /ask, show answer + docs.fabrix.ai source links
     event.preventDefault();
     var question = input.value.trim();
     if (!question) {

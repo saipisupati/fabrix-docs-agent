@@ -1,10 +1,8 @@
-
 """
-ingest_qdrant.py: chunk, embed, and store the Fabrix docs corpus in local Qdrant.
+ingest_qdrant.py, chunk all docs, embed via OpenRouter, store in local Qdrant.
 
-    python src/ingest_qdrant.py
-
-Requires: OPENROUTER_API_KEY
+Run once (or after doc updates): python3 src/ingest_qdrant.py
+Requires OPENROUTER_API_KEY. Output lands in data/qdrant_db/.
 """
 
 import os
@@ -203,7 +201,7 @@ def _cfxql_rel_path():
 
 
 def load_narrative_docs():
-    """Walk DOCS_INCLUDE_DIRS under DOCS_ROOT; skip cfxql.md (ingested separately)."""
+    # walk guide folders + root pages (DOCS_ROOT_FILES); skip cfxql (ingested separately)
     all_chunks = []
     skip_rel = {_cfxql_rel_path()}
     print(f"\nLoading narrative docs from DOCS_ROOT={DOCS_ROOT}")
@@ -276,6 +274,7 @@ def chunk_cfxql_heuristic(text, source_name):
 
 
 def load_and_chunk_all():
+    # cfxql + bots + narrative folders → list of {text, metadata} chunks
     all_chunks = []
     cfxql_loaded = False
 
@@ -336,7 +335,7 @@ def load_and_chunk_all():
 
 
 def split_oversized_chunks(chunks):
-    """Split any chunk exceeding MAX_CHUNK_CHARS before embedding."""
+    # OpenRouter caps input size; split anything over MAX_CHUNK_CHARS before embed
     splitter = RecursiveCharacterTextSplitter(
         chunk_size=MAX_CHUNK_CHARS, chunk_overlap=100
     )
@@ -381,6 +380,7 @@ def embed_batch(texts, max_retries=3):
 
 
 def embed_all_chunks(all_chunks):
+    # batch embed via OpenRouter; writes nothing yet, just returns vectors
     texts = [c["text"] for c in all_chunks]
     batches = list(_char_limited_batches(texts, MAX_EMBED_BATCH_CHARS, EMBED_BATCH_SIZE))
     all_vectors = []
@@ -406,6 +406,7 @@ def _char_limited_batches(texts, max_chars, max_items):
 
 
 def store_in_qdrant(all_chunks, vectors):
+    # wipe + recreate collection, upload points, save embedding_model.txt for queries
     vector_size = len(vectors[0])
     os.makedirs(QDRANT_DIR, exist_ok=True)
 

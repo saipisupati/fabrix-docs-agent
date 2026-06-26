@@ -1,9 +1,8 @@
 """
-batch_ingest_narrative.py: chunk-only validation for narrative markdown folders.
+batch_ingest_narrative.py, chunk-only smoke test for narrative folders (no embed/store).
 
-Usage:
-    python3 scripts/batch_ingest_narrative.py beginners_guide reference_guides
-    python3 scripts/batch_ingest_narrative.py   # uses DOCS_INCLUDE_DIRS from config
+Run: python3 scripts/batch_ingest_narrative.py
+Catches chunking errors cheaply before a full ingest_qdrant run.
 """
 
 import os

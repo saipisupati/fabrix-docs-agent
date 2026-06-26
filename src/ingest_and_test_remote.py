@@ -1,9 +1,8 @@
 """
-ingest_and_test_remote.py: ingest into hosted Qdrant via REST API.
+ingest_and_test_remote.py, alternate path: upload md to shared Qdrant over VPN.
 
-Creates a collection, uploads cfxql.md + bot catalog .md files (server
-handles chunking/embedding with BAAI/bge-large-en-v1.5), runs sample
-retrieval tests. Requires VPN access to BASE_URL.
+Server does chunking + BGE-large embedding. Not the primary local path.
+Use ingest_qdrant.py for day-to-day work unless Fabrix wants shared server storage.
 """
 
 import os

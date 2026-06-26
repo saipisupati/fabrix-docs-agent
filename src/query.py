@@ -1,20 +1,7 @@
 """
-query.py: answers a question using the vector store built by ingest.py.
+query.py, LEGACY v0: query Chroma + TF-IDF store from ingest.py.
 
-Usage:
-    python src/query.py "what parameters does the count loop bot take?"
-
-What it does:
-  1. Loads the saved vectorizer + connects to the existing Chroma collection
-  2. Embeds the question the same way the chunks were embedded
-  3. Retrieves the top-k most relevant chunks (optionally filtered by metadata)
-  4. Builds a prompt instructing the model to answer ONLY from those chunks
-  5. Sends the prompt to the LLM and prints the answer
-
-NOTE ON THE LLM CALL: the actual API call is commented out below (see
-SWAP POINT) since the model/provider is not yet confirmed. Until then,
-this prints the constructed prompt so you can inspect exactly what
-would be sent.
+Use query_qdrant.py / agent.py instead. Kept for reference only.
 """
 
 import os

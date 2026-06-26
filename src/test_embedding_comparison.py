@@ -1,8 +1,7 @@
 """
-test_embedding_comparison.py: Phase 2: compares several embedding models
-side by side on both ACCURACY (does the right chunk rank highly on our
-regression question) and COST (real OpenRouter pricing), producing a
-clean comparison table.
+test_embedding_comparison.py, DEV ONLY: compare embedding models on accuracy + cost.
+
+Experiment from Phase 2 model selection. Not used in production path.
 """
 
 import os

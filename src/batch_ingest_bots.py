@@ -1,10 +1,8 @@
 """
-batch_ingest_bots.py: runs chunk_bot_catalog_markdown() across every
-.md file in the Bots/ folder, reporting total chunks and any files that
-failed to process cleanly.
+batch_ingest_bots.py, chunk-only smoke test for the whole Bots/ folder.
 
-Usage:
-    python3 src/batch_ingest_bots.py /path/to/Bots/
+Run: python3 src/batch_ingest_bots.py /path/to/Bots/
+Reports total chunks and any files that failed to chunk.
 """
 
 import os

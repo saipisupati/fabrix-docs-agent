@@ -1,9 +1,8 @@
 """
-query_qdrant.py: retrieve relevant chunks from Qdrant and generate an answer.
+query_qdrant.py, embed the question, pull chunks from Qdrant, ask gpt-4o-mini.
 
-Requires:
-    OPENROUTER_API_KEY: query embedding (sentence-transformers/all-minilm-l6-v2)
-    OPENAI_API_KEY      : generation (gpt-4o-mini)
+Used by agent.py and runnable standalone. Local path uses file Qdrant;
+REMOTE_BASE_URL switches to the VPN fastembed wrapper instead.
 """
 
 import os
@@ -30,7 +29,7 @@ MODEL = LLM_MODEL
 
 
 def _local_embedding_model():
-    """Use the model recorded at ingest time so query dims match the collection."""
+    # read model from ingest output so query vector size matches the collection
     path = os.path.join(QDRANT_DIR, "embedding_model.txt")
     if os.path.isfile(path):
         with open(path, encoding="utf-8") as f:
@@ -74,6 +73,7 @@ def bot_name_hints(question):
 
 
 def rerank_by_bot_name(question, chunks):
+    # bump chunks whose bot_name matches slugs parsed from the question
     hints = bot_name_hints(question)
     if not hints:
         return chunks
@@ -100,6 +100,7 @@ def prune_lookup_chunks(question, chunks, category):
 
 
 def retrieve_remote(question, top_k=5, filter_dict=None):
+    # VPN path: server embeds + searches; we just POST raw question text
     response = requests.post(
         f"{REMOTE_BASE_URL}/search",
         headers={"Content-Type": "application/json"},
@@ -126,6 +127,7 @@ def retrieve_remote(question, top_k=5, filter_dict=None):
 
 
 def retrieve(question, client, top_k=3, filter_dict=None):
+    # local Qdrant or remote wrapper, then bot-name rerank and trim to top_k
     if REMOTE_BASE_URL:
         hints = bot_name_hints(question)
         remote_limit = max(top_k * 10, 300) if hints else top_k
@@ -196,6 +198,7 @@ ANSWER:"""
 
 
 def generate(prompt, max_retries=3):
+    # gpt-4o-mini with simple 429 backoff
     client = OpenAI(
         api_key=os.environ["OPENAI_API_KEY"],
     )
@@ -215,7 +218,7 @@ def generate(prompt, max_retries=3):
 
 
 def run_pipeline(question, client, top_k=3, filter_dict=None, category=None):
-    """Retrieve chunks and generate an answer. Returns (chunks, answer)."""
+    # retrieve → prune lookup siblings → build prompt → generate
     chunks = retrieve(question, client, top_k=top_k, filter_dict=filter_dict)
     chunks = prune_lookup_chunks(question, chunks, category)
     prompt = build_prompt(question, chunks, category=category)

@@ -1,8 +1,8 @@
 """
-api.py: FastAPI HTTP layer for the docs Q&A agent.
+api.py, FastAPI wrapper so the docs site widget can call the agent.
 
-Run locally:
-    uvicorn src.api:app --reload --port 8080
+Run: uvicorn src.api:app --port 8080
+POST /ask with {"question": "..."} → answer + source links. Keys stay on the server.
 """
 
 from __future__ import annotations
@@ -43,6 +43,7 @@ class AskResponse(BaseModel):
 
 @asynccontextmanager
 async def lifespan(app):
+    # one Qdrant file handle for the process; same path as CLI agent
     app.state.qdrant = QdrantClient(path=QDRANT_DIR)
     yield
     app.state.qdrant.close()
@@ -60,6 +61,7 @@ app.add_middleware(
 
 
 def _check_api_key(x_api_key: Optional[str]):
+    # optional; set API_KEY env to require X-API-Key header
     if API_KEY and x_api_key != API_KEY:
         raise HTTPException(status_code=401, detail="Invalid or missing API key")
 
@@ -75,6 +77,7 @@ def ask(
     request: Request,
     x_api_key: Optional[str] = Header(default=None),
 ):
+    # thin HTTP layer over agent.answer()
     _check_api_key(x_api_key)
     result = answer(body.question, client=request.app.state.qdrant)
     return AskResponse(

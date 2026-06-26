@@ -1,4 +1,9 @@
-"""Shared paths and model settings. Override via environment variables or .env file."""
+"""
+config.py, shared paths and env settings for the whole project.
+
+Loads .env on import. Override paths via env vars when you're not on the machine
+that wrote the defaults. REMOTE_BASE_URL switches query retrieval to the VPN server.
+"""
 
 import os
 
@@ -7,7 +12,7 @@ _ENV_PATH = os.path.join(_PROJECT_ROOT, ".env")
 
 
 def load_dotenv():
-    """Load project-root .env into os.environ (does not override existing vars)."""
+    # load .env once; never overrides vars already set in the shell
     if not os.path.isfile(_ENV_PATH):
         return
     with open(_ENV_PATH, encoding="utf-8") as f:
@@ -58,6 +63,7 @@ DOCS_INCLUDE_DIRS = [
     for d in os.environ.get("DOCS_INCLUDE_DIRS", _DEFAULT_DOCS_INCLUDE_DIRS).split(",")
     if d.strip()
 ]
+# root-level pages (index, Datasets, Formatting-Templates) not under a subfolder
 _DEFAULT_DOCS_ROOT_FILES = "index.md,Datasets.md,Formatting-Templates.md"
 DOCS_ROOT_FILES = [
     f.strip()

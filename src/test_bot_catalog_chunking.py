@@ -1,7 +1,7 @@
 """
-test_bot_catalog_chunking.py: cleans a bot catalog markdown file, then
-splits it into one chunk per bot using MarkdownHeaderTextSplitter,
-splitting on ## (the level each individual bot is marked at).
+test_bot_catalog_chunking.py, DEV ONLY: one chunk per bot via ## headers.
+
+Quick check on a single bot catalog .md file before full ingest.
 """
 
 import sys

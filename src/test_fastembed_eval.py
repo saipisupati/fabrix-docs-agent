@@ -1,15 +1,7 @@
 """
-test_fastembed_eval.py: compare fastembed embedding models on eval_set retrieval.
+test_fastembed_eval.py, DEV ONLY: compare fastembed models on eval retrieval in memory.
 
-Embeds the full local doc set in memory (no Qdrant re-ingest per model) and scores
-each eval case using the same filters/top_k as run_eval_baseline.py.
-
-Usage:
-    pip install fastembed
-    python3 src/test_fastembed_eval.py
-
-Optional:
-    python3 src/test_fastembed_eval.py --models BAAI/bge-small-en-v1.5 BAAI/bge-base-en-v1.5
+No Qdrant re-ingest per model. Used during embedding model shootout.
 """
 
 import argparse

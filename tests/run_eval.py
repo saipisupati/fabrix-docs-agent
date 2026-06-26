@@ -1,11 +1,8 @@
 """
-run_eval.py: runs every question in eval_set.py through the real pipeline
-(query_qdrant.ask) and prints the result next to the expected facts, so you
-can grade each one by eye (pass/fail/partial) and track accuracy over time.
+run_eval.py, manual interactive eval: prints answer next to expected facts.
 
-Usage:
-    python tests/run_eval.py            # run all cases
-    python tests/run_eval.py lookup_01  # run a single case by id
+Run: python3 tests/run_eval.py
+Grade by eye when debugging a single case: python3 tests/run_eval.py lookup_01
 """
 
 import sys

@@ -1,14 +1,8 @@
 """
-audit_ingest_sources.py: verify ingest sources stay within the public docs export.
+audit_ingest_sources.py, pre-flight before ingest: every source file stays in the public export.
 
-Mirrors the file discovery in ingest_qdrant.load_and_chunk_all() without chunking
-or embedding. Fails if any source resolves outside DOCS_ROOT / BOTS_DIR, uses
-legacy data/raw fallbacks when the markdown catalog is available, or matches
-obvious secret path patterns.
-
-Usage:
-    python scripts/audit_ingest_sources.py
-    python scripts/audit_ingest_sources.py --verify-urls   # optional HEAD checks vs docs.fabrix.ai
+Run: python3 scripts/audit_ingest_sources.py
+Optional --verify-urls HEAD-checks docs.fabrix.ai. Expect 543 files when corpus is complete.
 """
 
 import argparse

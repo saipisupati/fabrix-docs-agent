@@ -1,15 +1,8 @@
 """
-run_eval_bot_sample.py: retrieval-only spot check across a random bot sample.
+run_eval_bot_sample.py, random bot retrieval spot check (default 15 bots, seed 42).
 
-Picks N bots from BOTS_DIR (seeded), asks a standard parameter question for each,
-and grades whether the top retrieved chunk is the expected bot.
-
-Usage:
-    python tests/run_eval_bot_sample.py
-    python tests/run_eval_bot_sample.py --sample-size 20 --seed 42
-
-Requires: OPENROUTER_API_KEY, existing data/qdrant_db/
-Writes: tests/eval_bot_sample_results.txt
+Run: python3 tests/run_eval_bot_sample.py
+Catches generic slugs that vector search misses.
 """
 
 from __future__ import annotations

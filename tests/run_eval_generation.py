@@ -1,13 +1,8 @@
 """
-run_eval_generation.py: full-pipeline generation eval against eval_set.py.
+run_eval_generation.py, full pipeline eval with oracle hints (category + filters).
 
-Runs retrieve + generate for each case and scores the answer text.
-
-Usage:
-    python tests/run_eval_generation.py
-
-Requires: OPENROUTER_API_KEY, OPENAI_API_KEY, existing data/qdrant_db/
-Writes: tests/eval_generation_results.txt
+Run: python3 tests/run_eval_generation.py
+Upper bound on quality; agent eval is the realistic one.
 """
 
 # Oracle eval -- category + filter_dict passed in manually.

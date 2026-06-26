@@ -1,4 +1,8 @@
-"""Map ingest chunk metadata to public docs.fabrix.ai URLs."""
+"""
+doc_urls.py, turn chunk metadata into clickable docs.fabrix.ai links.
+
+Used by the agent and API so answers cite the real public doc pages.
+"""
 
 from urllib.parse import quote
 
@@ -8,7 +12,7 @@ BOTS_REL_PREFIX = "Bots"
 
 
 def public_doc_url(rel_path):
-    """Map a repo-relative docs path to the public docs.fabrix.ai URL."""
+    # repo path like beginners_guide/foo.md → https://docs.fabrix.ai/beginners_guide/foo/
     path = rel_path.replace("\\", "/")
     if path.endswith(".md"):
         path = path[:-3]
@@ -22,7 +26,7 @@ def public_doc_url(rel_path):
 
 
 def chunk_metadata_to_url(metadata):
-    """Map Qdrant chunk payload metadata to a public docs.fabrix.ai URL."""
+    # bots, cfxql, and narrative guides each map slightly differently
     source = (metadata.get("source") or "").replace("\\", "/")
     chunk_type = metadata.get("type", "")
 

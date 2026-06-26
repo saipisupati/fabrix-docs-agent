@@ -1,14 +1,8 @@
 """
-run_eval_baseline.py: retrieval-only baseline against eval_set.py.
+run_eval_baseline.py, retrieval-only eval (no LLM generation).
 
-Scores whether query_qdrant.retrieve returns chunks containing the
-expected source and expected facts. No LLM generation step.
-
-Usage:
-    python tests/run_eval_baseline.py
-
-Requires: OPENROUTER_API_KEY, existing data/qdrant_db/ from ingest
-Writes: tests/eval_baseline_results.txt
+Run: python3 tests/run_eval_baseline.py
+Checks if the right chunks show up in top-k before we blame the model.
 """
 
 import os

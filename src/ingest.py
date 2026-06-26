@@ -1,20 +1,7 @@
 """
-ingest.py: builds the vector store from raw documentation files.
+ingest.py, LEGACY v0: Chroma + TF-IDF. Do not use for production.
 
-Run this once (and again any time data/raw/ changes):
-    python src/ingest.py
-
-What it does:
-  1. Loads every .txt file in data/raw/
-  2. Splits narrative docs by size+overlap, bot catalog docs one-bot-per-chunk
-  3. Embeds every chunk
-  4. Stores chunks + embeddings + metadata in a local Chroma collection
-     at data/chroma_db/
-
-NOTE ON EMBEDDINGS: this currently uses TfidfVectorizer as a placeholder
-embedding method (no API key required, runs fully offline). Swap in a real
-embedding model once the provider is confirmed: see the comment marked
-SWAP POINT below. The rest of the pipeline does not need to change.
+Use ingest_qdrant.py instead. Kept for reference only.
 """
 
 import os

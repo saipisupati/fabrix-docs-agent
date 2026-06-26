@@ -1,21 +1,8 @@
 """
-chunk_heuristic.py: a generalizable fallback chunker for plain text docs
-that don't have markdown structure available.
+chunk_heuristic.py, fallback chunker when you only have plain text, no markdown headers.
 
-HONEST LIMITATIONS (read this before relying on it):
-Header detection from plain text alone is inherently fuzzy. Testing this
-against the real CFXQL reference doc surfaced two failure modes:
-  1. FALSE POSITIVES: short lines that aren't headers but look like one
-     (e.g. "port gt 80", "device is empty" - these are example query
-     lines, not section titles)
-  2. FALSE NEGATIVES: real headers that get missed because the heuristic's
-     thresholds don't fit every case
-
-This means: USE THIS as a fallback when no markdown source is available,
-NOT as a replacement for proper structure-aware chunking. If real
-markdown becomes available, MarkdownHeaderTextSplitter (LangChain) will
-be far more reliable, since it reads actual header markup (#, ##) instead
-of guessing from formatting patterns.
+Guesses section breaks from line length/punctuation. Noisier than real markdown splitting;
+use MarkdownHeaderTextSplitter when .md source is available (see ingest_qdrant.py).
 """
 
 import re
@@ -47,9 +34,7 @@ def is_likely_header(lines, i, max_header_words=8, min_body_words=6):
 
 
 def chunk_by_heuristic_sections(text, source_name, max_chunk_chars=1200):
-    """Split text into sections using the header heuristic, then further
-    split any section that's still too long using a simple size-based
-    fallback."""
+    # find likely headers, split sections, size-split anything still too long
     lines = text.split("\n")
     header_indices = [i for i in range(len(lines)) if is_likely_header(lines, i)]
 

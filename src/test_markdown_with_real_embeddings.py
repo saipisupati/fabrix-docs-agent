@@ -1,7 +1,7 @@
 """
-test_markdown_with_real_embeddings.py: combines markdown-based chunking
-with REAL semantic embeddings via OpenRouter, to see if real embeddings
-fix the gap we found with TF-IDF.
+test_markdown_with_real_embeddings.py, DEV ONLY: markdown chunking + real OpenRouter embeddings.
+
+Early experiment before ingest_qdrant.py existed.
 """
 
 import os

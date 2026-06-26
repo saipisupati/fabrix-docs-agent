@@ -1,13 +1,8 @@
 """
-run_eval_agent.py: full-pipeline agent eval against eval_set.py.
+run_eval_agent.py, score the real agent path (no manual category hints).
 
-Runs agent.answer() for each case with no manual category or filter hints.
-
-Usage:
-    python tests/run_eval_agent.py
-
-Requires: OPENROUTER_API_KEY, OPENAI_API_KEY, existing data/qdrant_db/
-Writes: tests/eval_agent_results.txt
+Run: python3 tests/run_eval_agent.py
+This is the "real user" eval; writes tests/eval_agent_results.txt
 """
 
 import os

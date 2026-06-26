@@ -1,15 +1,15 @@
 """
-clean_markdown.py: strips unnecessary text from raw markdown files before chunking:
-YAML frontmatter, <style> blocks, and inline HTML tags (keeping their
-text content). This is needed because bot catalog pages contain CSS
-styling and HTML spans that would otherwise take up chunk text.
+clean_markdown.py, strip junk from raw markdown before chunking.
+
+Bot catalog pages have YAML frontmatter, CSS, and HTML spans; this keeps chunk text readable.
+Run standalone to sanity-check a file: python3 src/clean_markdown.py path/to/file.md
 """
 
 import re
 
 
 def clean_markdown(text):
-    """Remove frontmatter, style blocks, and HTML tags from raw markdown."""
+    # frontmatter → drop style blocks → strip tags, keep inner text
     # Step 1: remove YAML frontmatter (--- ... --- at the very top)
     text = re.sub(r'^---\n.*?\n---\n', '', text, flags=re.DOTALL)
 
@@ -22,8 +22,7 @@ def clean_markdown(text):
     return text
 
 def extract_bot_metadata(h2_header):
-    """Given a header like 'Bot @dm:add-bounded-dataset', extract just
-    the bot name and its prefix character (@, #, or *)."""
+    # "Bot @c:count-loop" → bot_name + prefix (@, #, or *)
     if not h2_header.startswith("Bot "):
         return {"bot_name": "unknown", "prefix": "unknown"}
 

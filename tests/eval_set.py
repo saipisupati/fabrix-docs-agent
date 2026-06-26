@@ -1,7 +1,8 @@
 """
-eval_set.py: a small, hand-built set of test questions with known-correct
-answers, used to measure whether the pipeline (chunking + retrieval +
-generation) is actually accurate, not just "looks fine when I try it."
+eval_set.py, hand-built Q&A cases with expected facts and sources.
+
+20 questions covering bots, CFXQL, guides, integrations, and negative/hallucination cases.
+Used by all run_eval_*.py scripts.
 """
 
 FILTER_BY_CATEGORY = {

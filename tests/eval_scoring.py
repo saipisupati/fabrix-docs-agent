@@ -1,4 +1,4 @@
-"""Shared scoring helpers for retrieval and generation eval scripts."""
+"""eval_scoring.py, PASS/PARTIAL/FAIL grading helpers shared by eval runners."""
 
 import re
 

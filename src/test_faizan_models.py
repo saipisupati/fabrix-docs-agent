@@ -1,8 +1,7 @@
 """
-test_faizan_models.py : tests 6 embedding models recommended by Faizan,
-across multiple real questions via OpenRouter.
+test_faizan_models.py, DEV ONLY: compare Faizan-recommended embedding models via OpenRouter.
 
-Requires: OPENROUTER_API_KEY environment variable set.
+Model shootout helper, not production code.
 """
 
 import os

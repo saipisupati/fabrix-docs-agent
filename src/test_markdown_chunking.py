@@ -1,9 +1,7 @@
 """
-test_markdown_chunking.py: runs MarkdownHeaderTextSplitter directly
-against the REAL cfxql.md file from the rdaf_docs folder.
+test_markdown_chunking.py, DEV ONLY: try MarkdownHeaderTextSplitter on cfxql.md.
 
-Usage:
-    python3 src/test_markdown_chunking.py /path/to/cfxql.md
+Chunking experiment: python3 src/test_markdown_chunking.py /path/to/cfxql.md
 """
 
 import sys

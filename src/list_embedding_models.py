@@ -1,5 +1,5 @@
 """
-list_embedding_models.py: queries OpenRouter's real embeddings model list.
+list_embedding_models.py, dev utility: print OpenRouter embedding models list.
 """
 
 import os
