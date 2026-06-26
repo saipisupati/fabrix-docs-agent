@@ -22,7 +22,7 @@ def load_dotenv():
 load_dotenv()
 
 QDRANT_DIR = os.path.join(_PROJECT_ROOT, "data", "qdrant_db")
-COLLECTION_NAME = "fabrix_docs"
+COLLECTION_NAME = "sai_fabrix_docs_v1"
 EMBEDDING_MODEL = os.environ.get(
     "EMBEDDING_MODEL", "sentence-transformers/all-minilm-l6-v2"
 )
@@ -31,6 +31,10 @@ EMBEDDINGS_URL = "https://openrouter.ai/api/v1/embeddings"
 
 EMBED_BATCH_SIZE = 100
 QDRANT_UPLOAD_BATCH_SIZE = 200
+QDRANT_HOST = os.environ.get("QDRANT_HOST", "localhost")
+QDRANT_PORT = int(os.environ.get("QDRANT_PORT", 6333))
+
+
 
 _DEFAULT_BOTS_DIR = (
     "/Users/supersaiyan.06/Downloads/rdaf_docs/rdaf_docs/bot_library/target/docs/Bots"
