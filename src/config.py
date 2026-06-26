@@ -58,3 +58,9 @@ DOCS_INCLUDE_DIRS = [
     for d in os.environ.get("DOCS_INCLUDE_DIRS", _DEFAULT_DOCS_INCLUDE_DIRS).split(",")
     if d.strip()
 ]
+_DEFAULT_DOCS_ROOT_FILES = "index.md,Datasets.md,Formatting-Templates.md"
+DOCS_ROOT_FILES = [
+    f.strip()
+    for f in os.environ.get("DOCS_ROOT_FILES", _DEFAULT_DOCS_ROOT_FILES).split(",")
+    if f.strip()
+]

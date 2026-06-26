@@ -20,7 +20,7 @@ from urllib.request import Request, urlopen
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
-from config import BOTS_DIR, CFXQL_FILE, DOCS_INCLUDE_DIRS, DOCS_ROOT
+from config import BOTS_DIR, CFXQL_FILE, DOCS_INCLUDE_DIRS, DOCS_ROOT, DOCS_ROOT_FILES
 from doc_urls import PUBLIC_DOCS_BASE, public_doc_url
 
 RAW_DIR = os.path.join(os.path.dirname(__file__), "..", "data", "raw")
@@ -85,6 +85,11 @@ def enumerate_ingest_files():
                     if rel in skip_rel:
                         continue
                     files.append((filepath, rel, "narrative"))
+
+        for filename in DOCS_ROOT_FILES:
+            filepath = os.path.join(DOCS_ROOT, filename)
+            if os.path.isfile(filepath):
+                files.append((filepath, filename, "narrative"))
 
     return files
 

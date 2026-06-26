@@ -23,6 +23,7 @@ from config import (
     COLLECTION_NAME,
     DOCS_INCLUDE_DIRS,
     DOCS_ROOT,
+    DOCS_ROOT_FILES,
     EMBED_BATCH_SIZE,
     EMBEDDING_MODEL,
     EMBEDDINGS_URL,
@@ -240,6 +241,20 @@ def load_narrative_docs():
                 print(f"    FAILED {rel}: {err}")
         else:
             print()
+
+    for filename in DOCS_ROOT_FILES:
+        filepath = os.path.join(DOCS_ROOT, filename)
+        if not os.path.isfile(filepath):
+            print(f"  root/{filename}: skipped (not found)")
+            continue
+        rel_source = filename
+        doc_section = filename.removesuffix(".md")
+        try:
+            chunks = chunk_narrative_markdown(filepath, rel_source, doc_section)
+            all_chunks.extend(chunks)
+            print(f"  root/{filename}: 1 file, {len(chunks)} chunks")
+        except Exception as e:
+            print(f"    FAILED {rel_source}: {e}")
 
     return all_chunks
 

@@ -28,14 +28,27 @@ from config import (
 
 MODEL = LLM_MODEL
 
+
+def _local_embedding_model():
+    """Use the model recorded at ingest time so query dims match the collection."""
+    path = os.path.join(QDRANT_DIR, "embedding_model.txt")
+    if os.path.isfile(path):
+        with open(path, encoding="utf-8") as f:
+            model = f.read().strip()
+            if model:
+                return model
+    return EMBEDDING_MODEL
+
+
 def embed_question(question):
+    model = EMBEDDING_MODEL if REMOTE_BASE_URL else _local_embedding_model()
     response = requests.post(
         EMBEDDINGS_URL,
         headers={
             "Authorization": f"Bearer {os.environ['OPENROUTER_API_KEY']}",
             "Content-Type": "application/json",
         },
-        json={"model": EMBEDDING_MODEL, "input": [question]},
+        json={"model": model, "input": [question]},
     )
     return response.json()["data"][0]["embedding"]
 
