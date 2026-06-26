@@ -6,22 +6,22 @@ For setup and commands see [README.md](../README.md). This file is the project s
 
 ---
 
-## Current status (2026-06-24)
+## Current status (2026-06-26)
 
 | | |
 |---|---|
 | **Pipeline** | `ingest_qdrant.py` → OpenRouter MiniLM embeddings → local Qdrant → `agent.py` → gpt-4o-mini |
-| **Corpus** | **6,331 chunks** from **540** MD files (214 bots + 325 narrative + CFXQL) |
+| **Corpus** | **6,387 chunks** from **543** MD files (214 bots + 328 narrative + CFXQL + 3 root pages) |
 | **Retrieval eval** | **18/18** PASS on scored cases (2 negative SKIP) |
 | **Generation eval (oracle)** | **11 PASS, 1 PARTIAL, 0 FAIL** across 12 cases (original set) |
-| **Agent eval** | **19 PASS, 1 PARTIAL, 0 FAIL** across **20 cases** (all doc sections) |
+| **Agent eval** | **19 PASS, 1 PARTIAL, 0 FAIL** across **20 cases** (all doc sections, re-run 2026-06-26) |
 | **Bot sample eval** | **11/15 PASS** retrieval top-1 on random bot sample (seed 42) |
 | **Embedding choice** | Stay on **OpenRouter MiniLM + Qdrant** (stakeholder sign-off after fastembed shootout) |
 | **Phase** | Phase 1–2 done. Phase 4 in progress (agent + API + widget done; docs site embed TBD). Phase 3 not started. |
 
 **Known variance:** `multi_part_01` sometimes PARTIAL (75% facts): model omits "applies query on already-loaded data" detail. Retrieval is correct; this is LLM brevity, not a source bug.
 
-**Before re-ingest:** run `python3 scripts/audit_ingest_sources.py` (540 files must stay within public docs export).
+**Before re-ingest:** run `python3 scripts/audit_ingest_sources.py` (543 files must stay within public docs export).
 
 Latest eval output (gitignored): `tests/eval_baseline_results.txt`, `tests/eval_generation_results.txt`, `tests/eval_agent_results.txt`.
 
@@ -52,7 +52,7 @@ Fabrix.ai docs describe hundreds of pipeline **bots** (automation building block
 | One chunk per bot (`##` headers) | 214 bot files → 1,834 chunks; validated 0 errors |
 | Category filters + bot-name re-rank at query time | Fixed lookup/multi_part retrieval when vector search ranked wrong bot |
 | Lookup chunk pruning + category prompts | Fixed LLM citing sibling bot params despite correct retrieval |
-| Public MD export as doc source | 540 files from `docs.fabrix.ai` export tree; not a web scraper |
+| Public MD export as doc source | 543 files from `docs.fabrix.ai` export tree; not a web scraper |
 | Eval drift fix for `negative_01` | Swapped password-reset question (now answerable from corpus) for subscription-cancel question |
 
 **Fastembed shootout (local CPU, in-memory):** arctic-embed-xs 9/10 ~19 min; bge-base 9/10 ~96 min; production MiniLM 10/10. Best local fallback if API unavailable: arctic-embed-xs. See [Appendix: timeline](#appendix-timeline) for details.
@@ -131,13 +131,13 @@ Router rules (`plan_query`, deterministic-first):
 5. Negative keywords → `category_hint=negative`
 6. LLM fallback (logged when fired)
 
-Agent eval ([`run_eval_agent.py`](../tests/run_eval_agent.py), no category hints): **20 cases** (expanded 2026-06-24) covering all ingested doc sections. Latest: **PASS=19, PARTIAL=1, FAIL=0**. `multi_part_01` PARTIAL is known LLM variance, not a routing issue.
+Agent eval ([`run_eval_agent.py`](../tests/run_eval_agent.py), no category hints): **20 cases** covering all ingested doc sections. Latest (2026-06-26): **PASS=19, PARTIAL=1, FAIL=0**. `multi_part_01` PARTIAL is known LLM variance, not a routing issue.
 
 Bot sample eval ([`run_eval_bot_sample.py`](../tests/run_eval_bot_sample.py), retrieval-only): random 15-bot spot check (seed 42) over **922** catalog bots. Latest: **PASS=11, FAIL=4** (generic slugs like `license` / `update` are the usual misses).
 
 Router additions for expanded eval: `extension` → Extensions, `cfxoia` → rda_releases, `servicenow` / `kubernetes` / `integrate` → Datasource_Integrations.
 
-Deployment: `uvicorn src.api:app --port 8080`; see [DOCS_SITE_INTEGRATION.md](DOCS_SITE_INTEGRATION.md). Production checklist: [DEPLOY_CHECKLIST.md](DEPLOY_CHECKLIST.md).
+Deployment: `uvicorn src.api:app --port 8080`; see [DOCS_SITE_INTEGRATION.md](DOCS_SITE_INTEGRATION.md). Production checklist: [DEPLOY_CHECKLIST.md](DEPLOY_CHECKLIST.md). Demo script: [DEMO_SCRIPT.md](DEMO_SCRIPT.md).
 
 Blocker: docs repo access TBD for widget embed.
 
@@ -158,11 +158,11 @@ Blocker: docs repo access TBD for widget embed.
 |-------|-----------------|--------|
 | Baseline | 214 bot `.md` + `cfxql.md` | **1,847** |
 | + beginners_guide, reference_guides | narrative | **2,856** |
-| **Full (current)** | + 6 more folders in `DOCS_INCLUDE_DIRS` | **6,331** |
+| **Full (current)** | + 6 more folders in `DOCS_INCLUDE_DIRS` + 3 root pages via `DOCS_ROOT_FILES` | **6,387** |
 
-540 of 543 export files ingested (skipped `Datasets.md`, `Formatting-Templates.md`, `index.md`). `split_oversized_chunks()` split 225 chunks >8k chars before embed (OpenRouter input limit).
+All 543 export files ingested. Root pages: `index.md`, `Datasets.md`, `Formatting-Templates.md`. `split_oversized_chunks()` split 228 chunks >8k chars before embed (OpenRouter input limit).
 
-Narrative breakdown (325 files): beginners_guide 1,002 chunks, reference_guides 7, installation_guides 1,434, Pipelines 108, Datasource_Integrations 464, ai_fabric 481, Extensions 220, rda_releases 69.
+Narrative breakdown (328 files): beginners_guide 1,002 chunks, reference_guides 7, installation_guides 1,434, Pipelines 108, Datasource_Integrations 464, ai_fabric 481, Extensions 220, rda_releases 69, root pages 50.
 
 ---
 
@@ -260,7 +260,7 @@ Parameter table: name, type, default, description. e.g. `interval`, `stop_after`
 
 - RAG + vector DB? Yes, Qdrant + classic RAG
 - Embedding model for production? OpenRouter MiniLM-L6-v2 (fastembed shootout confirmed)
-- Doc source? Public MD export (540 files), paths in `config.py`
+- Doc source? Public MD export (543 files), paths in `config.py`
 - Framework? LangChain utilities for chunking; generation via OpenAI API
 
 **Still open**
@@ -278,7 +278,9 @@ fabrix-docs-agent/
 ├── README.md
 ├── docs/
 │   ├── NOTES.md           <- this file
-│   └── DOCS_SITE_INTEGRATION.md
+│   ├── DOCS_SITE_INTEGRATION.md
+│   ├── DEPLOY_CHECKLIST.md
+│   └── DEMO_SCRIPT.md
 ├── widget/
 │   ├── ask-widget.js
 │   └── ask-widget.css

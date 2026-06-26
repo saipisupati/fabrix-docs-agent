@@ -6,12 +6,12 @@ See [docs/NOTES.md](docs/NOTES.md) for project log and findings.
 
 ## Status
 
-Working prototype: full pipeline (chunk → embed → store → retrieve → generate) runs end-to-end against the real doc set: **540 of 543** MD source files (214 bot catalog + 325 narrative guides across 8 folders + `cfxql.md`): **~6,331 chunks** total. Three root-level files not ingested: `Datasets.md`, `Formatting-Templates.md`, `index.md`. Embeddings use `sentence-transformers/all-minilm-l6-v2` via OpenRouter; generation uses OpenAI `gpt-4o-mini`. A separate remote ingest path targets a shared Qdrant server (see below).
+Working prototype: full pipeline (chunk → embed → store → retrieve → generate) runs end-to-end against the full public doc set: **543/543** MD source files (214 bot catalog + 328 narrative guides across 8 folders + 3 root pages + `cfxql.md`): **~6,387 chunks** total. Root pages (`index.md`, `Datasets.md`, `Formatting-Templates.md`) are ingested via `DOCS_ROOT_FILES`. Embeddings use `sentence-transformers/all-minilm-l6-v2` via OpenRouter; local queries auto-read `data/qdrant_db/embedding_model.txt` so dims stay matched. Generation uses OpenAI `gpt-4o-mini`. Agent eval: **19 PASS, 1 PARTIAL, 0 FAIL** (20 cases, 2026-06-26). A separate remote ingest path targets a shared Qdrant server (see below).
 
 ## How it works (local path: primary)
 
 1. **Chunk + embed + store** (`src/ingest_qdrant.py`): loads the bot catalog from `BOTS_DIR`, CFXQL from `CFXQL_FILE`, and narrative guides from `DOCS_INCLUDE_DIRS` under `DOCS_ROOT`, chunks with strategy-specific logic, embeds via OpenRouter, and stores in local Qdrant at `data/qdrant_db/`. Requires `OPENROUTER_API_KEY`.
-2. **Query + generate** (`src/query_qdrant.py`): embeds the question with the same model, retrieves top-k chunks, builds a grounded prompt, generates via `gpt-4o-mini`. Requires `OPENROUTER_API_KEY` and `OPENAI_API_KEY`.
+2. **Query + generate** (`src/query_qdrant.py`): embeds the question (model from `embedding_model.txt` on local path), retrieves top-k chunks, builds a grounded prompt, generates via `gpt-4o-mini`. Requires `OPENROUTER_API_KEY` and `OPENAI_API_KEY`.
 
 **CFXQL chunking strategies** (`CHUNKING_STRATEGY` in `ingest_qdrant.py`):
 - `hand_rolled` (default): hardcoded splits at this doc's headers, most accurate, doesn't generalize
@@ -50,6 +50,7 @@ All scripts load `.env` automatically via `src/config.py`. You can still `export
 | `BOTS_DIR` | Path to bot catalog `.md` files | machine-specific path in `config.py` |
 | `DOCS_ROOT` | Root of MD doc export (parent of `Bots/`) | machine-specific path in `config.py` |
 | `DOCS_INCLUDE_DIRS` | Comma-separated narrative folders to ingest | 8 folders (see `config.py`) |
+| `DOCS_ROOT_FILES` | Comma-separated root-level `.md` files to ingest | `index.md,Datasets.md,Formatting-Templates.md` |
 | `CFXQL_FILE` | Path to CFXQL reference markdown | machine-specific path in `config.py` |
 | `EMBEDDING_MODEL` | OpenRouter embedding model | `sentence-transformers/all-minilm-l6-v2` |
 | `LLM_MODEL` | OpenAI generation model | `gpt-4o-mini` |
@@ -124,11 +125,11 @@ python3 src/test_fastembed_eval.py --models BAAI/bge-small-en-v1.5
 
 ## Docs site integration
 
-Embed the ask widget on [docs.fabrix.ai](https://docs.fabrix.ai) and point it at a hosted API. See [docs/DOCS_SITE_INTEGRATION.md](docs/DOCS_SITE_INTEGRATION.md) for the paste snippet, CORS (`DOCS_SITE_ORIGIN`), and optional API key setup. Production deploy steps: [docs/DEPLOY_CHECKLIST.md](docs/DEPLOY_CHECKLIST.md).
+Embed the ask widget on [docs.fabrix.ai](https://docs.fabrix.ai) and point it at a hosted API. See [docs/DOCS_SITE_INTEGRATION.md](docs/DOCS_SITE_INTEGRATION.md) for the paste snippet, CORS (`DOCS_SITE_ORIGIN`), and optional API key setup. Production deploy steps: [docs/DEPLOY_CHECKLIST.md](docs/DEPLOY_CHECKLIST.md). Demo run-of-show: [docs/DEMO_SCRIPT.md](docs/DEMO_SCRIPT.md).
 
 ## Eval
 
-- `tests/eval_set.py`: 12 hand-built cases (lookup, comparison, multi-part, guide/beginners_guide, install/installation_guides, ai_fabric, negative/hallucination)
+- `tests/eval_set.py`: 20 hand-built cases (lookup, comparison, multi-part, guide, install, ai_fabric, pipeline, datasource, extensions, releases, negative/hallucination)
 - `tests/run_eval_baseline.py`: automated retrieval-only scoring against `eval_set.py` (source hit + fact coverage in top-k chunks). Requires `OPENROUTER_API_KEY` and an ingested `data/qdrant_db/`. Results go to `tests/eval_baseline_results.txt` (gitignored).
 - `tests/run_eval_generation.py`: oracle full-pipeline scoring (category + filter hints passed manually). Requires `OPENROUTER_API_KEY`, `OPENAI_API_KEY`, and ingested `data/qdrant_db/`. Results go to `tests/eval_generation_results.txt` (gitignored).
 - `tests/run_eval_agent.py`: agent path via `agent.answer()` with no manual filters (real-user proxy). Same keys and Qdrant DB required. Results go to `tests/eval_agent_results.txt` (gitignored).
@@ -140,4 +141,5 @@ Embed the ask widget on [docs.fabrix.ai](https://docs.fabrix.ai) and point it at
 - Default `BOTS_DIR` / `CFXQL_FILE` paths in `config.py` are machine-specific: override via env vars on other machines
 - Two embedding models across paths (MiniLM local, BGE-large remote), no shared config
 - Remote ingestion timeouts on larger bot catalog files
+- Local Qdrant file lock: only one process (API or eval) can open `data/qdrant_db/` at a time
 - `data/qdrant_db/` is gitignored: rebuild locally via ingest

@@ -5,6 +5,7 @@ Gate checklist for hosting the Fabrix docs Q&A API and embedding the widget on [
 Related docs:
 
 - Widget embed snippet: [DOCS_SITE_INTEGRATION.md](DOCS_SITE_INTEGRATION.md)
+- Demo run-of-show: [DEMO_SCRIPT.md](DEMO_SCRIPT.md)
 - Local setup and env vars: [README.md](../README.md)
 
 ---
@@ -18,7 +19,7 @@ Related docs:
 - [ ] Qdrant DB available on the host:
   - Copy `data/qdrant_db/` from a machine that ran `ingest_qdrant.py`, **or**
   - Re-run ingest on the server with correct `BOTS_DIR` / `DOCS_ROOT` / `CFXQL_FILE` paths
-- [ ] Pre-ingest audit passes: `python3 scripts/audit_ingest_sources.py` (expect 540 files)
+- [ ] Pre-ingest audit passes: `python3 scripts/audit_ingest_sources.py` (expect 543 files)
 
 ---
 

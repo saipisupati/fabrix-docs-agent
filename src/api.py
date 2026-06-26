@@ -20,7 +20,7 @@ from qdrant_client import QdrantClient
 sys.path.insert(0, os.path.dirname(__file__))
 
 from agent import answer
-from config import QDRANT_HOST, QDRANT_PORT
+from config import QDRANT_DIR
 
 DOCS_SITE_ORIGIN = os.environ.get("DOCS_SITE_ORIGIN", "*")
 API_KEY = os.environ.get("API_KEY")
@@ -43,7 +43,7 @@ class AskResponse(BaseModel):
 
 @asynccontextmanager
 async def lifespan(app):
-    app.state.qdrant = QdrantClient(host=QDRANT_HOST, port=QDRANT_PORT)
+    app.state.qdrant = QdrantClient(path=QDRANT_DIR)
     yield
     app.state.qdrant.close()
 
