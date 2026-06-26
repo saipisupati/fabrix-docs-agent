@@ -17,7 +17,14 @@ from qdrant_client import QdrantClient
 from qdrant_client.models import FieldCondition, Filter, MatchValue
 
 sys.path.insert(0, os.path.dirname(__file__))
-from config import COLLECTION_NAME, EMBEDDING_MODEL, EMBEDDINGS_URL, LLM_MODEL, QDRANT_DIR
+from config import (
+    COLLECTION_NAME,
+    EMBEDDING_MODEL,
+    EMBEDDINGS_URL,
+    LLM_MODEL,
+    QDRANT_DIR,
+    REMOTE_BASE_URL,
+)
 
 MODEL = LLM_MODEL
 
@@ -79,7 +86,39 @@ def prune_lookup_chunks(question, chunks, category):
     return [c for c in chunks if c["metadata"].get("bot_name", "").lower() == top_name]
 
 
+def retrieve_remote(question, top_k=5, filter_dict=None):
+    response = requests.post(
+        f"{REMOTE_BASE_URL}/search",
+        headers={"Content-Type": "application/json"},
+        json={"collection_name": COLLECTION_NAME, "query": question, "limit": top_k},
+        timeout=30,
+    )
+    if not response.ok:
+        return []
+    results = response.json().get("results", [])
+    chunks = []
+    for r in results:
+        meta = r.get("metadata", {})
+        chunks.append({
+            "text": r.get("text", ""),
+            "metadata": {
+                "source": meta.get("source_file", ""),
+                "bot_name": meta.get("heading", ""),
+                "type": meta.get("type", ""),
+                "doc_section": meta.get("doc_section", ""),
+            },
+            "score": r.get("score", 0),
+        })
+    return chunks
+
+
 def retrieve(question, client, top_k=3, filter_dict=None):
+    if REMOTE_BASE_URL:
+        hints = bot_name_hints(question)
+        remote_limit = max(top_k * 10, 300) if hints else top_k
+        chunks = retrieve_remote(question, top_k=remote_limit, filter_dict=filter_dict)
+        return rerank_by_bot_name(question, chunks)[:top_k]
+
     hints = bot_name_hints(question)
     candidate_limit = max(top_k * 10, 300) if hints else top_k
 
