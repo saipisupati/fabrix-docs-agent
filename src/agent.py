@@ -122,7 +122,7 @@ Return JSON with keys:
         model=LLM_MODEL,
         messages=[{"role": "user", "content": prompt}],
     )
-    raw = response.choices[0].message.content.strip()
+    raw = (response.choices[0].message.content or "").strip()
     if raw.startswith("```"):
         raw = re.sub(r"^```(?:json)?\s*|\s*```$", "", raw, flags=re.DOTALL).strip()
     data = json.loads(raw)
@@ -224,7 +224,7 @@ If sufficient, omit retry_query or set it to null.
         model=LLM_MODEL,
         messages=[{"role": "user", "content": prompt}],
     )
-    raw = response.choices[0].message.content.strip()
+    raw = (response.choices[0].message.content or "").strip()
     if raw.startswith("```"):
         raw = re.sub(r"^```(?:json)?\s*|\s*```$", "", raw, flags=re.DOTALL).strip()
     return json.loads(raw)
@@ -286,7 +286,7 @@ def answer(question, client=None):
         sufficient = True
 
     return AgentResponse(
-        answer=ans,
+        answer=ans or "",
         sources=_sources_from_chunks(chunks),
         sufficient=sufficient,
     )

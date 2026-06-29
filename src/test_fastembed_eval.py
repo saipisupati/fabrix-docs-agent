@@ -16,8 +16,8 @@ from sklearn.metrics.pairwise import cosine_similarity
 sys.path.insert(0, os.path.dirname(__file__))
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "tests"))
 
-from eval_scoring import grade_retrieval, score_retrieval
-from eval_set import EVAL_SET, retrieval_params
+from eval_scoring import grade_retrieval, score_retrieval  # type: ignore[reportMissingImports]
+from eval_set import EVAL_SET, retrieval_params  # type: ignore[reportMissingImports]
 from ingest_qdrant import load_and_chunk_all, split_oversized_chunks
 from query_qdrant import bot_name_hints, rerank_by_bot_name
 
