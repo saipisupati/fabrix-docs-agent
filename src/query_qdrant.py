@@ -169,6 +169,8 @@ def build_prompt(question, retrieved_chunks, category=None):
 - Excerpt [1] is the primary source; answer about that specific bot.
 - List parameters from that bot's parameter table only; do not mix tables from other bots.
 - Include all parameters from the table relevant to the question and any required companion parameters shown in the excerpt.
+- When the question asks how to load, use, or configure something, list every required parameter (marked * in the table), not only the parameter named in the question.
+- For each listed parameter, include its description from the table (e.g. columns as a comma-separated list).
 """
     elif category == "negative":
         extra_instructions = """
@@ -180,6 +182,7 @@ def build_prompt(question, retrieved_chunks, category=None):
 - The question has multiple parts; address each part explicitly.
 - Use all relevant excerpts; cite every excerpt you draw from.
 - Include related requirements (e.g. companion bots, exit conditions) when they appear in the excerpts.
+- When the question has two parts joined by "and" (e.g. what it does and what it expects), give two explicit sentences, one per part, including behavioral context from the excerpt intro (not just the parameter table).
 """
 
     return f"""You are a helpful assistant for Fabrix.ai documentation.
