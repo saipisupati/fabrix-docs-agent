@@ -20,7 +20,7 @@ Working prototype: full pipeline (chunk → embed → store → retrieve → gen
 
 ## Remote path (in progress)
 
-`src/ingest_and_test_remote.py` uploads raw markdown to a hosted Qdrant server (`10.95.121.54:8000`). Chunking and embedding happen server-side using `BAAI/bge-large-en-v1.5`. Requires VPN. Uses a different embedding model than the local path; some large bot files still timeout at 120s.
+`src/ingest_and_test_remote.py` uploads raw markdown to a hosted Qdrant server. Chunking and embedding happen server-side using `BAAI/bge-large-en-v1.5`. Requires VPN. Uses a different embedding model than the local path; some large bot files still timeout at 120s.
 
 ## Legacy path (not used)
 
