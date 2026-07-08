@@ -127,6 +127,8 @@ python3 src/test_fastembed_eval.py --models BAAI/bge-small-en-v1.5
 
 Embed the ask widget on [docs.fabrix.ai](https://docs.fabrix.ai) and point it at a hosted API. See [docs/DOCS_SITE_INTEGRATION.md](docs/DOCS_SITE_INTEGRATION.md) for the paste snippet, CORS (`DOCS_SITE_ORIGIN`), and optional API key setup. Production deploy steps: [docs/DEPLOY_CHECKLIST.md](docs/DEPLOY_CHECKLIST.md). Demo run-of-show: [docs/DEMO_SCRIPT.md](docs/DEMO_SCRIPT.md).
 
+**Beta chat hosting** (standalone page for tester feedback before production embed): [docs/HOSTING_BETA.md](docs/HOSTING_BETA.md).
+
 ## Eval
 
 - `tests/eval_set.py`: 20 hand-built cases (lookup, comparison, multi-part, guide, install, ai_fabric, pipeline, datasource, extensions, releases, negative/hallucination)

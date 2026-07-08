@@ -285,11 +285,13 @@ def answer(question, client=None):
 
                 lines = ["The bot takes the following parameters:"]
                 for r in required_rows + optional_rows:
-                    star = "*" if r["required"] else ""
+                    # Keep the required * outside bold markers so markdown renderers
+                    # can match **name**: / **name** *: without breaking on [^*]+.
+                    req = " *" if r["required"] else ""
                     desc = r["description"] or ""
                     if r["default"]:
                         desc = (desc + f" (default {r['default']})").strip()
-                    lines.append(f"- **{r['name']}{star}**: {desc}".strip())
+                    lines.append(f"- **{r['name']}**{req}: {desc}".strip())
 
                 ans = "\n".join(lines).strip()
                 return AgentResponse(

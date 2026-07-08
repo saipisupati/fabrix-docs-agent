@@ -13,18 +13,20 @@
     />
     <style>
       :root {
-        --bg0: #06101e;
-        --bg1: #071a2c;
-        --panel: rgba(255, 255, 255, 0.04);
-        --border: rgba(255, 255, 255, 0.09);
+        --bg: #0b1020;
+        --bg-elevated: #172033;
+        --surface: #1e2a45;
+        --surface-user: #243352;
+        --border: rgba(255, 255, 255, 0.1);
         --text: rgba(255, 255, 255, 0.92);
-        --muted: rgba(255, 255, 255, 0.68);
-        --muted2: rgba(255, 255, 255, 0.55);
-        --teal: #19d3c5;
-        --teal2: rgba(45, 212, 191, 0.16);
+        --muted: rgba(255, 255, 255, 0.55);
+        --muted2: rgba(255, 255, 255, 0.42);
+        --accent: #f05a28;
+        --accent-hover: #e84e1b;
         --danger: #fb7185;
-        --shadow: 0 12px 30px rgba(0, 0, 0, 0.35);
-        --radius: 16px;
+        --shadow: 0 2px 12px rgba(0, 0, 0, 0.35);
+        --radius-lg: 20px;
+        --radius-md: 14px;
       }
 
       * {
@@ -40,18 +42,17 @@
         margin: 0;
         font-family: Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial,
           "Apple Color Emoji", "Segoe UI Emoji";
-        background: radial-gradient(1200px 800px at 20% 10%, rgba(25, 211, 197, 0.10), transparent 58%),
-          radial-gradient(900px 700px at 85% 15%, rgba(25, 211, 197, 0.07), transparent 52%),
-          linear-gradient(180deg, var(--bg0), var(--bg1));
+        background: linear-gradient(180deg, var(--bg) 0%, var(--bg-elevated) 100%);
         color: var(--text);
+        font-size: 15px;
+        line-height: 1.6;
       }
 
       .app {
         height: 100%;
         display: flex;
         flex-direction: column;
-        padding: 18px 16px 14px;
-        max-width: 980px;
+        max-width: 768px;
         margin: 0 auto;
       }
 
@@ -60,11 +61,10 @@
         align-items: center;
         justify-content: space-between;
         gap: 12px;
-        padding: 12px 14px;
-        border: 1px solid var(--border);
-        border-radius: var(--radius);
-        background: rgba(0, 0, 0, 0.18);
-        box-shadow: var(--shadow);
+        padding: 14px 20px;
+        border-bottom: 1px solid var(--border);
+        box-shadow: inset 0 -1px 0 rgba(240, 90, 40, 0.2);
+        flex-shrink: 0;
       }
 
       .brand {
@@ -74,106 +74,80 @@
         min-width: 0;
       }
 
-      .logo {
-        width: 36px;
-        height: 36px;
-        border-radius: 10px;
-        background: linear-gradient(135deg, rgba(45, 212, 191, 0.28), rgba(45, 212, 191, 0.08));
-        border: 1px solid rgba(45, 212, 191, 0.25);
-        display: grid;
-        place-items: center;
-        flex: 0 0 auto;
-      }
-
-      .logo svg {
-        width: 18px;
-        height: 18px;
-        fill: rgba(255, 255, 255, 0.88);
+      .brand img {
+        height: 22px;
+        width: auto;
+        flex-shrink: 0;
       }
 
       .titleBlock {
         display: flex;
         flex-direction: column;
-        line-height: 1.15;
+        line-height: 1.2;
         min-width: 0;
       }
 
       .title {
         font-weight: 600;
         font-size: 14px;
-        letter-spacing: 0.2px;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
+        letter-spacing: 0.1px;
       }
 
       .subtitle {
-        font-size: 12px;
-        color: var(--muted);
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
+        font-size: 11px;
+        color: var(--muted2);
+        letter-spacing: 0.2px;
       }
 
-      .pill {
+      .status {
         display: inline-flex;
         align-items: center;
         gap: 8px;
-        padding: 7px 10px;
-        border: 1px solid var(--border);
-        border-radius: 999px;
-        background: rgba(25, 211, 197, 0.06);
         color: var(--muted);
         font-size: 12px;
         user-select: none;
       }
 
       .dot {
-        width: 8px;
-        height: 8px;
+        width: 7px;
+        height: 7px;
         border-radius: 999px;
-        background: rgba(255, 255, 255, 0.35);
+        background: rgba(255, 255, 255, 0.3);
       }
 
       .dot.ok {
-        background: var(--teal);
-        box-shadow: 0 0 0 4px rgba(45, 212, 191, 0.12);
+        background: var(--accent);
       }
 
       .dot.bad {
         background: var(--danger);
-        box-shadow: 0 0 0 4px rgba(251, 113, 133, 0.12);
-      }
-
-      .chat {
-        flex: 1 1 auto;
-        display: flex;
-        flex-direction: column;
-        gap: 12px;
-        margin-top: 14px;
-        padding: 14px;
-        border: 1px solid var(--border);
-        border-radius: var(--radius);
-        background: rgba(0, 0, 0, 0.16);
-        box-shadow: var(--shadow);
-        overflow: hidden;
       }
 
       .messages {
         flex: 1 1 auto;
         overflow: auto;
-        padding: 2px 4px 8px;
+        padding: 24px 20px;
         display: flex;
         flex-direction: column;
-        gap: 12px;
+        gap: 24px;
         scroll-behavior: smooth;
       }
 
       .row {
         display: flex;
-        align-items: flex-end;
-        gap: 10px;
         max-width: 100%;
+        animation: fadeIn 150ms ease-out;
+      }
+
+      @keyframes fadeIn {
+        from {
+          opacity: 0;
+          transform: translateY(4px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
       }
 
       .row.user {
@@ -182,84 +156,243 @@
 
       .row.agent {
         justify-content: flex-start;
-      }
-
-      .avatar {
-        width: 28px;
-        height: 28px;
-        border-radius: 10px;
-        border: 1px solid var(--border);
-        background: rgba(255, 255, 255, 0.03);
-        display: grid;
-        place-items: center;
-        flex: 0 0 auto;
-      }
-
-      .avatar svg {
-        width: 16px;
-        height: 16px;
-        fill: rgba(255, 255, 255, 0.78);
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 8px;
       }
 
       .bubble {
-        max-width: min(700px, 82%);
-        border-radius: 18px;
-        border: 1px solid var(--border);
-        padding: 10px 12px;
-        background: rgba(255, 255, 255, 0.03);
-        line-height: 1.45;
-        font-size: 14px;
-        white-space: pre-wrap;
+        max-width: 85%;
+        border-radius: var(--radius-md);
+        padding: 10px 14px;
         overflow-wrap: anywhere;
       }
 
       .bubble.user {
-        background: linear-gradient(180deg, rgba(45, 212, 191, 0.16), rgba(45, 212, 191, 0.08));
-        border-color: rgba(45, 212, 191, 0.22);
+        background: var(--surface-user);
+        color: var(--text);
       }
 
       .bubble.agent {
-        background: rgba(255, 255, 255, 0.03);
+        background: transparent;
+        padding: 0;
+        max-width: 100%;
       }
 
       .bubble.error {
-        background: rgba(251, 113, 133, 0.08);
-        border-color: rgba(251, 113, 133, 0.24);
-        color: rgba(255, 255, 255, 0.9);
+        background: rgba(251, 113, 133, 0.1);
+        border: 1px solid rgba(251, 113, 133, 0.25);
+        padding: 10px 14px;
+        max-width: 100%;
       }
 
-      .meta {
-        margin-top: 8px;
-        padding-top: 8px;
-        border-top: 1px solid rgba(255, 255, 255, 0.07);
-      }
-
-      .sourcesTitle {
-        font-size: 12px;
-        color: var(--muted);
+      .md strong {
         font-weight: 600;
-        letter-spacing: 0.15px;
-        margin-bottom: 6px;
       }
 
-      .sources {
+      .md .req {
+        color: var(--accent);
+        font-weight: 600;
+        margin-left: 1px;
+      }
+
+      .md code {
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono",
+          "Courier New", monospace;
+        font-size: 0.9em;
+        background: rgba(255, 255, 255, 0.08);
+        border-radius: 6px;
+        padding: 2px 6px;
+      }
+
+      .md a {
+        color: var(--accent);
+        text-decoration: none;
+      }
+
+      .md a:hover {
+        text-decoration: underline;
+      }
+
+      .md ul,
+      .md ol {
+        margin: 8px 0;
+        padding-left: 20px;
+      }
+
+      .md li {
+        margin: 4px 0;
+      }
+
+      .md p {
+        margin: 0 0 8px;
+      }
+
+      .md p:last-child {
+        margin-bottom: 0;
+      }
+
+      .typing {
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+        color: var(--muted);
+        font-size: 14px;
+      }
+
+      .dots {
+        display: inline-flex;
+        gap: 4px;
+        align-items: center;
+      }
+
+      .dots span {
+        width: 6px;
+        height: 6px;
+        border-radius: 999px;
+        background: var(--accent);
+        animation: bounce 1.2s infinite ease-in-out;
+      }
+
+      .dots span:nth-child(2) {
+        animation-delay: 0.15s;
+      }
+
+      .dots span:nth-child(3) {
+        animation-delay: 0.3s;
+      }
+
+      @keyframes bounce {
+        0%,
+        60%,
+        100% {
+          transform: translateY(0);
+          opacity: 0.4;
+        }
+        30% {
+          transform: translateY(-4px);
+          opacity: 1;
+        }
+      }
+
+      .actions {
         display: flex;
-        flex-direction: column;
+        gap: 4px;
+        opacity: 0.7;
+        transition: opacity 0.15s;
+      }
+
+      .row.agent:hover .actions {
+        opacity: 1;
+      }
+
+      .actionBtn {
+        appearance: none;
+        border: none;
+        background: transparent;
+        color: var(--muted);
+        font-size: 12px;
+        padding: 4px 8px;
+        border-radius: 8px;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+      }
+
+      .actionBtn:hover {
+        background: rgba(255, 255, 255, 0.06);
+        color: var(--text);
+      }
+
+      .sourcesBlock {
+        margin-top: 12px;
+        width: 100%;
+      }
+
+      .sourcesLabel {
+        font-size: 11px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        color: var(--muted2);
+        margin-bottom: 8px;
+      }
+
+      .chips {
+        display: flex;
+        flex-wrap: wrap;
         gap: 6px;
+        align-items: center;
+      }
+
+      .chip {
+        appearance: none;
+        border: 1px solid var(--border);
+        background: rgba(255, 255, 255, 0.04);
+        color: var(--accent);
+        font-size: 12px;
+        font-weight: 500;
+        padding: 5px 10px;
+        border-radius: 999px;
+        cursor: pointer;
+        max-width: 200px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        transition: background 0.12s, border-color 0.12s;
+      }
+
+      .chip:hover {
+        background: rgba(255, 255, 255, 0.08);
+        border-color: rgba(240, 90, 40, 0.35);
+      }
+
+      .chip.more {
+        color: var(--muted);
+        border-style: dashed;
+      }
+
+      .viewAllBtn {
+        appearance: none;
+        border: none;
+        background: transparent;
+        color: var(--muted);
+        font-size: 12px;
+        padding: 6px 0;
+        margin-top: 6px;
+        cursor: pointer;
+        text-decoration: underline;
+        text-underline-offset: 2px;
+      }
+
+      .viewAllBtn:hover {
+        color: var(--text);
+      }
+
+      .sourcesPanel {
+        display: none;
+        margin-top: 10px;
+        flex-direction: column;
+        gap: 8px;
+      }
+
+      .sourcesPanel.open {
+        display: flex;
       }
 
       .sourceItem {
-        padding: 8px 10px;
-        border: 1px solid rgba(255, 255, 255, 0.07);
-        border-radius: 12px;
-        background: rgba(255, 255, 255, 0.02);
+        padding: 10px 12px;
+        border: 1px solid var(--border);
+        border-radius: var(--radius-md);
+        background: rgba(255, 255, 255, 0.03);
       }
 
       .sourceLink {
-        color: rgba(25, 211, 197, 0.96);
+        color: var(--accent);
         text-decoration: none;
         font-size: 13px;
-        font-weight: 600;
+        font-weight: 500;
       }
 
       .sourceLink:hover {
@@ -267,154 +400,138 @@
       }
 
       .excerpt {
-        margin-top: 4px;
+        margin-top: 6px;
         font-size: 12px;
         color: var(--muted2);
-        line-height: 1.35;
+        line-height: 1.45;
+        display: none;
       }
 
-      .sourcesHeader {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 10px;
+      .excerpt.open {
+        display: block;
       }
 
       .toggleBtn {
         appearance: none;
-        border: 1px solid rgba(255, 255, 255, 0.10);
-        background: rgba(255, 255, 255, 0.03);
-        color: rgba(255, 255, 255, 0.72);
-        padding: 4px 8px;
-        border-radius: 10px;
-        font-size: 12px;
-        font-weight: 600;
+        border: none;
+        background: transparent;
+        color: var(--muted);
+        font-size: 11px;
+        padding: 4px 0;
+        margin-top: 4px;
         cursor: pointer;
+        text-decoration: underline;
+        text-underline-offset: 2px;
       }
 
       .toggleBtn:hover {
-        border-color: rgba(25, 211, 197, 0.25);
-        color: rgba(255, 255, 255, 0.82);
+        color: var(--text);
       }
 
-      .md strong {
-        font-weight: 700;
-      }
-
-      .md code {
-        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New",
-          monospace;
-        font-size: 0.95em;
-        background: rgba(255, 255, 255, 0.06);
-        border: 1px solid rgba(255, 255, 255, 0.10);
-        border-radius: 8px;
-        padding: 1px 6px;
+      .composerWrap {
+        flex-shrink: 0;
+        padding: 12px 20px 20px;
+        border-top: 1px solid var(--border);
       }
 
       .composer {
         display: flex;
-        gap: 10px;
-        padding-top: 10px;
-        border-top: 1px solid rgba(255, 255, 255, 0.08);
+        align-items: flex-end;
+        gap: 8px;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: var(--radius-lg);
+        padding: 10px 12px 10px 16px;
+        box-shadow: var(--shadow);
+        transition: border-color 0.15s;
       }
 
-      .inputWrap {
-        flex: 1 1 auto;
-        position: relative;
+      .composer:focus-within {
+        border-color: rgba(240, 90, 40, 0.4);
       }
 
       textarea {
-        width: 100%;
+        flex: 1 1 auto;
         resize: none;
-        min-height: 44px;
+        min-height: 24px;
         max-height: 140px;
-        border-radius: 14px;
-        border: 1px solid rgba(255, 255, 255, 0.10);
-        background: rgba(0, 0, 0, 0.22);
+        border: none;
+        background: transparent;
         color: var(--text);
-        padding: 12px 12px 10px;
         font-family: inherit;
-        font-size: 14px;
+        font-size: 15px;
+        line-height: 1.5;
         outline: none;
+        padding: 4px 0;
       }
 
       textarea::placeholder {
-        color: rgba(255, 255, 255, 0.46);
+        color: var(--muted2);
       }
 
-      textarea:focus {
-        border-color: rgba(45, 212, 191, 0.35);
-        box-shadow: 0 0 0 4px rgba(45, 212, 191, 0.10);
-      }
-
-      button {
+      .sendBtn {
+        appearance: none;
         flex: 0 0 auto;
-        height: 44px;
-        padding: 0 14px;
-        border-radius: 14px;
-        border: 1px solid rgba(45, 212, 191, 0.28);
-        background: linear-gradient(180deg, rgba(45, 212, 191, 0.22), rgba(45, 212, 191, 0.10));
-        color: rgba(255, 255, 255, 0.92);
-        font-weight: 600;
+        width: 36px;
+        height: 36px;
+        border: none;
+        border-radius: 10px;
+        background: var(--accent);
+        color: #fff;
         cursor: pointer;
-        transition: transform 0.05s ease, filter 0.12s ease;
+        display: grid;
+        place-items: center;
+        transition: background 0.12s, opacity 0.12s;
       }
 
-      button:disabled {
-        opacity: 0.55;
+      .sendBtn:hover:not(:disabled) {
+        background: var(--accent-hover);
+      }
+
+      .sendBtn:disabled {
+        opacity: 0.4;
         cursor: not-allowed;
-        filter: grayscale(20%);
       }
 
-      button:active:not(:disabled) {
-        transform: translateY(1px);
-      }
-
-      .loadingInline {
-        display: inline-flex;
-        align-items: center;
-        gap: 8px;
-        color: var(--muted);
-      }
-
-      .spinner {
-        width: 14px;
-        height: 14px;
-        border-radius: 999px;
-        border: 2px solid rgba(255, 255, 255, 0.22);
-        border-top-color: rgba(45, 212, 191, 0.95);
-        animation: spin 1s linear infinite;
-      }
-
-      @keyframes spin {
-        to {
-          transform: rotate(360deg);
-        }
+      .sendBtn svg {
+        width: 18px;
+        height: 18px;
+        fill: currentColor;
       }
 
       .hint {
         margin-top: 8px;
-        color: rgba(255, 255, 255, 0.55);
-        font-size: 12px;
+        color: var(--muted2);
+        font-size: 11px;
+        text-align: center;
       }
 
-      .kbd {
-        display: inline-flex;
-        align-items: center;
-        padding: 2px 6px;
-        border-radius: 8px;
-        border: 1px solid rgba(255, 255, 255, 0.12);
-        background: rgba(255, 255, 255, 0.04);
-        color: rgba(255, 255, 255, 0.72);
-        font-weight: 600;
+      .hint.hidden {
+        display: none;
+      }
+
+      .footer {
+        padding: 0 20px 12px;
+        text-align: center;
         font-size: 11px;
+        color: var(--muted2);
+        flex-shrink: 0;
       }
 
       @media (max-width: 520px) {
-        .bubble {
-          max-width: 90%;
+        .header {
+          padding: 12px 16px;
         }
-        .pill {
+        .messages {
+          padding: 16px;
+        }
+        .composerWrap {
+          padding: 10px 16px 16px;
+        }
+        .bubble.user {
+          max-width: 92%;
+        }
+        .status span:last-child {
           display: none;
         }
       }
@@ -422,57 +539,84 @@
   </head>
   <body>
     <div class="app">
-      <div class="header">
+      <header class="header">
         <div class="brand">
-          <div class="logo" aria-hidden="true">
-            <svg viewBox="0 0 24 24">
-              <path
-                d="M12 2a10 10 0 100 20 10 10 0 000-20zm-1.2 5.3c.1-.6.6-1 1.2-1s1.1.4 1.2 1l.3 1.9a7.1 7.1 0 012.6 1.5l1.8-.7c.6-.2 1.2 0 1.5.5.3.5.2 1.2-.2 1.6l-1.4 1.3c.2.7.3 1.4.3 2.1 0 .7-.1 1.4-.3 2.1l1.4 1.3c.4.4.5 1.1.2 1.6-.3.5-1 .7-1.5.5l-1.8-.7a7.1 7.1 0 01-2.6 1.5l-.3 1.9c-.1.6-.6 1-1.2 1s-1.1-.4-1.2-1l-.3-1.9a7.1 7.1 0 01-2.6-1.5l-1.8.7c-.6.2-1.2 0-1.5-.5-.3-.5-.2-1.2.2-1.6l1.4-1.3A7.7 7.7 0 016 12c0-.7.1-1.4.3-2.1L4.9 8.6c-.4-.4-.5-1.1-.2-1.6.3-.5 1-.7 1.5-.5l1.8.7a7.1 7.1 0 012.6-1.5l.3-1.9zM12 10a2 2 0 100 4 2 2 0 000-4z"
-              />
-            </svg>
-          </div>
+          <img
+            src="https://fabrix.ai/images/logo-light.svg"
+            alt="Fabrix"
+            width="120"
+            height="22"
+          />
           <div class="titleBlock">
-            <div class="title">Fabrix Docs Agent</div>
-            <div class="subtitle">Standalone chat UI</div>
+            <div class="title">Docs Agent</div>
+            <div class="subtitle">Ask Fabrix documentation</div>
           </div>
         </div>
-        <div class="pill" title="API status">
+        <div class="status" title="API status">
           <span id="statusDot" class="dot" aria-hidden="true"></span>
-          <span id="statusText">Connecting…</span>
+          <span id="statusText">Connecting</span>
         </div>
-      </div>
+      </header>
 
-      <div class="chat" role="application" aria-label="Chat">
-        <div id="messages" class="messages" role="log" aria-live="polite" aria-relevant="additions"></div>
+      <div id="messages" class="messages" role="log" aria-live="polite" aria-relevant="additions"></div>
 
+      <div class="composerWrap">
         <div class="composer">
-          <div class="inputWrap">
-            <textarea
-              id="input"
-              placeholder="Ask a question about Fabrix docs…"
-              rows="1"
-              aria-label="Message input"
-            ></textarea>
-            <div class="hint">
-              Press <span class="kbd">Enter</span> to send, <span class="kbd">Shift</span> +
-              <span class="kbd">Enter</span> for newline
-            </div>
-          </div>
-          <button id="sendBtn" type="button">Send</button>
+          <textarea
+            id="input"
+            placeholder="Write a message..."
+            rows="1"
+            aria-label="Message input"
+          ></textarea>
+          <button id="sendBtn" class="sendBtn" type="button" aria-label="Send message">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z" />
+            </svg>
+          </button>
+        </div>
+        <div id="hint" class="hint">
+          Press Enter to send, Shift+Enter for newline
         </div>
       </div>
+
+      <div class="footer">Answers are generated from Fabrix documentation. Verify important details.</div>
     </div>
 
     <script>
-      // Configurable API base URL. Default matches local FastAPI dev command:
-      // uvicorn src.api:app --port 8080
-      const API_URL = "http://localhost:8080";
+      // Optional override before this script runs:
+      // window.FabrixChatConfig = { apiUrl: "https://your-host", apiKey: "..." };
+      const chatConfig = window.FabrixChatConfig || {};
+
+      function resolveApiUrl() {
+        const configured = (chatConfig.apiUrl ?? "").replace(/\/$/, "");
+        if (configured) return configured;
+        if (window.location.protocol === "file:") return "http://localhost:8080";
+        const host = window.location.hostname;
+        if (host === "localhost" || host === "127.0.0.1") {
+          if (window.location.port === "8080") return window.location.origin;
+          return "http://localhost:8080";
+        }
+        return window.location.origin;
+      }
+
+      const API_URL = resolveApiUrl();
+      const MAX_CHIPS = 3;
+      const EXCERPT_TRUNCATE = 300;
+
+      function askHeaders() {
+        const headers = { "Content-Type": "application/json" };
+        if (chatConfig.apiKey) headers["X-API-Key"] = chatConfig.apiKey;
+        return headers;
+      }
 
       const messagesEl = document.getElementById("messages");
       const inputEl = document.getElementById("input");
       const sendBtn = document.getElementById("sendBtn");
       const statusDot = document.getElementById("statusDot");
       const statusText = document.getElementById("statusText");
+      const hintEl = document.getElementById("hint");
+
+      let hasSent = false;
 
       function escapeHtml(input) {
         return String(input)
@@ -483,16 +627,80 @@
           .replaceAll("'", "&#039;");
       }
 
-      function renderBasicMarkdown(input) {
-        // Safe subset: escape HTML, then render **bold**, `inline code`, and newlines.
-        let s = escapeHtml(input ?? "");
+      function decodeEntities(s) {
+        return s
+          .replaceAll("&amp;", "&")
+          .replaceAll("&lt;", "<")
+          .replaceAll("&gt;", ">")
+          .replaceAll("&quot;", '"')
+          .replaceAll("&#039;", "'");
+      }
 
+      function renderParamBold(s) {
+        // **name**: optional, **name** *: required, **name***: legacy (star inside delimiters)
+        return s
+          .replace(
+            /\*\*([^*]+)\*\*(?: \*|\*)(?=:)/g,
+            '<strong>$1</strong><span class="req" aria-label="required">*</span>'
+          )
+          .replace(/\*\*([^*]+)\*(?=:)/g, '<strong>$1</strong><span class="req" aria-label="required">*</span>')
+          .replace(/\*\*([^*]+)\*\*(?=:)/g, "<strong>$1</strong>");
+      }
+
+      function renderInlineMarkdown(s) {
         s = s.replace(/`([^`]+)`/g, "<code>$1</code>");
+        s = renderParamBold(s);
         s = s.replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>");
-
-        // Preserve newlines. (Do this last so tags stay intact.)
-        s = s.replace(/\n/g, "<br>");
+        s = s.replace(
+          /\[([^\]]+)\]\((https?:\/\/[^)]+)\)/g,
+          '<a href="$2" target="_blank" rel="noreferrer noopener">$1</a>'
+        );
         return s;
+      }
+
+      function renderBasicMarkdown(input) {
+        let text = decodeEntities(escapeHtml(input ?? ""));
+        const lines = text.split("\n");
+        const out = [];
+        let i = 0;
+
+        while (i < lines.length) {
+          const line = lines[i];
+          const ulMatch = /^[-*]\s+(.+)$/.test(line);
+          const olMatch = /^\d+\.\s+(.+)$/.test(line);
+
+          if (ulMatch) {
+            const items = [];
+            while (i < lines.length && /^[-*]\s+(.+)$/.test(lines[i])) {
+              const m = lines[i].match(/^[-*]\s+(.+)$/);
+              items.push("<li>" + renderInlineMarkdown(m[1]) + "</li>");
+              i++;
+            }
+            out.push("<ul>" + items.join("") + "</ul>");
+            continue;
+          }
+
+          if (olMatch) {
+            const items = [];
+            while (i < lines.length && /^\d+\.\s+(.+)$/.test(lines[i])) {
+              const m = lines[i].match(/^\d+\.\s+(.+)$/);
+              items.push("<li>" + renderInlineMarkdown(m[1]) + "</li>");
+              i++;
+            }
+            out.push("<ol>" + items.join("") + "</ol>");
+            continue;
+          }
+
+          if (line.trim() === "") {
+            i++;
+            continue;
+          }
+
+          out.push("<p>" + renderInlineMarkdown(line) + "</p>");
+          i++;
+        }
+
+        return out.join("");
       }
 
       function setStatus(state, label) {
@@ -513,80 +721,145 @@
         return n;
       }
 
-      function addMessage({ role, text, sources, isError, isLoading }) {
-        const row = el("div", "row " + role);
+      function truncate(str, max) {
+        if (!str || str.length <= max) return str;
+        return str.slice(0, max).trim() + "...";
+      }
 
-        if (role === "agent") {
-          const avatar = el("div", "avatar", null);
-          avatar.setAttribute("aria-hidden", "true");
-          avatar.innerHTML =
-            '<svg viewBox="0 0 24 24"><path d="M12 2a7 7 0 00-4 12.8V18a2 2 0 002 2h4a2 2 0 002-2v-3.2A7 7 0 0012 2zm3 12.1c-.3.2-.5.6-.5 1V18h-5v-2.8c0-.4-.2-.8-.5-1A5 5 0 1115 14.1z"/></svg>';
-          row.appendChild(avatar);
+      function renderSources(sources, container) {
+        if (!sources || !sources.length) return;
+
+        const block = el("div", "sourcesBlock");
+        block.appendChild(el("div", "sourcesLabel", "Sources"));
+
+        const chips = el("div", "chips");
+        const shown = sources.slice(0, MAX_CHIPS);
+        for (const s of shown) {
+          const chip = el("button", "chip", truncate(s.title || s.url || "Source", 28));
+          chip.type = "button";
+          chip.title = s.title || s.url;
+          chip.addEventListener("click", () => window.open(s.url, "_blank", "noreferrer"));
+          chips.appendChild(chip);
         }
-
-        const bubble = el(
-          "div",
-          "bubble " + (role === "user" ? "user" : "agent") + (isError ? " error" : ""),
-          null
-        );
-
-        if (isLoading) {
-          const wrap = el("div", "loadingInline", null);
-          wrap.appendChild(el("div", "spinner", null));
-          wrap.appendChild(el("div", "", "Thinking..."));
-          bubble.appendChild(wrap);
-        } else {
-          if (role === "agent") {
-            bubble.classList.add("md");
-            bubble.innerHTML = renderBasicMarkdown(text || "");
-          } else {
-            bubble.textContent = text || "";
-          }
+        if (sources.length > MAX_CHIPS) {
+          const more = el("button", "chip more", "+" + (sources.length - MAX_CHIPS) + " more");
+          more.type = "button";
+          more.addEventListener("click", () => {
+            panel.classList.add("open");
+            viewAllBtn.textContent = "Hide sources";
+          });
+          chips.appendChild(more);
         }
+        block.appendChild(chips);
 
-        if (role === "agent" && !isLoading && sources && sources.length) {
-          const meta = el("div", "meta", null);
-          const header = el("div", "sourcesHeader", null);
-          header.appendChild(el("div", "sourcesTitle", "Sources"));
-          meta.appendChild(header);
+        const viewAllBtn = el("button", "viewAllBtn", "View all sources");
+        viewAllBtn.type = "button";
+        const panel = el("div", "sourcesPanel");
 
-          const list = el("div", "sources", null);
-          for (const s of sources) {
-            const item = el("div", "sourceItem", null);
-            const a = el("a", "sourceLink", s.title || s.url || "Source");
-            a.href = s.url || "#";
-            a.target = "_blank";
-            a.rel = "noreferrer noopener";
-            item.appendChild(a);
+        for (const s of sources) {
+          const item = el("div", "sourceItem");
+          const a = el("a", "sourceLink", s.title || s.url || "Source");
+          a.href = s.url || "#";
+          a.target = "_blank";
+          a.rel = "noreferrer noopener";
+          item.appendChild(a);
 
-            if (s.excerpt) {
-              const btn = el("button", "toggleBtn", "Show excerpt");
-              btn.type = "button";
-              const excerpt = el("div", "excerpt", s.excerpt);
-              excerpt.style.display = "none";
-              btn.addEventListener("click", () => {
-                const open = excerpt.style.display !== "none";
-                excerpt.style.display = open ? "none" : "block";
-                btn.textContent = open ? "Show excerpt" : "Hide excerpt";
+          if (s.excerpt) {
+            const full = s.excerpt;
+            const short = truncate(full, EXCERPT_TRUNCATE);
+            const excerpt = el("div", "excerpt", short);
+            const toggle = el("button", "toggleBtn", "Show excerpt");
+            toggle.type = "button";
+            let expanded = false;
+            let excerptOpen = false;
+
+            toggle.addEventListener("click", () => {
+              excerptOpen = !excerptOpen;
+              excerpt.classList.toggle("open", excerptOpen);
+              toggle.textContent = excerptOpen ? "Hide excerpt" : "Show excerpt";
+            });
+
+            if (full.length > EXCERPT_TRUNCATE) {
+              const moreBtn = el("button", "toggleBtn", "Show more");
+              moreBtn.type = "button";
+              moreBtn.addEventListener("click", () => {
+                expanded = !expanded;
+                excerpt.textContent = expanded ? full : short;
+                moreBtn.textContent = expanded ? "Show less" : "Show more";
+                if (!excerptOpen) {
+                  excerptOpen = true;
+                  excerpt.classList.add("open");
+                  toggle.textContent = "Hide excerpt";
+                }
               });
-              item.appendChild(btn);
+              item.appendChild(toggle);
+              item.appendChild(excerpt);
+              item.appendChild(moreBtn);
+            } else {
+              item.appendChild(toggle);
               item.appendChild(excerpt);
             }
-            list.appendChild(item);
           }
-          meta.appendChild(list);
-          bubble.appendChild(meta);
+          panel.appendChild(item);
         }
 
-        if (role === "user") {
-          row.appendChild(bubble);
+        viewAllBtn.addEventListener("click", () => {
+          const open = panel.classList.toggle("open");
+          viewAllBtn.textContent = open ? "Hide sources" : "View all sources";
+        });
+
+        block.appendChild(viewAllBtn);
+        block.appendChild(panel);
+        container.appendChild(block);
+      }
+
+      function addMessage({ role, text, sources, isError, isLoading }) {
+        const row = el("div", "row " + role);
+        const content = el("div", "bubble " + role + (isError ? " error" : ""));
+
+        if (isLoading) {
+          const typing = el("div", "typing");
+          const dots = el("div", "dots");
+          dots.innerHTML = "<span></span><span></span><span></span>";
+          typing.appendChild(dots);
+          typing.appendChild(el("span", "", "Searching docs..."));
+          content.appendChild(typing);
+          row.appendChild(content);
+        } else if (role === "agent") {
+          content.classList.add("md");
+          content.innerHTML = renderBasicMarkdown(text || "");
+          row.appendChild(content);
+
+          if (!isError && sources && sources.length) {
+            renderSources(sources, row);
+          }
+
+          if (!isError && text) {
+            const actions = el("div", "actions");
+            const copyBtn = el("button", "actionBtn", "Copy");
+            copyBtn.type = "button";
+            copyBtn.addEventListener("click", async () => {
+              try {
+                await navigator.clipboard.writeText(text);
+                copyBtn.textContent = "Copied";
+                setTimeout(() => {
+                  copyBtn.textContent = "Copy";
+                }, 1500);
+              } catch (_) {
+                copyBtn.textContent = "Failed";
+              }
+            });
+            actions.appendChild(copyBtn);
+            row.appendChild(actions);
+          }
         } else {
-          row.appendChild(bubble);
+          content.textContent = text || "";
+          row.appendChild(content);
         }
 
         messagesEl.appendChild(row);
         scrollToBottom();
-        return bubble;
+        return row;
       }
 
       function formatError(errText) {
@@ -603,9 +876,9 @@
             cache: "no-store",
           });
           if (!r.ok) throw new Error("HTTP " + r.status);
-          setStatus("ok", "API connected");
+          setStatus("ok", "Connected");
         } catch (e) {
-          setStatus("bad", "API not reachable");
+          setStatus("bad", "Offline");
         }
       }
 
@@ -618,6 +891,11 @@
         const question = (inputEl.value || "").trim();
         if (!question) return;
 
+        if (!hasSent) {
+          hasSent = true;
+          hintEl.classList.add("hidden");
+        }
+
         inputEl.value = "";
         autoGrow(inputEl);
         inputEl.focus();
@@ -626,13 +904,13 @@
         sendBtn.disabled = true;
         inputEl.disabled = true;
 
-        const loadingBubble = addMessage({ role: "agent", isLoading: true });
+        const loadingRow = addMessage({ role: "agent", isLoading: true });
 
         try {
           const url = API_URL.replace(/\/$/, "") + "/ask";
           const res = await fetch(url, {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
+            headers: askHeaders(),
             body: JSON.stringify({ question }),
           });
 
@@ -651,14 +929,13 @@
           const answer = data && typeof data.answer === "string" ? data.answer : "";
           const sources = data && Array.isArray(data.sources) ? data.sources : [];
 
-          loadingBubble.replaceWith(
-            addMessage({ role: "agent", text: answer || "(empty answer)", sources })
-          );
-          setStatus("ok", "API connected");
+          loadingRow.remove();
+          addMessage({ role: "agent", text: answer || "(empty answer)", sources });
+          setStatus("ok", "Connected");
         } catch (e) {
-          const msg = formatError(e && e.message ? e.message : "");
-          loadingBubble.replaceWith(addMessage({ role: "agent", text: msg, isError: true }));
-          setStatus("bad", "API error");
+          loadingRow.remove();
+          addMessage({ role: "agent", text: formatError(e && e.message ? e.message : ""), isError: true });
+          setStatus("bad", "Error");
           console.error(e);
         } finally {
           sendBtn.disabled = false;
@@ -668,9 +945,7 @@
       }
 
       sendBtn.addEventListener("click", () => void sendMessage());
-
       inputEl.addEventListener("input", () => autoGrow(inputEl));
-
       inputEl.addEventListener("keydown", (e) => {
         if (e.key === "Enter" && !e.shiftKey) {
           e.preventDefault();
@@ -678,17 +953,13 @@
         }
       });
 
-      // Initial content
       addMessage({
         role: "agent",
-        text:
-          'Ask me anything about Fabrix docs. For example: "What parameters does the count loop bot take?"',
+        text: 'Ask me anything about Fabrix docs. For example: "What parameters does the count loop bot take?"',
       });
 
-      // Kick off health checks (non-blocking)
       void healthCheck();
       setInterval(healthCheck, 15000);
     </script>
   </body>
 </html>
-
