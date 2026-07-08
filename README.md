@@ -20,7 +20,7 @@ Working prototype: full pipeline (chunk → embed → store → retrieve → gen
 
 ## Remote path (in progress)
 
-`src/ingest_and_test_remote.py` uploads raw markdown to a hosted Qdrant server. Chunking and embedding happen server-side using `BAAI/bge-large-en-v1.5`. Requires VPN. Uses a different embedding model than the local path; some large bot files still timeout at 120s.
+`src/ingest_and_test_remote.py` uploads raw markdown to a hosted Qdrant server. Chunking and embedding happen server-side using `BAAI/bge-large-en-v1.5`. Requires VPN and `REMOTE_BASE_URL` in `.env`. Uses a different embedding model than the local path; some large bot files still timeout at 120s.
 
 ## Legacy path (not used)
 
@@ -37,8 +37,8 @@ pip install -r requirements.txt
 Create a `.env` file in the project root (gitignored):
 
 ```bash
-OPENROUTER_API_KEY=your_key_here   # embeddings
-OPENAI_API_KEY=your_key_here       # generation
+cp .env.example .env
+# Edit .env: API keys plus BOTS_DIR / CFXQL_FILE (required for ingest)
 ```
 
 All scripts load `.env` automatically via `src/config.py`. You can still `export` vars in your shell instead if you prefer.
@@ -53,6 +53,8 @@ All scripts load `.env` automatically via `src/config.py`. You can still `export
 | `DOCS_ROOT_FILES` | Comma-separated root-level `.md` files to ingest | `index.md,Datasets.md,Formatting-Templates.md` |
 | `CFXQL_FILE` | Path to CFXQL reference markdown | **required** (set in `.env`) |
 | `EMBEDDING_MODEL` | OpenRouter embedding model | `sentence-transformers/all-minilm-l6-v2` |
+| `COLLECTION_NAME` | Qdrant collection name | `fabrix_docs` |
+| `REMOTE_BASE_URL` | Remote fastembed wrapper URL (VPN path) | unset (local path) |
 | `LLM_MODEL` | OpenAI generation model | `gpt-4o-mini` |
 | `DOCS_SITE_ORIGIN` | CORS origin for docs.fabrix.ai | `*` (local dev) |
 | `API_KEY` | Optional `X-API-Key` auth on `POST /ask` | unset (no auth) |
@@ -86,6 +88,10 @@ python3 src/agent.py "What parameters does the count loop bot take?"
 uvicorn src.api:app --reload --port 8080
 # POST /ask {"question": "..."} -> {answer, sources}
 # GET  /health -> {"status": "ok"}
+
+# beta chat UI (API must be running on :8080)
+python3 -m http.server 5173 --directory chat
+# open http://localhost:5173/
 
 # agent eval (no category hints; writes tests/eval_agent_results.txt)
 python3 tests/run_eval_agent.py
