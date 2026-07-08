@@ -9,6 +9,7 @@ import os
 import re
 import sys
 import time
+from functools import lru_cache
 
 import requests
 from openai import OpenAI
@@ -39,17 +40,35 @@ def _local_embedding_model():
     return EMBEDDING_MODEL
 
 
-def embed_question(question):
+@lru_cache(maxsize=256)
+def _embed_question_cached(model: str, question: str):
+    url = EMBEDDINGS_URL
+    headers = {
+        "Authorization": f"Bearer {os.environ['OPENROUTER_API_KEY']}",
+        "Content-Type": "application/json",
+    }
+    payload = {"model": model, "input": [question]}
+
+    last_err = None
+    for attempt in range(2):
+        try:
+            response = requests.post(url, headers=headers, json=payload, timeout=30)
+            response.raise_for_status()
+            data = response.json()
+            return data["data"][0]["embedding"]
+        except Exception as e:
+            last_err = e
+            if attempt == 0:
+                time.sleep(1)
+                continue
+            raise
+
+    raise last_err  # pragma: no cover
+
+
+def embed_question(question: str):
     model = EMBEDDING_MODEL if REMOTE_BASE_URL else _local_embedding_model()
-    response = requests.post(
-        EMBEDDINGS_URL,
-        headers={
-            "Authorization": f"Bearer {os.environ['OPENROUTER_API_KEY']}",
-            "Content-Type": "application/json",
-        },
-        json={"model": model, "input": [question]},
-    )
-    return response.json()["data"][0]["embedding"]
+    return _embed_question_cached(model, question)
 
 def build_filter(filter_dict):
     if not filter_dict:
@@ -97,6 +116,72 @@ def prune_lookup_chunks(question, chunks, category):
     if not all(h in top_name for h in hints):
         return chunks[:2]
     return [c for c in chunks if c["metadata"].get("bot_name", "").lower() == top_name]
+
+
+_PARAM_TABLE_HEADER_RE = re.compile(r"^\|\s*Parameter\s+Name\s*\|", re.IGNORECASE)
+_HTML_TAG_RE = re.compile(r"<[^>]+>")
+
+
+def _strip_html(s: str) -> str:
+    return _HTML_TAG_RE.sub("", s or "").strip()
+
+
+def parse_bot_param_table(text: str):
+    """
+    Best-effort parser for the bot parameter table embedded in bot chunks.
+
+    Returns: list[dict] rows: {name, required, type, default, description}
+    """
+    if not text:
+        return []
+    lines = [ln.strip() for ln in text.splitlines()]
+
+    # Find the markdown table header row.
+    start = None
+    for i, ln in enumerate(lines):
+        if _PARAM_TABLE_HEADER_RE.match(ln):
+            start = i
+            break
+    if start is None:
+        return []
+
+    rows = []
+    for ln in lines[start + 1 :]:
+        if not ln.startswith("|"):
+            # stop when table ends
+            if rows:
+                break
+            continue
+
+        # Skip separator rows like |---|---|
+        if re.match(r"^\|\s*-+\s*\|", ln):
+            continue
+
+        parts = [p.strip() for p in ln.strip("|").split("|")]
+        if len(parts) < 4:
+            continue
+
+        name_raw, type_raw, default_raw, desc_raw = (parts + ["", "", "", ""])[:4]
+        name_text = _strip_html(name_raw)
+        desc_text = _strip_html(desc_raw)
+
+        # Required markers show up as asterisk or HTML span with red marker.
+        required = False
+        if "*" in name_raw or "*" in name_text:
+            required = True
+        name_text = name_text.replace("*", "").strip()
+
+        rows.append(
+            {
+                "name": name_text,
+                "required": required,
+                "type": _strip_html(type_raw),
+                "default": _strip_html(default_raw),
+                "description": desc_text,
+            }
+        )
+
+    return rows
 
 
 def retrieve_remote(question, top_k=5, filter_dict=None):

@@ -21,7 +21,7 @@ sys.path.insert(0, os.path.dirname(__file__))
 
 from config import DOCS_INCLUDE_DIRS, LLM_MODEL, QDRANT_DIR
 from doc_urls import BOTS_REL_PREFIX, chunk_metadata_to_url, public_doc_url
-from query_qdrant import bot_name_hints, generate, run_pipeline
+from query_qdrant import bot_name_hints, generate, parse_bot_param_table, prune_lookup_chunks, retrieve, run_pipeline
 
 logger = logging.getLogger(__name__)
 
@@ -262,6 +262,43 @@ def answer(question, client=None):
 
     if client is None:
         client = QdrantClient(path=QDRANT_DIR)
+
+    # Fast path for lookup: deterministic answer from the bot parameter table.
+    if plan.category_hint == "lookup":
+        chunks = retrieve(
+            question,
+            client,
+            top_k=plan.top_k,
+            filter_dict=filter_dict_from_plan(plan),
+        )
+        chunks = prune_lookup_chunks(question, chunks, plan.category_hint)
+
+        if chunks and chunks[0]["metadata"].get("type") == "bot":
+            hints = bot_name_hints(question)
+            bot_name = (chunks[0]["metadata"].get("bot_name") or "").lower()
+            bot_match = bool(hints) and all(h in bot_name for h in hints)
+
+            rows = parse_bot_param_table(chunks[0].get("text", ""))
+            if bot_match and rows:
+                required_rows = [r for r in rows if r["required"]]
+                optional_rows = [r for r in rows if not r["required"]]
+
+                lines = ["The bot takes the following parameters:"]
+                for r in required_rows + optional_rows:
+                    star = "*" if r["required"] else ""
+                    desc = r["description"] or ""
+                    if r["default"]:
+                        desc = (desc + f" (default {r['default']})").strip()
+                    lines.append(f"- **{r['name']}{star}**: {desc}".strip())
+
+                ans = "\n".join(lines).strip()
+                return AgentResponse(
+                    answer=ans,
+                    sources=_sources_from_chunks(chunks[:1]),
+                    sufficient=True,
+                )
+
+    # Default path (LLM generation + judge/retry).
     chunks, ans = run_pipeline(
         question,
         client,
