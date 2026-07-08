@@ -6,7 +6,12 @@ __pycache__/
 
 # Environment / secrets
 .env
+.env.*
+!.env.example
 *.key
+*.pem
+credentials.json
+secrets.json
 
 # Generated data - rebuilt from ingest, not source of truth
 data/chroma_db/

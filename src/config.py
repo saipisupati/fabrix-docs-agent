@@ -42,21 +42,19 @@ REMOTE_BASE_URL = os.environ.get("REMOTE_BASE_URL", "")
 
 
 
-_DEFAULT_BOTS_DIR = (
-    "/Users/supersaiyan.06/Downloads/rdaf_docs/rdaf_docs/bot_library/target/docs/Bots"
-)
-_DEFAULT_DOCS_ROOT = os.path.dirname(_DEFAULT_BOTS_DIR)
-_DEFAULT_CFXQL_FILE = (
-    "/Users/supersaiyan.06/Downloads/rdaf_docs/rdaf_docs/bot_library/target/docs/"
-    "reference_guides/cfxql.md"
-)
+# No machine-specific paths in repo; set in .env or shell (see .env.example)
+_DEFAULT_BOTS_DIR = ""
+_DEFAULT_DOCS_ROOT = ""
+_DEFAULT_CFXQL_FILE = ""
 _DEFAULT_DOCS_INCLUDE_DIRS = (
     "beginners_guide,reference_guides,installation_guides,Pipelines,"
     "Datasource_Integrations,ai_fabric,Extensions,rda_releases"
 )
 
 BOTS_DIR = os.environ.get("BOTS_DIR", _DEFAULT_BOTS_DIR)
-DOCS_ROOT = os.environ.get("DOCS_ROOT", _DEFAULT_DOCS_ROOT)
+DOCS_ROOT = os.environ.get("DOCS_ROOT", _DEFAULT_DOCS_ROOT) or (
+    os.path.dirname(BOTS_DIR) if BOTS_DIR else ""
+)
 CFXQL_FILE = os.environ.get("CFXQL_FILE", _DEFAULT_CFXQL_FILE)
 DOCS_INCLUDE_DIRS = [
     d.strip()

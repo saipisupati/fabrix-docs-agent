@@ -47,17 +47,17 @@ All scripts load `.env` automatically via `src/config.py`. You can still `export
 
 | Variable | Purpose | Default |
 |----------|---------|---------|
-| `BOTS_DIR` | Path to bot catalog `.md` files | machine-specific path in `config.py` |
-| `DOCS_ROOT` | Root of MD doc export (parent of `Bots/`) | machine-specific path in `config.py` |
+| `BOTS_DIR` | Path to bot catalog `.md` files | **required** (set in `.env`) |
+| `DOCS_ROOT` | Root of MD doc export (parent of `Bots/`) | derived from `BOTS_DIR` or set in `.env` |
 | `DOCS_INCLUDE_DIRS` | Comma-separated narrative folders to ingest | 8 folders (see `config.py`) |
 | `DOCS_ROOT_FILES` | Comma-separated root-level `.md` files to ingest | `index.md,Datasets.md,Formatting-Templates.md` |
-| `CFXQL_FILE` | Path to CFXQL reference markdown | machine-specific path in `config.py` |
+| `CFXQL_FILE` | Path to CFXQL reference markdown | **required** (set in `.env`) |
 | `EMBEDDING_MODEL` | OpenRouter embedding model | `sentence-transformers/all-minilm-l6-v2` |
 | `LLM_MODEL` | OpenAI generation model | `gpt-4o-mini` |
 | `DOCS_SITE_ORIGIN` | CORS origin for docs.fabrix.ai | `*` (local dev) |
 | `API_KEY` | Optional `X-API-Key` auth on `POST /ask` | unset (no auth) |
 
-Override `BOTS_DIR` and `CFXQL_FILE` when running on a machine other than the one that wrote the defaults.
+Set `BOTS_DIR`, `DOCS_ROOT`, and `CFXQL_FILE` in `.env` (see `.env.example`).
 
 ## Running it
 
@@ -140,7 +140,7 @@ Embed the ask widget on [docs.fabrix.ai](https://docs.fabrix.ai) and point it at
 
 ## Open questions / known issues
 
-- Default `BOTS_DIR` / `CFXQL_FILE` paths in `config.py` are machine-specific: override via env vars on other machines
+- `BOTS_DIR` / `CFXQL_FILE` must be set in `.env` before ingest (no machine-specific defaults in repo)
 - Two embedding models across paths (MiniLM local, BGE-large remote), no shared config
 - Remote ingestion timeouts on larger bot catalog files
 - Local Qdrant file lock: only one process (API or eval) can open `data/qdrant_db/` at a time

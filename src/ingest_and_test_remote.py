@@ -10,12 +10,11 @@ import sys
 import requests
 
 sys.path.insert(0, os.path.dirname(__file__))
-from config import BOTS_DIR, CFXQL_FILE
+from config import BOTS_DIR, CFXQL_FILE, COLLECTION_NAME, REMOTE_BASE_URL
 
-BASE_URL = "http://10.95.121.54:8000"
-
-EMBEDDING_MODEL = "BAAI/bge-large-en-v1.5"
-COLLECTION_NAME = "sai_fabrix_docs_v1"
+EMBEDDING_MODEL_REMOTE = os.environ.get(
+    "EMBEDDING_MODEL", "BAAI/bge-large-en-v1.5"
+)
 
 SAMPLE_QUESTIONS = [
     "what does the kafka poll-topic bot do?",
@@ -24,12 +23,21 @@ SAMPLE_QUESTIONS = [
 ]
 
 
+def _base_url():
+    url = (REMOTE_BASE_URL or "").rstrip("/")
+    if not url:
+        print("Error: REMOTE_BASE_URL is required (set in .env).")
+        sys.exit(1)
+    return url
+
+
 def create_collection():
-    print(f"Creating collection '{COLLECTION_NAME}' with model '{EMBEDDING_MODEL}'...")
+    base = _base_url()
+    print(f"Creating collection '{COLLECTION_NAME}' with model '{EMBEDDING_MODEL_REMOTE}'...")
     response = requests.post(
-        f"{BASE_URL}/collections",
+        f"{base}/collections",
         headers={"Content-Type": "application/json"},
-        json={"collection_name": COLLECTION_NAME, "embedding_model": EMBEDDING_MODEL},
+        json={"collection_name": COLLECTION_NAME, "embedding_model": EMBEDDING_MODEL_REMOTE},
     )
     print(f"  -> {response.status_code}: {response.text[:200]}")
     return response.ok
@@ -37,10 +45,11 @@ def create_collection():
 
 def upload_file(filepath, timeout=120):
     filename = os.path.basename(filepath)
+    base = _base_url()
     with open(filepath, "rb") as f:
         try:
             response = requests.post(
-                f"{BASE_URL}/upload",
+                f"{base}/upload",
                 data={"collection_name": COLLECTION_NAME},
                 files={"file": (filename, f)},
                 timeout=timeout,
@@ -74,8 +83,9 @@ def ingest_all():
 
 
 def search(question, limit=3):
+    base = _base_url()
     response = requests.post(
-        f"{BASE_URL}/search",
+        f"{base}/search",
         headers={"Content-Type": "application/json"},
         json={"collection_name": COLLECTION_NAME, "query": question, "limit": limit},
     )
@@ -104,6 +114,7 @@ def run_sample_questions():
 
 
 def main():
+    print(f"Using REMOTE_BASE_URL={_base_url()}")
     print(f"Using BOTS_DIR={BOTS_DIR}")
     print(f"Using CFXQL_FILE={CFXQL_FILE}")
     if not create_collection():
