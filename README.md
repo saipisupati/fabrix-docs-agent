@@ -11,7 +11,9 @@ Working prototype: full pipeline (chunk → embed → store → retrieve → gen
 ## How it works (local path: primary)
 
 1. **Chunk + embed + store** (`src/ingest_qdrant.py`): loads the bot catalog from `BOTS_DIR`, CFXQL from `CFXQL_FILE`, and narrative guides from `DOCS_INCLUDE_DIRS` under `DOCS_ROOT`, chunks with strategy-specific logic, embeds via OpenRouter, and stores in local Qdrant at `data/qdrant_db/`. Requires `OPENROUTER_API_KEY`.
-2. **Query + generate** (`src/query_qdrant.py`): embeds the question (model from `embedding_model.txt` on local path), retrieves top-k chunks, builds a grounded prompt, generates via `gpt-4o-mini`. Requires `OPENROUTER_API_KEY` and `OPENAI_API_KEY`.
+2. **Structured knowledge base** (`src/build_kb.py`): extracts topics/entities/facts/procedures from the same public MD corpus into `data/kb/kb.json` + `embeddings.npz`, and optionally upserts into Qdrant collection `fabrix_kb`. Run after ingest (or whenever docs change).
+3. **Agent** (`src/agent.py`): LLM scope check → KB-first retrieve (chunk fallback) → one unified best answer (with a light inference disclosure when synthesis is used). `examples` / `gaps` / `sources` are separate fields for the UI. `sources` is empty when out of scope or ungrounded.
+4. **Query + generate** (`src/query_qdrant.py`): embeds the question, retrieves top-k chunks, builds a grounded prompt, generates via `gpt-4o-mini`. Used as chunk fallback and by older eval scripts.
 
 **CFXQL chunking strategies** (`CHUNKING_STRATEGY` in `ingest_qdrant.py`):
 - `hand_rolled` (default): hardcoded splits at this doc's headers, most accurate, doesn't generalize
@@ -54,6 +56,7 @@ All scripts load `.env` automatically via `src/config.py`. You can still `export
 | `CFXQL_FILE` | Path to CFXQL reference markdown | **required** (set in `.env`) |
 | `EMBEDDING_MODEL` | OpenRouter embedding model | `sentence-transformers/all-minilm-l6-v2` |
 | `COLLECTION_NAME` | Qdrant collection name | `fabrix_docs` |
+| `KB_COLLECTION_NAME` | Qdrant KB collection name | `fabrix_kb` |
 | `REMOTE_BASE_URL` | Remote fastembed wrapper URL (VPN path) | unset (local path) |
 | `LLM_MODEL` | OpenAI generation model | `gpt-4o-mini` |
 | `DOCS_SITE_ORIGIN` | CORS origin for docs.fabrix.ai | `*` (local dev) |
@@ -72,6 +75,9 @@ python3 scripts/audit_ingest_sources.py
 # chunk + embed + store
 python3 src/ingest_qdrant.py
 
+# build structured KB (after ingest; writes data/kb/)
+python3 src/build_kb.py
+
 # query with generation
 python3 src/query_qdrant.py "what parameters does the count loop bot take?"
 
@@ -86,7 +92,7 @@ python3 src/agent.py "What parameters does the count loop bot take?"
 
 # API server
 uvicorn src.api:app --reload --port 8080
-# POST /ask {"question": "..."} -> {answer, sources}
+# POST /ask {"question": "..."} -> {answer, sources, examples, gaps, scope}
 # GET  /health -> {"status": "ok"}
 
 # beta chat UI (API must be running on :8080)
@@ -95,6 +101,22 @@ python3 -m http.server 5173 --directory chat
 
 # agent eval (no category hints; writes tests/eval_agent_results.txt)
 python3 tests/run_eval_agent.py
+
+# KB/scope/inference/examples eval (writes tests/eval_kb_results.txt)
+python3 tests/run_eval_kb.py
+
+# production-style Fabrix ops battery (multi-facet + critique; stop API first)
+python3 tests/eval_production.py
+
+# adversarial break battery (stop API first)
+python3 tests/eval_break.py
+
+# readiness gate: PASS rate + p95 latency (stop API first)
+python3 tests/eval_readiness.py
+
+# quality harness: production + full break + readiness streak (stop API first)
+# see docs/QUALITY_LOOP.md — exit 0 only when raised bar holds (GREEN ×2)
+python3 tests/run_quality_harness.py
 
 # random bot retrieval spot check (15 bots, seed 42)
 python3 tests/run_eval_bot_sample.py
@@ -137,12 +159,53 @@ Embed the ask widget on [docs.fabrix.ai](https://docs.fabrix.ai) and point it at
 
 ## Eval
 
-- `tests/eval_set.py`: 20 hand-built cases (lookup, comparison, multi-part, guide, install, ai_fabric, pipeline, datasource, extensions, releases, negative/hallucination)
+- `tests/eval_set.py`: hand-built cases (lookup, comparison, multi-part, guide, install, ai_fabric, pipeline, datasource, extensions, releases, negative/hallucination, plus **scope / inference / examples / gaps** for the KB agent)
 - `tests/run_eval_baseline.py`: automated retrieval-only scoring against `eval_set.py` (source hit + fact coverage in top-k chunks). Requires `OPENROUTER_API_KEY` and an ingested `data/qdrant_db/`. Results go to `tests/eval_baseline_results.txt` (gitignored).
 - `tests/run_eval_generation.py`: oracle full-pipeline scoring (category + filter hints passed manually). Requires `OPENROUTER_API_KEY`, `OPENAI_API_KEY`, and ingested `data/qdrant_db/`. Results go to `tests/eval_generation_results.txt` (gitignored).
 - `tests/run_eval_agent.py`: agent path via `agent.answer()` with no manual filters (real-user proxy). Same keys and Qdrant DB required. Results go to `tests/eval_agent_results.txt` (gitignored).
+- `tests/run_eval_kb.py`: KB agent checks for out-of-scope empty sources, Fabrix technical inference labeling (`expect_inferred`), examples, and gaps. Requires `data/kb/` from `build_kb.py`. Results go to `tests/eval_kb_results.txt` (gitignored).
+- `tests/eval_production.py`: production-style Fabrix ops battery (multi-facet retrieve + critique). Results go to `tests/eval_production_results.txt` (gitignored). Stop the API first (Qdrant lock).
+- `tests/eval_break.py`: adversarial break battery (format stress, slang names, traps, contamination). Results go to `tests/eval_break_results.txt` (gitignored).
+- `tests/eval_readiness.py`: readiness gate (PASS rate ≥95% + p95 latency budget). Results go to `tests/eval_readiness_results.txt` (gitignored). Do not embed on the docs site until GREEN twice in a row.
+- `tests/run_quality_harness.py`: raised-bar loop (production 100% + full break ≥95%/0 FAIL + readiness GREEN ×2). Writes `tests/quality_harness_digest.md` and `tests/readiness_streak.json` (gitignored). Playbook: [docs/QUALITY_LOOP.md](docs/QUALITY_LOOP.md).
 - `tests/run_eval_bot_sample.py`: retrieval-only random bot sample (default 15 bots, seed 42). Grades top-1 bot hit for generic parameter questions. Results go to `tests/eval_bot_sample_results.txt` (gitignored).
 - `tests/run_eval.py`: runs each case through `query_qdrant.ask()` for manual pass/fail/partial grading
+
+## Deploy: copy Qdrant + KB
+
+`data/qdrant_db/` and `data/kb/` are gitignored. On a VM, either rebuild or copy from a machine that already ran ingest + KB build:
+
+```bash
+# on build machine
+tar czf fabrix_runtime_data.tar.gz data/qdrant_db data/kb
+
+# on VM (API stopped — local Qdrant is single-process)
+tar xzf fabrix_runtime_data.tar.gz
+# then start uvicorn as usual
+```
+
+Or rebuild on the server:
+
+```bash
+python3 scripts/audit_ingest_sources.py
+python3 src/ingest_qdrant.py
+python3 src/build_kb.py   # stop API first if upserting fabrix_kb into the same Qdrant path
+```
+
+**Answer contract:** one unified `answer` (ChatGPT-style). When Fabrix technical synthesis is used, `used_inference=true` and the answer includes a short disclosure line. `examples` / `gaps` / `sources` are separate fields (chat shows Examples → Sources → Gaps below the bubble). `sources` is `[]` when the agent abstains or finds no grounding.
+
+### Technical inference smoke
+
+Ask Fabrix-only synthesis questions (not generic OS tips). Expect `scope=related` (or `in_scope`), a single coherent **path-first** answer (named Fabrix objects before host prerequisites), `used_inference=true` (or the disclosure line), and Examples below—not a big `## Inferred` report section:
+
+```bash
+python3 src/agent.py "How would I build a Fabrix pipeline that pulls ServiceNow ticket data and writes it to a persistent stream?"
+python3 src/agent.py "In Agentic AI on Fabrix, when should I use a Toolset versus a Persona?"
+python3 src/agent.py "How would I chain a Kubernetes inventory collection into a dashboard-friendly dataset?"
+# Expect kubernetes-inventory / SSH|HTTP path — not linux-inventory; no invented "auto dashboard" as fact
+python3 tests/run_eval_kb.py
+python3 tests/eval_production.py
+```
 
 ## Open questions / known issues
 
@@ -150,4 +213,4 @@ Embed the ask widget on [docs.fabrix.ai](https://docs.fabrix.ai) and point it at
 - Two embedding models across paths (MiniLM local, BGE-large remote), no shared config
 - Remote ingestion timeouts on larger bot catalog files
 - Local Qdrant file lock: only one process (API or eval) can open `data/qdrant_db/` at a time
-- `data/qdrant_db/` is gitignored: rebuild locally via ingest
+- `data/qdrant_db/` and `data/kb/` are gitignored: rebuild via ingest + `build_kb.py`, or copy for VM deploy

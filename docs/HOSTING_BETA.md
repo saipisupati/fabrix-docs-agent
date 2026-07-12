@@ -30,6 +30,7 @@ The chat page defaults to `window.location.origin` for API calls when `FabrixCha
 - Python 3.9+
 - Git clone of this repo
 - `data/qdrant_db/` on the server (copy from a machine that ran ingest, or re-run ingest)
+- `data/kb/` on the server (copy from a machine that ran `python3 src/build_kb.py`, or rebuild after ingest)
 - `.env` with `OPENROUTER_API_KEY` and `OPENAI_API_KEY`
 - TLS certificate (existing Fabrix cert or load balancer)
 
@@ -62,6 +63,16 @@ Pre-ingest audit (if re-ingesting):
 ```bash
 python3 scripts/audit_ingest_sources.py
 python3 src/ingest_qdrant.py
+python3 src/build_kb.py
+```
+
+Copy both artifacts if not rebuilding on the VM:
+
+```bash
+# from build machine
+tar czf fabrix_runtime_data.tar.gz data/qdrant_db data/kb
+# on VM (stop API first)
+tar xzf fabrix_runtime_data.tar.gz
 ```
 
 ---

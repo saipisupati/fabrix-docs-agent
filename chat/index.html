@@ -310,6 +310,40 @@
         width: 100%;
       }
 
+      .metaBlock {
+        margin-top: 10px;
+        width: 100%;
+        padding: 10px 12px;
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        background: rgba(255, 255, 255, 0.03);
+      }
+
+      .metaBlock.gaps {
+        border-color: rgba(240, 90, 40, 0.2);
+        opacity: 0.92;
+      }
+
+      .metaList {
+        margin: 0;
+        padding-left: 18px;
+        color: var(--muted);
+        font-size: 13px;
+        line-height: 1.45;
+      }
+
+      .metaList li {
+        margin: 4px 0;
+      }
+
+      .inferFooter {
+        margin-top: 8px;
+        font-size: 12px;
+        color: var(--muted2);
+        font-style: italic;
+        line-height: 1.4;
+      }
+
       .sourcesLabel {
         font-size: 11px;
         font-weight: 600;
@@ -493,6 +527,37 @@
         cursor: not-allowed;
       }
 
+      .cancelBtn {
+        appearance: none;
+        flex: 0 0 auto;
+        height: 36px;
+        padding: 0 12px;
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        background: transparent;
+        color: var(--muted);
+        cursor: pointer;
+        font-size: 12px;
+        display: none;
+      }
+
+      .cancelBtn.visible {
+        display: inline-flex;
+        align-items: center;
+      }
+
+      .cancelBtn:hover {
+        color: var(--text);
+        border-color: var(--muted);
+      }
+
+      .elapsed {
+        color: var(--muted2);
+        font-size: 12px;
+        font-variant-numeric: tabular-nums;
+        margin-left: 6px;
+      }
+
       .sendBtn svg {
         width: 18px;
         height: 18px;
@@ -568,6 +633,9 @@
             rows="1"
             aria-label="Message input"
           ></textarea>
+          <button id="cancelBtn" class="cancelBtn" type="button" aria-label="Cancel request">
+            Cancel
+          </button>
           <button id="sendBtn" class="sendBtn" type="button" aria-label="Send message">
             <svg viewBox="0 0 24 24" aria-hidden="true">
               <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z" />
@@ -612,8 +680,11 @@
       const messagesEl = document.getElementById("messages");
       const inputEl = document.getElementById("input");
       const sendBtn = document.getElementById("sendBtn");
+      const cancelBtn = document.getElementById("cancelBtn");
       const statusDot = document.getElementById("statusDot");
       const statusText = document.getElementById("statusText");
+      let activeAbort = null;
+      let elapsedTimer = null;
       const hintEl = document.getElementById("hint");
 
       let hasSent = false;
@@ -664,30 +735,97 @@
         const out = [];
         let i = 0;
 
+        const isUl = (ln) => /^[-*]\s+(.+)$/.test(ln);
+        const isOl = (ln) => /^\d+\.\s+(.+)$/.test(ln);
+        const isContinuation = (ln) => {
+          if (!ln || !ln.trim()) return false;
+          if (isUl(ln) || isOl(ln)) return false;
+          return true;
+        };
+
+        const consumeList = (ordered) => {
+          const items = [];
+          while (i < lines.length) {
+            while (i < lines.length && lines[i].trim() === "") {
+              let j = i + 1;
+              while (j < lines.length && lines[j].trim() === "") j++;
+              const next = j < lines.length ? lines[j] : "";
+              if ((ordered && isOl(next)) || (!ordered && isUl(next))) {
+                i = j;
+                continue;
+              }
+              return items;
+            }
+            if (i >= lines.length) break;
+
+            if (ordered) {
+              if (!isOl(lines[i])) break;
+              const m = lines[i].match(/^(\d+)\.\s+(.+)$/);
+              const parts = [m[2]];
+              const num = m[1];
+              i++;
+              while (i < lines.length) {
+                if (lines[i].trim() === "") {
+                  let j = i + 1;
+                  while (j < lines.length && lines[j].trim() === "") j++;
+                  const next = j < lines.length ? lines[j] : "";
+                  if (isOl(next) || isUl(next)) break;
+                  if (isContinuation(next)) {
+                    parts.push(next.trim());
+                    i = j + 1;
+                    continue;
+                  }
+                  break;
+                }
+                if (isOl(lines[i]) || isUl(lines[i])) break;
+                if (isContinuation(lines[i])) {
+                  parts.push(lines[i].trim());
+                  i++;
+                  continue;
+                }
+                break;
+              }
+              items.push(
+                '<li value="' + num + '">' + renderInlineMarkdown(parts.join(" ")) + "</li>"
+              );
+            } else {
+              if (!isUl(lines[i])) break;
+              const m = lines[i].match(/^[-*]\s+(.+)$/);
+              const parts = [m[1]];
+              i++;
+              while (
+                i < lines.length &&
+                lines[i].trim() !== "" &&
+                !isUl(lines[i]) &&
+                !isOl(lines[i]) &&
+                isContinuation(lines[i])
+              ) {
+                parts.push(lines[i].trim());
+                i++;
+              }
+              items.push("<li>" + renderInlineMarkdown(parts.join(" ")) + "</li>");
+            }
+          }
+          return items;
+        };
+
         while (i < lines.length) {
           const line = lines[i];
-          const ulMatch = /^[-*]\s+(.+)$/.test(line);
-          const olMatch = /^\d+\.\s+(.+)$/.test(line);
 
-          if (ulMatch) {
-            const items = [];
-            while (i < lines.length && /^[-*]\s+(.+)$/.test(lines[i])) {
-              const m = lines[i].match(/^[-*]\s+(.+)$/);
-              items.push("<li>" + renderInlineMarkdown(m[1]) + "</li>");
-              i++;
-            }
-            out.push("<ul>" + items.join("") + "</ul>");
+          if (isUl(line)) {
+            const items = consumeList(false);
+            if (items.length) out.push("<ul>" + items.join("") + "</ul>");
             continue;
           }
 
-          if (olMatch) {
-            const items = [];
-            while (i < lines.length && /^\d+\.\s+(.+)$/.test(lines[i])) {
-              const m = lines[i].match(/^\d+\.\s+(.+)$/);
-              items.push("<li>" + renderInlineMarkdown(m[1]) + "</li>");
-              i++;
+          if (isOl(line)) {
+            const items = consumeList(true);
+            if (items.length) {
+              const startMatch = items[0].match(/value="(\d+)"/);
+              const start = startMatch ? startMatch[1] : "1";
+              const startAttr = start !== "1" ? ' start="' + start + '"' : "";
+              out.push("<ol" + startAttr + ">" + items.join("") + "</ol>");
             }
-            out.push("<ol>" + items.join("") + "</ol>");
             continue;
           }
 
@@ -724,6 +862,18 @@
       function truncate(str, max) {
         if (!str || str.length <= max) return str;
         return str.slice(0, max).trim() + "...";
+      }
+
+      function renderMetaList(label, items, container, className) {
+        if (!items || !items.length) return;
+        const block = el("div", "metaBlock" + (className ? " " + className : ""));
+        block.appendChild(el("div", "sourcesLabel", label));
+        const list = el("ul", "metaList");
+        for (const item of items.slice(0, 6)) {
+          list.appendChild(el("li", "", String(item)));
+        }
+        block.appendChild(list);
+        container.appendChild(block);
       }
 
       function renderSources(sources, container) {
@@ -813,7 +963,7 @@
         container.appendChild(block);
       }
 
-      function addMessage({ role, text, sources, isError, isLoading }) {
+      function addMessage({ role, text, sources, examples, gaps, usedInference, isError, isLoading }) {
         const row = el("div", "row " + role);
         const content = el("div", "bubble " + role + (isError ? " error" : ""));
 
@@ -822,16 +972,47 @@
           const dots = el("div", "dots");
           dots.innerHTML = "<span></span><span></span><span></span>";
           typing.appendChild(dots);
-          typing.appendChild(el("span", "", "Searching docs..."));
+          typing.appendChild(el("span", "", "Searching docs"));
+          const elapsed = el("span", "elapsed", "0.0s");
+          elapsed.dataset.elapsed = "1";
+          typing.appendChild(elapsed);
           content.appendChild(typing);
           row.appendChild(content);
         } else if (role === "agent") {
           content.classList.add("md");
-          content.innerHTML = renderBasicMarkdown(text || "");
+          // Strip trailing disclosure from markdown; show as subtle footer instead
+          let displayText = text || "";
+          const disclosure = "Includes inferred Fabrix guidance not stated verbatim in the docs.";
+          const hasDisclosure =
+            usedInference ||
+            displayText.toLowerCase().includes(disclosure.toLowerCase());
+          if (hasDisclosure) {
+            displayText = displayText
+              .replace(/\*?Includes inferred Fabrix guidance not stated verbatim in the docs\.?\*?/gi, "")
+              .trim();
+          }
+          content.innerHTML = renderBasicMarkdown(displayText);
           row.appendChild(content);
 
+          if (!isError && hasDisclosure) {
+            row.appendChild(
+              el(
+                "div",
+                "inferFooter",
+                "Includes inferred Fabrix guidance not stated verbatim in the docs."
+              )
+            );
+          }
+
+          // ChatGPT-style: Examples → Sources → Gaps (secondary)
+          if (!isError) {
+            renderMetaList("Examples", examples, row);
+          }
           if (!isError && sources && sources.length) {
             renderSources(sources, row);
+          }
+          if (!isError) {
+            renderMetaList("What the docs don’t cover", gaps, row, "gaps");
           }
 
           if (!isError && text) {
@@ -890,6 +1071,7 @@
       async function sendMessage() {
         const question = (inputEl.value || "").trim();
         if (!question) return;
+        if (activeAbort) return;
 
         if (!hasSent) {
           hasSent = true;
@@ -903,8 +1085,19 @@
         addMessage({ role: "user", text: question });
         sendBtn.disabled = true;
         inputEl.disabled = true;
+        cancelBtn.classList.add("visible");
 
         const loadingRow = addMessage({ role: "agent", isLoading: true });
+        const started = performance.now();
+        const elapsedEl = loadingRow.querySelector("[data-elapsed]");
+        elapsedTimer = setInterval(() => {
+          if (!elapsedEl) return;
+          const sec = ((performance.now() - started) / 1000).toFixed(1);
+          elapsedEl.textContent = sec + "s";
+        }, 100);
+
+        const controller = new AbortController();
+        activeAbort = controller;
 
         try {
           const url = API_URL.replace(/\/$/, "") + "/ask";
@@ -912,6 +1105,7 @@
             method: "POST",
             headers: askHeaders(),
             body: JSON.stringify({ question }),
+            signal: controller.signal,
           });
 
           if (!res.ok) {
@@ -928,21 +1122,46 @@
           const data = await res.json();
           const answer = data && typeof data.answer === "string" ? data.answer : "";
           const sources = data && Array.isArray(data.sources) ? data.sources : [];
+          const examples = data && Array.isArray(data.examples) ? data.examples : [];
+          const gaps = data && Array.isArray(data.gaps) ? data.gaps : [];
+          const usedInference = !!(data && data.used_inference);
 
           loadingRow.remove();
-          addMessage({ role: "agent", text: answer || "(empty answer)", sources });
+          addMessage({
+            role: "agent",
+            text: answer || "(empty answer)",
+            sources,
+            examples,
+            gaps,
+            usedInference,
+          });
           setStatus("ok", "Connected");
         } catch (e) {
           loadingRow.remove();
-          addMessage({ role: "agent", text: formatError(e && e.message ? e.message : ""), isError: true });
-          setStatus("bad", "Error");
-          console.error(e);
+          if (e && e.name === "AbortError") {
+            addMessage({ role: "agent", text: "Request cancelled.", isError: true });
+            setStatus("ok", "Connected");
+          } else {
+            addMessage({ role: "agent", text: formatError(e && e.message ? e.message : ""), isError: true });
+            setStatus("bad", "Error");
+            console.error(e);
+          }
         } finally {
+          if (elapsedTimer) {
+            clearInterval(elapsedTimer);
+            elapsedTimer = null;
+          }
+          activeAbort = null;
+          cancelBtn.classList.remove("visible");
           sendBtn.disabled = false;
           inputEl.disabled = false;
           inputEl.focus();
         }
       }
+
+      cancelBtn.addEventListener("click", () => {
+        if (activeAbort) activeAbort.abort();
+      });
 
       sendBtn.addEventListener("click", () => void sendMessage());
       inputEl.addEventListener("input", () => autoGrow(inputEl));

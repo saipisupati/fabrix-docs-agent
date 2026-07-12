@@ -257,6 +257,23 @@ def build_prompt(question, retrieved_chunks, category=None):
 - When the question asks how to load, use, or configure something, list every required parameter (marked * in the table), not only the parameter named in the question.
 - For each listed parameter, include its description from the table (e.g. columns as a comma-separated list).
 """
+    elif category == "bot_catalog":
+        extra_instructions = """
+- The excerpts are RDA Extension / bot catalog list pages. Treat extension names as the available bot groups.
+- Explain that bots are organized by extension, then list extension names that appear in the excerpts (group by A-B, C, etc. if shown).
+- Point the user to the Extension List and Bots pages on docs.fabrix.ai for the full catalog.
+- Do NOT say you couldn't find it if extension names are present in the excerpts.
+"""
+    elif category == "overview":
+        extra_instructions = """
+- The user asked a broad / getting-started / tools-features question. Give a short high-level overview from the excerpts.
+- Cover what RDA Fabric is, key design ideas (e.g. operate close to data), and main building blocks / tools if present
+  (ingestion, pipelines, bots, CFXQL, dashboards, integrations, AI fabric).
+- If they asked about "tools" or "features", map those to the documented platform capabilities above — do not look for a literal "tools" page.
+- End with 2-4 concrete follow-up topics they can ask about next (architecture, bots, CFXQL, integrations, installation).
+- Do NOT abstain just because the question is broad or uses words like tools/features; synthesize from architecture / beginners-guide excerpts.
+- Keep the answer concise (about one short paragraph + a short bullet list is fine).
+"""
     elif category == "negative":
         extra_instructions = """
 - Only answer if an excerpt explicitly documents the exact procedure or fact asked about.

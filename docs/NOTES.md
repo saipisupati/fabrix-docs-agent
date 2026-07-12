@@ -6,24 +6,29 @@ For setup and commands see [README.md](../README.md). This file is the project s
 
 ---
 
-## Current status (2026-06-26)
+## Current status (2026-07-11)
 
 | | |
 |---|---|
-| **Pipeline** | `ingest_qdrant.py` → OpenRouter MiniLM embeddings → local Qdrant → `agent.py` → gpt-4o-mini |
+| **Pipeline** | `ingest_qdrant.py` → OpenRouter MiniLM → local Qdrant + **structured KB** (`build_kb.py` → `data/kb/`) → `agent.py` (merged scope+facets + KB-first + optional critique) → gpt-4o-mini |
 | **Corpus** | **6,387 chunks** from **543** MD files (214 bots + 328 narrative + CFXQL + 3 root pages) |
-| **Retrieval eval** | **18/18** PASS on scored cases (2 negative SKIP) |
-| **Generation eval (oracle)** | **11 PASS, 1 PARTIAL, 0 FAIL** across 12 cases (original set) |
-| **Agent eval** | **19 PASS, 1 PARTIAL, 0 FAIL** across **20 cases** (all doc sections, re-run 2026-06-26) |
-| **Bot sample eval** | **11/15 PASS** retrieval top-1 on random bot sample (seed 42) |
+| **KB** | Topics/entities/facts/procedures under `data/kb/`; agent retrieves KB first, chunks as fallback |
+| **Answer contract** | Unified `answer` + `examples` + `gaps` + `sources` + `used_inference` + optional `timing`; inference disclosed via footer |
+| **Production eval** | **17/17 PASS** (ops + break regressions) |
+| **Break eval** | **14/14 PASS** adversarial battery |
+| **Readiness gate** | Latest: **10/10 PASS**, p50 ≈ **11.8s**, p95 ≈ **14.3s**, avg **1.8** LLM calls (budget 45s). **Do not embed on docs.fabrix.ai until GREEN twice in a row.** |
 | **Embedding choice** | Stay on **OpenRouter MiniLM + Qdrant** (stakeholder sign-off after fastembed shootout) |
-| **Phase** | Phase 1–2 done. Phase 4 in progress (agent + API + widget done; docs site embed TBD). Phase 3 not started. |
+| **Phase** | Quality loop (latency + polish + readiness); docs site embed **blocked** until readiness gate holds |
 
-**Known variance:** `multi_part_01` sometimes PARTIAL (75% facts): model omits "applies query on already-loaded data" detail. Retrieval is correct; this is LLM brevity, not a source bug.
+**Latency note:** related/ops path merges scope+facet planning into one LLM call, skips critique when a local draft check passes, and retries only on abstain / missing related inference. CLI and `/ask` expose `timing` (`scope_ms`, `retrieve_ms`, `generate_ms`, `critique_ms`, `total_ms`, `llm_calls`).
 
 **Before re-ingest:** run `python3 scripts/audit_ingest_sources.py` (543 files must stay within public docs export).
 
-Latest eval output (gitignored): `tests/eval_baseline_results.txt`, `tests/eval_generation_results.txt`, `tests/eval_agent_results.txt`.
+**KB build / deploy:** `python3 src/build_kb.py` after ingest. For VM deploy, copy `data/qdrant_db/` **and** `data/kb/` (or rebuild on server). Stop the API before Qdrant upserts (single-process file lock).
+
+**Technical inference smoke:** ask multi-doc Fabrix composition questions (ServiceNow → pstream, Toolset vs Persona, K8s inventory → dashboard dataset). Expect a unified **path-first** answer (`**Documented Fabrix path**` header + numbered steps) + `used_inference` / disclosure. Run `python3 tests/eval_production.py` and `python3 tests/eval_readiness.py`.
+
+Latest eval output (gitignored): `tests/eval_*_results.txt`.
 
 ---
 
@@ -33,12 +38,12 @@ Fabrix.ai docs describe hundreds of pipeline **bots** (automation building block
 
 **Stakeholder goal:** find the right embedding + retrieval setup for cost and accuracy on this doc set. CFX already uses Qdrant; we started there.
 
-**How we measure progress:** hand-built eval cases in [`tests/eval_set.py`](../tests/eval_set.py) cover bot lookups, CFXQL comparisons, multi-part questions, narrative guides, and negative (hallucination) cases. Scripts score automatically:
+**How we measure progress:** hand-built eval cases in [`tests/eval_set.py`](../tests/eval_set.py) cover bot lookups, CFXQL comparisons, multi-part questions, narrative guides, negative (hallucination) cases, and KB scope/inference/examples/gaps. Scripts score automatically:
 
 - [`tests/run_eval_baseline.py`](../tests/run_eval_baseline.py): retrieval only (source hit + facts in top-k chunks)
 - [`tests/run_eval_generation.py`](../tests/run_eval_generation.py): oracle full pipeline (manual category + filter hints per case)
 - [`tests/run_eval_agent.py`](../tests/run_eval_agent.py): real-user proxy via `agent.answer()` (no category or filter hints)
-
+- [`tests/run_eval_kb.py`](../tests/run_eval_kb.py): scope / empty sources / examples / gaps / labeled inference
 ---
 
 ## Decisions made

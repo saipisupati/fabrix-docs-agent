@@ -16,6 +16,8 @@ secrets.json
 # Generated data - rebuilt from ingest, not source of truth
 data/chroma_db/
 data/qdrant_db/
+data/kb/
+fabrix_qdrant_db.tar.gz
 
 # Local logs
 ingestion_log.txt
@@ -23,6 +25,12 @@ tests/eval_baseline_results.txt
 tests/eval_generation_results.txt
 tests/eval_agent_results.txt
 tests/eval_bot_sample_results.txt
+tests/eval_kb_results.txt
+tests/eval_production_results.txt
+tests/eval_break_results.txt
+tests/eval_readiness_results.txt
+tests/quality_harness_digest.md
+tests/readiness_streak.json
 
 # OS
 .DS_Store

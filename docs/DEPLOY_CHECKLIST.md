@@ -19,6 +19,9 @@ Related docs:
 - [ ] Qdrant DB available on the host:
   - Copy `data/qdrant_db/` from a machine that ran `ingest_qdrant.py`, **or**
   - Re-run ingest on the server with correct `BOTS_DIR` / `DOCS_ROOT` / `CFXQL_FILE` paths
+- [ ] Structured KB available on the host:
+  - Copy `data/kb/` from a machine that ran `python3 src/build_kb.py`, **or**
+  - Rebuild KB on the server after ingest (stop API first if upserting into the same Qdrant path)
 - [ ] Pre-ingest audit passes: `python3 scripts/audit_ingest_sources.py` (expect 543 files)
 
 ---
@@ -50,6 +53,7 @@ Create `.env` on the server (never commit):
 
 - [ ] All required env vars set
 - [ ] `data/qdrant_db/` present on host
+- [ ] `data/kb/` present on host (`kb.json` + `embeddings.npz`)
 
 ### Start the API
 
@@ -140,7 +144,7 @@ See [DOCS_SITE_INTEGRATION.md](DOCS_SITE_INTEGRATION.md) for full snippet.
 
 ## E. Ongoing ops
 
-- [ ] Doc update process defined: `audit_ingest_sources.py` → `ingest_qdrant.py` → redeploy `data/qdrant_db/` → restart API
+- [ ] Doc update process defined: `audit_ingest_sources.py` → `ingest_qdrant.py` → `build_kb.py` → redeploy `data/qdrant_db/` + `data/kb/` → restart API
 - [ ] Monitor `/health` uptime
 - [ ] Monitor OpenAI / OpenRouter quota and `/ask` error rate
 - [ ] Secrets stay server-side only (`OPENROUTER_API_KEY`, `OPENAI_API_KEY`, `API_KEY` never in widget or public HTML)

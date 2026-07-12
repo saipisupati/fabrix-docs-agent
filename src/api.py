@@ -2,7 +2,7 @@
 api.py, FastAPI wrapper so the docs site widget can call the agent.
 
 Run: uvicorn src.api:app --port 8080
-POST /ask with {"question": "..."} → answer + source links. Keys stay on the server.
+POST /ask with {"question": "..."} → answer + sources/examples/gaps/used_inference.
 """
 
 from __future__ import annotations
@@ -14,7 +14,7 @@ from typing import Optional
 
 from fastapi import FastAPI, Header, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from qdrant_client import QdrantClient
 
 sys.path.insert(0, os.path.dirname(__file__))
@@ -38,7 +38,12 @@ class SourceResponse(BaseModel):
 
 class AskResponse(BaseModel):
     answer: str
-    sources: list[SourceResponse]
+    sources: list[SourceResponse] = Field(default_factory=list)
+    examples: list[str] = Field(default_factory=list)
+    gaps: list[str] = Field(default_factory=list)
+    scope: str = "in_scope"
+    used_inference: bool = False
+    timing: dict = Field(default_factory=dict)
 
 
 @asynccontextmanager
@@ -80,10 +85,17 @@ def ask(
     # thin HTTP layer over agent.answer()
     _check_api_key(x_api_key)
     result = answer(body.question, client=request.app.state.qdrant)
+    # Sources only when grounded; already empty on abstain in agent
+    sources = result.sources if result.sources else []
     return AskResponse(
         answer=result.answer,
         sources=[
             SourceResponse(title=s["title"], url=s["url"], excerpt=s["excerpt"])
-            for s in result.sources
+            for s in sources
         ],
+        examples=list(result.examples or []),
+        gaps=list(result.gaps or []),
+        scope=result.scope or "in_scope",
+        used_inference=bool(result.used_inference),
+        timing=dict(result.timing or {}),
     )

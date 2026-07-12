@@ -1,7 +1,8 @@
 """
 eval_set.py, hand-built Q&A cases with expected facts and sources.
 
-20 questions covering bots, CFXQL, guides, integrations, and negative/hallucination cases.
+Cases covering bots, CFXQL, guides, integrations, negative/hallucination,
+plus KB scope / inference / examples / gaps.
 Used by all run_eval_*.py scripts.
 """
 
@@ -275,6 +276,148 @@ EVAL_SET = [
         ],
         "expected_source": "rda_releases/cfx_rda_oia.md",
         "notes": "Narrative eval: OIA release notes intro.",
+    },
+    # --- KB / scope / inference cases (structured KB + 1B labeling) ---
+    {
+        "id": "scope_01",
+        "question": "How do I bake a chocolate cake?",
+        "category": "scope",
+        "expected_facts": [
+            "Should classify as out of scope or abstain",
+            "sources must be empty",
+        ],
+        "expected_source": "none",
+        "expect_empty_sources": True,
+        "expect_scope": "out_of_scope",
+        "notes": "Out-of-scope: empty sources, no fake citations.",
+    },
+    {
+        "id": "scope_02",
+        "question": "How do I cancel my Fabrix.ai subscription?",
+        "category": "scope",
+        "expected_facts": [
+            "Should abstain or say not in documentation",
+            "sources must be empty when abstaining",
+        ],
+        "expected_source": "none",
+        "expect_empty_sources": True,
+        "notes": "Billing not in public docs; empty sources on abstain.",
+    },
+    {
+        "id": "inference_01",
+        "question": "After installing RDA Fabric, what Fabrix components and configs should I verify before running production pipelines?",
+        "category": "inference",
+        "expected_facts": [
+            "May include install/pipeline verification from docs",
+            "Inferred technical synthesis must be labeled if present",
+        ],
+        "expected_source": "installation_guides / pipelines (related)",
+        "expect_scope_in": ["related", "in_scope"],
+        "expect_inferred": True,
+        "notes": "Fabrix technical verification: require used_inference / disclosure.",
+    },
+    {
+        "id": "inference_02",
+        "question": "How would I build a Fabrix pipeline that pulls ServiceNow ticket data and writes it to a persistent stream? Which bot types and CFXQL style should I use?",
+        "category": "inference",
+        "expected_facts": [
+            "ServiceNow",
+            "persistent stream or pstream",
+            "Inferred composition labeled",
+        ],
+        "expected_source": "Datasource_Integrations / Pipelines / CFXQL (synthesis)",
+        "expect_scope_in": ["related", "in_scope"],
+        "expect_inferred": True,
+        "notes": "Multi-doc pipeline composition; require used_inference disclosure.",
+    },
+    {
+        "id": "inference_03",
+        "question": "In Agentic AI on Fabrix, when should I use a Toolset versus a Persona for an ops automation task?",
+        "category": "inference",
+        "expected_facts": [
+            "Toolset",
+            "Persona",
+            "Inferred guidance labeled",
+        ],
+        "expected_source": "ai_fabric (synthesis)",
+        "expect_scope_in": ["related", "in_scope"],
+        "expect_inferred": True,
+        "notes": "Agentic tools synthesis; require used_inference disclosure.",
+    },
+    {
+        "id": "inference_04",
+        "question": "How would I chain a Kubernetes inventory collection into a dashboard-friendly dataset?",
+        "category": "inference",
+        "expected_facts": [
+            "kubernetes-inventory or kubectl/SSH/HTTP inventory collection",
+        ],
+        "expected_source": "Datasource_Integrations/kubernetes.md",
+        "expect_scope_in": ["related", "in_scope"],
+        "expect_inferred": True,
+        "expect_any_substrings": [
+            "kubernetes-inventory",
+            "kubectl",
+            "ssh",
+            "http api",
+        ],
+        "forbid_substrings": [
+            "linux-inventory",
+        ],
+        "forbid_undisclosed_claims": [
+            "automatically formatted into a suitable dataset",
+            "automatically formatted for dashboards",
+            "will be automatically formatted",
+        ],
+        "max_sudoers_mentions": 2,
+        "expect_ordered_list_renumbered": True,
+        "notes": "Path-first K8s→dashboard; no linux-inventory; no all-1. lists; sudoers not repeated endlessly.",
+    },
+    {
+        "id": "examples_01",
+        "question": "Show an example of Full CFXQL versus Restricted CFXQL.",
+        "category": "examples",
+        "expected_facts": [
+            "Full CFXQL",
+            "Restricted CFXQL",
+        ],
+        "expected_source": "cfxql_reference",
+        "expect_examples": True,
+        "notes": "Should surface Examples from docs when available.",
+    },
+    {
+        "id": "examples_02",
+        "question": "What parameters does the count loop bot take?",
+        "category": "examples",
+        "expected_facts": [
+            "name", "start", "end", "increment",
+        ],
+        "expected_source": "@c:count-loop",
+        "notes": "Bot lookup should remain grounded with sources.",
+    },
+    {
+        "id": "gaps_01",
+        "question": "What is the maximum number of workers a single RDA site can have?",
+        "category": "gaps",
+        "expected_facts": [
+            "Should not invent a specific number",
+            "Gaps or abstention about missing limit",
+        ],
+        "expected_source": "none or architecture without limit",
+        "expect_empty_sources_if_abstain": True,
+        "notes": "Gap identification: docs don't state a worker limit.",
+    },
+    {
+        "id": "empty_sources_01",
+        "question": "Who won the 2019 World Series?",
+        "category": "scope",
+        "expected_facts": [
+            "out of scope or abstain",
+            "sources empty",
+        ],
+        "expected_source": "none",
+        "expect_empty_sources": True,
+        "expect_scope": "out_of_scope",
+        "notes": "Hard out-of-scope; sources must stay empty.",
     },
 ]
 

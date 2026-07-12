@@ -27,7 +27,9 @@ def load_dotenv():
 load_dotenv()
 
 QDRANT_DIR = os.path.join(_PROJECT_ROOT, "data", "qdrant_db")
+KB_DIR = os.path.join(_PROJECT_ROOT, "data", "kb")
 COLLECTION_NAME = os.environ.get("COLLECTION_NAME", "fabrix_docs")
+KB_COLLECTION_NAME = os.environ.get("KB_COLLECTION_NAME", "fabrix_kb")
 EMBEDDING_MODEL = os.environ.get(
     "EMBEDDING_MODEL", "sentence-transformers/all-minilm-l6-v2"
 )

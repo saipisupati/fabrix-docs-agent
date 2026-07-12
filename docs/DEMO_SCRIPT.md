@@ -21,7 +21,7 @@ source venv/bin/activate   # if you use venv
 
 ## 2. Live questions (7 min)
 
-Run each from project root. After each answer, point at the **answer** and the **source links** at the bottom.
+Prefer the **chat UI** (API on :8080 + `python3 -m http.server 5173 --directory chat`) so they see elapsed time, Cancel, sources, and gaps. CLI works too.
 
 **Bot lookup (easy win)**
 
@@ -31,6 +31,7 @@ python3 src/agent.py "What parameters does the count loop bot take?"
 
 - Should mention `name`, `start`, `end`, `increment`
 - Source should land on the count-loop bot page
+- CLI footer shows `[timing] … llm_calls=0` on the fast path
 
 **CFXQL depth**
 
@@ -41,23 +42,30 @@ python3 src/agent.py "What is the difference between Full and Restricted CFXQL?"
 - Full: more operators, Result Format / GET clause
 - Restricted: basically `=` and `AND`, no Result Format
 
-**Platform guide**
+**Ops synthesis (path-first)**
 
 ```bash
-python3 src/agent.py "What endpoint types does the RDA Event Gateway support for data ingestion?"
+python3 src/agent.py "How do I get SN ticketing into a Fabrix stream for downstream bots?"
 ```
 
-- Should hit syslog, http, filebeat, etc.
+- ServiceNow → stream/pstream path; may show inference footer
+- Numbered steps should be real steps (not “1. Documented Fabrix path”)
 
-**Integration**
+**Day-2 compare**
 
 ```bash
-python3 src/agent.py "What ServiceNow modules does Fabrix AIOps integrate with?"
+python3 src/agent.py "When should an engineer use a persistent stream instead of a regular dataset in RDA Fabric?"
 ```
-
-- Ticketing, CMDB, that kind of thing
 
 **Honesty check (important)**
+
+```bash
+python3 src/agent.py "What is Fabrix's contractual P1 support SLA response time?"
+```
+
+- Should abstain / out of scope — must NOT invent an SLA number
+
+Also fine:
 
 ```bash
 python3 src/agent.py "How do I cancel my Fabrix.ai subscription?"
@@ -89,13 +97,16 @@ python3 src/agent.py "What is a primary design principle of RDA Fabric architect
 If he asks "how do you know it's accurate?":
 
 ```bash
-python3 tests/run_eval_agent.py
+# Stop API first (Qdrant lock)
+python3 tests/eval_production.py
+python3 tests/eval_readiness.py
 ```
 
-- 20 cases: bots, guides, install, pipelines, integrations, negative/hallucination
-- Don't run live unless you've run it recently (takes a few min)
+- Production: 17 ops + break regressions
+- Readiness: PASS rate + p95 latency gate (must be GREEN before any docs embed)
+- Or mention break battery: `python3 tests/eval_break.py`
 
-Or just say: "We have a fixed eval set in `tests/eval_set.py`, last full agent eval was 20/20."
+Or just say: "We gate on production + readiness evals; we are not embedding until readiness is green twice."
 
 ---
 
@@ -117,7 +128,7 @@ Or just say: "We have a fixed eval set in `tests/eval_set.py`, last full agent e
 
 **One-liner to end on:**
 
-> "Corpus is complete, accuracy is tested, widget and API are ready. We just need hosting and a slot in the docs site."
+> "Accuracy and latency are gated locally. We are not putting this on the docs site until the readiness gate is green twice in a row — then we need hosting and a widget slot."
 
 ---
 
