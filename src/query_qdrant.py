@@ -2,7 +2,7 @@
 query_qdrant.py, embed the question, pull chunks from Qdrant, ask gpt-4o-mini.
 
 Used by agent.py and runnable standalone. Local path uses file Qdrant;
-REMOTE_BASE_URL switches to the VPN fastembed wrapper instead.
+REMOTE_BASE_URL switches to a hosted fastembed wrapper instead.
 """
 
 import os
@@ -185,7 +185,7 @@ def parse_bot_param_table(text: str):
 
 
 def retrieve_remote(question, top_k=5, filter_dict=None):
-    # VPN path: server embeds + searches; we just POST raw question text
+    # Remote path: server embeds + searches; we just POST raw question text
     response = requests.post(
         f"{REMOTE_BASE_URL}/search",
         headers={"Content-Type": "application/json"},

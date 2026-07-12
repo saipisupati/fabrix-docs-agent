@@ -2,7 +2,7 @@
 config.py, shared paths and env settings for the whole project.
 
 Loads .env on import. Override paths via env vars when you're not on the machine
-that wrote the defaults. REMOTE_BASE_URL switches query retrieval to the VPN server.
+that wrote the defaults. REMOTE_BASE_URL switches query retrieval to a hosted remote endpoint.
 """
 
 import os

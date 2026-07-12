@@ -1,7 +1,7 @@
 """
 test_bge_large_local.py, DEV ONLY: try BGE-large embeddings locally via OpenRouter.
 
-For comparing against MiniLM when VPN remote path isn't available.
+For comparing against MiniLM when the remote hosted path isn't available.
 """
 
 import os

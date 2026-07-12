@@ -1,14 +1,12 @@
 # Fabrix Docs Agent
 
-A retrieval-augmented generation (RAG) agent that answers questions about Fabrix.ai documentation, covering the RDA bot catalog, CFXQL reference, and platform guides.
-
-See [docs/NOTES.md](docs/NOTES.md) for project log and findings.
+A retrieval-augmented generation (RAG) agent that answers questions about [Fabrix.ai](https://docs.fabrix.ai) public documentation: the RDA bot catalog, CFXQL reference, and platform guides.
 
 ## Status
 
-Production-quality local agent over the full public doc set: **543/543** MD source files (214 bot catalog + 328 narrative guides across 8 folders + 3 root pages + `cfxql.md`) → **~6,387 chunks** in Qdrant plus a structured KB (`data/kb/`). Embeddings: `sentence-transformers/all-minilm-l6-v2` via OpenRouter. Generation: OpenAI `gpt-4o-mini`.
+Local agent over the public doc export: **543** MD source files (214 bot catalog + 328 narrative guides across 8 folders + 3 root pages + `cfxql.md`) → **~6,387 chunks** in Qdrant plus a structured KB (`data/kb/`). Embeddings: `sentence-transformers/all-minilm-l6-v2` via OpenRouter. Generation: OpenAI `gpt-4o-mini`.
 
-**Quality harness** (2026-07-12, raised bar — see [docs/QUALITY_LOOP.md](docs/QUALITY_LOOP.md)):
+**Quality harness** (see [docs/QUALITY_LOOP.md](docs/QUALITY_LOOP.md)):
 
 | Suite | Bar | Latest |
 |-------|-----|--------|
@@ -16,9 +14,9 @@ Production-quality local agent over the full public doc set: **543/543** MD sour
 | `eval_break.py` (full cycle 1+2) | ≥95% PASS, 0 FAIL | 27/27 |
 | `eval_readiness.py` | GREEN twice (pass ≥95%, p95 ≤ 45s) | GREEN ×2 |
 
-Run `python3 tests/run_quality_harness.py` (stop API first — Qdrant file lock). Exit 0 = ready to discuss docs embed; embed on [docs.fabrix.ai](https://docs.fabrix.ai) is still a separate hosting decision.
+Run `python3 tests/run_quality_harness.py` (stop the API first; local Qdrant allows one process at a time). Exit 0 means the raised bar is met.
 
-See [docs/NOTES.md](docs/NOTES.md) for project log and findings.
+Operator docs: [docs/QUALITY_LOOP.md](docs/QUALITY_LOOP.md), [docs/DEPLOY_CHECKLIST.md](docs/DEPLOY_CHECKLIST.md), [docs/NOTES.md](docs/NOTES.md).
 
 ## How it works (local path: primary)
 
@@ -32,9 +30,9 @@ See [docs/NOTES.md](docs/NOTES.md) for project log and findings.
 - `heuristic`: generic header detection on plain text, generalizes but noisier
 - `size_based`: character-count splitting, breaks the `comparison_01` eval case, avoid
 
-## Remote path (in progress)
+## Remote path (optional)
 
-`src/ingest_and_test_remote.py` uploads raw markdown to a hosted Qdrant server. Chunking and embedding happen server-side using `BAAI/bge-large-en-v1.5`. Requires VPN and `REMOTE_BASE_URL` in `.env`. Uses a different embedding model than the local path; some large bot files still timeout at 120s.
+`src/ingest_and_test_remote.py` uploads raw markdown to a hosted Qdrant endpoint. Chunking and embedding happen server-side using `BAAI/bge-large-en-v1.5`. Set `REMOTE_BASE_URL` in `.env`. Uses a different embedding model than the local path.
 
 ## Legacy path (not used)
 
@@ -69,9 +67,9 @@ All scripts load `.env` automatically via `src/config.py`. You can still `export
 | `EMBEDDING_MODEL` | OpenRouter embedding model | `sentence-transformers/all-minilm-l6-v2` |
 | `COLLECTION_NAME` | Qdrant collection name | `fabrix_docs` |
 | `KB_COLLECTION_NAME` | Qdrant KB collection name | `fabrix_kb` |
-| `REMOTE_BASE_URL` | Remote fastembed wrapper URL (VPN path) | unset (local path) |
+| `REMOTE_BASE_URL` | Optional hosted Qdrant / fastembed wrapper URL | unset (local path) |
 | `LLM_MODEL` | OpenAI generation model | `gpt-4o-mini` |
-| `DOCS_SITE_ORIGIN` | CORS origin for docs.fabrix.ai | `*` (local dev) |
+| `DOCS_SITE_ORIGIN` | CORS origin for your docs site | `*` (local dev) |
 | `API_KEY` | Optional `X-API-Key` auth on `POST /ask` | unset (no auth) |
 
 Set `BOTS_DIR`, `DOCS_ROOT`, and `CFXQL_FILE` in `.env` (see `.env.example`).
@@ -127,7 +125,7 @@ python3 tests/eval_break.py
 python3 tests/eval_readiness.py
 
 # quality harness: production + full break + readiness streak (stop API first)
-# see docs/QUALITY_LOOP.md — exit 0 only when raised bar holds (GREEN ×2)
+# see docs/QUALITY_LOOP.md; exit 0 only when raised bar holds (GREEN ×2)
 python3 tests/run_quality_harness.py
 
 # random bot retrieval spot check (15 bots, seed 42)
@@ -137,9 +135,10 @@ python3 tests/run_eval_bot_sample.py
 python3 tests/run_eval.py
 ```
 
-**Remote (VPN required)**
+**Remote (optional)**
 
 ```bash
+# Requires REMOTE_BASE_URL in .env
 python3 src/ingest_and_test_remote.py
 ```
 
@@ -165,11 +164,11 @@ python3 src/test_fastembed_eval.py --models BAAI/bge-small-en-v1.5
 
 ## Docs site integration
 
-Embed the ask widget on [docs.fabrix.ai](https://docs.fabrix.ai) and point it at a hosted API. See [docs/DOCS_SITE_INTEGRATION.md](docs/DOCS_SITE_INTEGRATION.md) for the paste snippet, CORS (`DOCS_SITE_ORIGIN`), and optional API key setup. Production deploy steps: [docs/DEPLOY_CHECKLIST.md](docs/DEPLOY_CHECKLIST.md). Demo run-of-show: [docs/DEMO_SCRIPT.md](docs/DEMO_SCRIPT.md).
+Optional: embed the ask widget on a documentation site and point it at a hosted API. See [docs/DOCS_SITE_INTEGRATION.md](docs/DOCS_SITE_INTEGRATION.md) for the paste snippet, CORS (`DOCS_SITE_ORIGIN`), and optional API key setup. Deploy checklist: [docs/DEPLOY_CHECKLIST.md](docs/DEPLOY_CHECKLIST.md).
 
-**Before embed:** run the quality harness until exit 0 (readiness GREEN ×2). See [docs/QUALITY_LOOP.md](docs/QUALITY_LOOP.md).
+Run the quality harness until exit 0 before production deploy. See [docs/QUALITY_LOOP.md](docs/QUALITY_LOOP.md).
 
-**Beta chat hosting** (standalone page for tester feedback before production embed): [docs/HOSTING_BETA.md](docs/HOSTING_BETA.md).
+Standalone chat UI for local or hosted testing: [docs/HOSTING_BETA.md](docs/HOSTING_BETA.md) (chat UI hosting guide).
 
 ## Eval
 
@@ -178,7 +177,7 @@ Embed the ask widget on [docs.fabrix.ai](https://docs.fabrix.ai) and point it at
 | Script | Purpose |
 |--------|---------|
 | `tests/eval_production.py` | Production-style Fabrix ops battery (22 cases) |
-| `tests/eval_break.py` | Adversarial battery — format stress, traps, contamination (27 cases; `BREAK_CYCLE=2` for cycle 2 only) |
+| `tests/eval_break.py` | Adversarial battery: format stress, traps, contamination (27 cases; `BREAK_CYCLE=2` for cycle 2 only) |
 | `tests/eval_readiness.py` | PASS rate + p95 latency gate (14-case subset) |
 | `tests/run_quality_harness.py` | Raised bar: production 100% + break ≥95%/0 FAIL + readiness GREEN ×2 |
 
@@ -196,13 +195,13 @@ All eval result files (`tests/eval_*_results.txt`, `tests/quality_harness_digest
 
 ## Deploy: copy Qdrant + KB
 
-`data/qdrant_db/` and `data/kb/` are gitignored. On a VM, either rebuild or copy from a machine that already ran ingest + KB build:
+`data/qdrant_db/` and `data/kb/` are gitignored. On a server, either rebuild or copy from a machine that already ran ingest + KB build:
 
 ```bash
 # on build machine
 tar czf fabrix_runtime_data.tar.gz data/qdrant_db data/kb
 
-# on VM (API stopped — local Qdrant is single-process)
+# on target host (API stopped; local Qdrant is single-process)
 tar xzf fabrix_runtime_data.tar.gz
 # then start uvicorn as usual
 ```
@@ -219,7 +218,7 @@ python3 src/build_kb.py   # stop API first if upserting fabrix_kb into the same 
 
 ### Technical inference smoke
 
-Ask Fabrix-only synthesis questions (not generic OS tips). Expect `scope=related` (or `in_scope`), a single coherent **path-first** answer (named Fabrix objects before host prerequisites), `used_inference=true` (or the disclosure line), and Examples below—not a big `## Inferred` report section:
+Ask Fabrix-only synthesis questions (not generic OS tips). Expect `scope=related` (or `in_scope`), a single coherent **path-first** answer (named Fabrix objects before host prerequisites), `used_inference=true` (or the disclosure line), and Examples below, not a big `## Inferred` report section:
 
 ```bash
 python3 src/agent.py "How would I build a Fabrix pipeline that pulls ServiceNow ticket data and writes it to a persistent stream?"
@@ -228,10 +227,9 @@ python3 src/agent.py "How would I chain a Kubernetes inventory collection into a
 python3 tests/run_quality_harness.py   # full gate (stop API first)
 ```
 
-## Open questions / known issues
+## Known issues
 
 - `BOTS_DIR` / `CFXQL_FILE` must be set in `.env` before ingest (no machine-specific defaults in repo)
-- Two embedding models across paths (MiniLM local, BGE-large remote), no shared config
-- Remote ingestion timeouts on larger bot catalog files
+- Two embedding models across local vs remote paths, no shared config
 - Local Qdrant file lock: only one process (API or eval) can open `data/qdrant_db/` at a time
-- `data/qdrant_db/` and `data/kb/` are gitignored: rebuild via ingest + `build_kb.py`, or copy for VM deploy
+- `data/qdrant_db/` and `data/kb/` are gitignored: rebuild via ingest + `build_kb.py`, or copy for deploy

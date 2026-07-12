@@ -1,5 +1,5 @@
 """
-test_faizan_models.py, DEV ONLY: compare Faizan-recommended embedding models via OpenRouter.
+test_openrouter_models.py, DEV ONLY: compare embedding models via OpenRouter.
 
 Model shootout helper, not production code.
 """
@@ -12,7 +12,7 @@ from langchain_text_splitters import MarkdownHeaderTextSplitter
 
 EMBEDDINGS_URL = "https://openrouter.ai/api/v1/embeddings"
 
-FAIZAN_MODELS = {
+CANDIDATE_MODELS = {
     "BAAI/bge-large-en-v1.5": "baai/bge-large-en-v1.5",
     "BAAI/bge-base-en-v1.5": "baai/bge-base-en-v1.5",
     "BAAI/bge-small-en-v1.5": None,
@@ -96,20 +96,20 @@ def test_model(model_name, chunks):
 
 def main():
     if len(sys.argv) < 2:
-        print("Usage: python3 test_faizan_models.py /path/to/cfxql.md")
+        print("Usage: python3 test_openrouter_models.py /path/to/cfxql.md")
         sys.exit(1)
 
     filepath = sys.argv[1]
     chunks = chunk_markdown_file(filepath)
     print(f"Loaded {len(chunks)} chunks from {filepath}\n")
 
-    print("Checking which of Faizan's requested models are available via OpenRouter:")
-    for hf_name, or_name in FAIZAN_MODELS.items():
-        status = or_name if or_name else "NOT AVAILABLE on OpenRouter - test via VPN/fastembed instead"
+    print("OpenRouter model availability:")
+    for hf_name, or_name in CANDIDATE_MODELS.items():
+        status = or_name if or_name else "NOT AVAILABLE on OpenRouter"
         print(f"  {hf_name} -> {status}")
 
     results = {}
-    for hf_name, or_name in FAIZAN_MODELS.items():
+    for hf_name, or_name in CANDIDATE_MODELS.items():
         if or_name is None:
             continue
         try:
@@ -126,9 +126,9 @@ def main():
         rank_str = f"{avg_rank:.2f}" if avg_rank is not None else "FAILED"
         print(f"  {hf_name:<55} avg rank: {rank_str}")
 
-    not_tested = [name for name, or_name in FAIZAN_MODELS.items() if or_name is None]
+    not_tested = [name for name, or_name in CANDIDATE_MODELS.items() if or_name is None]
     if not_tested:
-        print(f"\nNOT tested (unavailable on OpenRouter, need direct fastembed access):")
+        print("\nNOT tested (unavailable on OpenRouter):")
         for name in not_tested:
             print(f"  - {name}")
 

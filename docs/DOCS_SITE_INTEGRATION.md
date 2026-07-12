@@ -1,6 +1,6 @@
 # Docs site integration
 
-Handoff for embedding the Fabrix docs Q&A widget on [docs.fabrix.ai](https://docs.fabrix.ai).
+Embed the Fabrix docs Q&A widget on a documentation site.
 
 ## Paste this into your HTML
 
@@ -34,7 +34,7 @@ Production must use **HTTPS**.
 On the API server, set:
 
 ```bash
-DOCS_SITE_ORIGIN=https://docs.fabrix.ai
+DOCS_SITE_ORIGIN=https://your-docs-site.example.com
 ```
 
 This allows browser requests from the docs site. Local dev defaults to `*` when unset.
@@ -44,7 +44,7 @@ This allows browser requests from the docs site. Local dev defaults to `*` when 
 On the server:
 
 ```bash
-API_KEY=your-secret-key
+API_KEY=<generate-a-secret>
 ```
 
 In the page, before loading the widget script:
@@ -53,7 +53,7 @@ In the page, before loading the widget script:
 <script>
   window.FabrixAskConfig = {
     apiUrl: "https://your-api-host.example.com",
-    apiKey: "your-secret-key"
+    apiKey: "<same-secret-as-API_KEY>"
   };
 </script>
 <script src="/path/to/ask-widget.js"></script>

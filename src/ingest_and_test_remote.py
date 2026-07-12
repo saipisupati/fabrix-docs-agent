@@ -1,8 +1,8 @@
 """
-ingest_and_test_remote.py, alternate path: upload md to shared Qdrant over VPN.
+ingest_and_test_remote.py, alternate path: upload md to a hosted Qdrant endpoint.
 
 Server does chunking + BGE-large embedding. Not the primary local path.
-Use ingest_qdrant.py for day-to-day work unless Fabrix wants shared server storage.
+Use ingest_qdrant.py for day-to-day work unless you need shared server storage.
 """
 
 import os
