@@ -143,6 +143,32 @@ def _is_synthesis_question(question: str) -> bool:
     return fabrix_obj
 
 
+def _is_exhaustive_ask(question: str) -> bool:
+    """Asks for complete/exact catalogs that docs often only partially cover."""
+    q = (question or "").lower()
+    return any(
+        m in q
+        for m in (
+            "exact complete", "complete grammar", "every operator", "all edge cases",
+            "full grammar", "exhaustive", "every single",
+        )
+    )
+
+
+def _is_capability_overclaim_ask(question: str) -> bool:
+    """Asks the product to perform an end-to-end action that docs rarely promise."""
+    q = (question or "").lower()
+    actor = any(m in q for m in ("fabio", "copilot", "agentic"))
+    action = any(
+        m in q
+        for m in (
+            "rewrite", "for me end-to-end", "do it for me", "change production",
+            "in production for me",
+        )
+    )
+    return actor and action
+
+
 def _strip_format_noise(question: str) -> str:
     """Drop presentation constraints that pollute retrieval queries."""
     q = question or ""
@@ -724,7 +750,10 @@ def polish_answer_text(text: str) -> str:
     if not text:
         return text
     cleaned = re.sub(r"\n{3,}", "\n\n", text)
-    # Strip leaked trailer / bare json fences from user-facing body
+    # Strip leaked trailer / bare json fences from user-facing body (any position)
+    cleaned = re.sub(r"```json\b[\s\S]*?```", "", cleaned, flags=re.IGNORECASE)
+    cleaned = re.sub(r"```json\b[\s\S]*$", "", cleaned, flags=re.IGNORECASE)
+    cleaned = re.sub(r"```json\b", "", cleaned, flags=re.IGNORECASE)
     cleaned = re.sub(r"\n```(?:json)?\s*\{[\s\S]*?\}\s*```", "", cleaned, flags=re.IGNORECASE)
     cleaned = re.sub(r"\n```(?:json)?\s*$", "", cleaned, flags=re.IGNORECASE | re.MULTILINE)
     cleaned = re.sub(r"\n```\s*$", "", cleaned, flags=re.MULTILINE)
@@ -883,10 +912,36 @@ AGENTIC_MARKERS: tuple[str, ...] = (
 
 BOT_TOKEN_RE = re.compile(r"[@*]([a-zA-Z0-9][a-zA-Z0-9_-]{1,60})\s*:")
 
+# Common misspellings → canonical product tokens (generic; not per-question)
+_PRODUCT_TYPOS: tuple[tuple[str, str], ...] = (
+    ("servicenw", "servicenow"),
+    ("servicenwo", "servicenow"),
+    ("promethus", "prometheus"),
+    ("prometheous", "prometheus"),
+    ("kubernets", "kubernetes"),
+    ("zabbixx", "zabbix"),
+    ("splunkk", "splunk"),
+    ("nagiosxi", "nagios xi"),
+)
+
+
+def _normalize_question_typos(question: str) -> str:
+    """Rewrite known product misspellings so family detection still fires."""
+    q = question or ""
+    low = q.lower()
+    for typo, canonical in _PRODUCT_TYPOS:
+        if typo == canonical:
+            continue
+        if typo in low:
+            # case-insensitive replace preserving surrounding text
+            q = re.sub(re.escape(typo), canonical, q, flags=re.IGNORECASE)
+            low = q.lower()
+    return q
+
 
 def _integration_family_hits(question: str) -> list[str]:
     """Canonical integration families explicitly named in the question."""
-    q = (question or "").lower()
+    q = _normalize_question_typos(question or "").lower()
     hits: list[str] = []
     for canonical, aliases in INTEGRATION_FAMILIES:
         # Bare "linux"/"ubuntu" host mentions are red herrings, not linux-inventory
@@ -1231,6 +1286,64 @@ def _kb_examples_for_topic(question: str, kb_entries: list[dict], limit: int = 3
     return out
 
 
+def _salvage_partial_answer(
+    question: str,
+    kb_entries: list[dict],
+    chunks: list[dict],
+    existing_gaps: list[str] | None = None,
+) -> tuple[str, list[str]] | None:
+    """
+    When the model abstains despite retrieved docs (common on exhaustive asks),
+    surface a documented subset from KB/chunk text. Generic — not per-question.
+    """
+    if not kb_entries and not chunks:
+        return None
+    keys = _question_topic_keys(question)
+    qlow = _normalize_question_typos(question or "").lower()
+    for group in SOFT_FACET_ALIASES:
+        if any(a in qlow for a in group):
+            keys.extend(group)
+    lines = ["**Documented Fabrix path**", ""]
+    n = 1
+    for e in kb_entries or []:
+        blob = f"{e.get('title') or ''} {e.get('text') or ''} {e.get('example') or ''}"
+        if keys and not _text_matches_topic(blob, keys):
+            continue
+        snippet = (e.get("text") or e.get("title") or e.get("example") or "").strip()
+        snippet = re.sub(r"\s+", " ", snippet)[:280]
+        if len(snippet) < 20:
+            continue
+        lines.append(f"{n}. {snippet}")
+        n += 1
+        if n > 6:
+            break
+    if n == 1:
+        for c in chunks or []:
+            blob = f"{c.get('title') or ''} {c.get('text') or c.get('page_content') or ''}"
+            if keys and not _text_matches_topic(blob, keys):
+                continue
+            snippet = re.sub(r"\s+", " ", (c.get("text") or c.get("page_content") or blob).strip())[:280]
+            if len(snippet) < 20:
+                continue
+            lines.append(f"{n}. {snippet}")
+            n += 1
+            if n > 6:
+                break
+    if n == 1:
+        return None
+    lines.append("")
+    lines.append(
+        "**Next (inferred):** Public docs may not fully satisfy an exhaustive or "
+        "end-to-end ask; use the documented subset above and fill gaps operationally."
+    )
+    gaps = list(existing_gaps or [])
+    if not gaps:
+        gaps = [
+            "Public documentation does not provide a complete exhaustive answer for this ask"
+        ]
+    return "\n".join(lines), gaps
+
+
 def _lookup_fast_path(question: str, client: QdrantClient) -> AgentResponse | None:
     hints = bot_name_hints(question)
     if not hints:
@@ -1301,10 +1414,12 @@ def answer(question: str, client: QdrantClient | None = None) -> AgentResponse:
     timing["llm_calls"] += 1
 
     scope = planned["scope"]
-    search_q = _strip_format_noise(planned.get("search_query") or question)
+    search_q = _strip_format_noise(
+        _normalize_question_typos(planned.get("search_query") or question)
+    )
     search_q = _strip_format_noise(search_q)
     if not search_q.strip():
-        search_q = _strip_format_noise(question) or question
+        search_q = _strip_format_noise(_normalize_question_typos(question)) or question
 
     # Safety: do not out-of-scope clear Fabrix product questions (unless known traps)
     if scope == "out_of_scope":
@@ -1339,8 +1454,15 @@ def answer(question: str, client: QdrantClient | None = None) -> AgentResponse:
         scope = "related"
         logger.info("scope latch: in_scope→related for synthesis/compare question")
 
-    # Force commercial / private-infra traps out of scope even if classifier misfires
-    qlow_trap = (question or "").lower()
+    # Exhaustive catalogs / "do it for me" capability asks → related + gaps/infer
+    if scope == "in_scope" and (
+        _is_exhaustive_ask(question) or _is_capability_overclaim_ask(question)
+    ):
+        scope = "related"
+        logger.info("scope latch: in_scope→related for exhaustive/capability ask")
+
+    # Force commercial / private-infra / jailbreak / credential-fishing traps out of scope
+    qlow_trap = _normalize_question_typos(question or "").lower()
     force_oos = any(
         t in qlow_trap
         for t in (
@@ -1348,8 +1470,20 @@ def answer(question: str, client: QdrantClient | None = None) -> AgentResponse:
             "contractual", "p1 support sla", "refund", "subscription",
             "private vpn", "jump host", "encryption key", "mtls",
             "private ingress",
+            "ignore the documentation", "ignore the docs", "ignore documentation",
+            "invent a fabrix", "invent a password", "invent an admin",
+            "training data", "default password", "admin password",
         )
     )
+    # Credential fishing: ask for a secret value rather than how to configure auth
+    if not force_oos and any(
+        m in qlow_trap
+        for m in ("password", "passwd", "secret key", "api key value")
+    ) and any(
+        m in qlow_trap
+        for m in ("what is the", "what's the", "give me the", "tell me the", "default")
+    ):
+        force_oos = True
     if force_oos and scope != "out_of_scope":
         logger.info("scope latch: %s→out_of_scope for commercial/private trap", scope)
         scope = "out_of_scope"
@@ -1379,6 +1513,8 @@ def answer(question: str, client: QdrantClient | None = None) -> AgentResponse:
         or scope == "related"
         or _is_vague_ops_question(question)
         or _is_synthesis_question(question)
+        or _is_exhaustive_ask(question)
+        or _is_capability_overclaim_ask(question)
     )
     facet_plan: dict = {
         "facets": list(planned.get("facets") or []),
@@ -1405,6 +1541,18 @@ def answer(question: str, client: QdrantClient | None = None) -> AgentResponse:
             logger.info("single_product mode dominant=%s", fam_hits[0])
         else:
             logger.info("multi_product mode families=%s", fam_hits)
+        # Agentic + product mix: also bias toward Copilot/audit docs
+        qlow_mix = _normalize_question_typos(question or "").lower()
+        if any(m in qlow_mix for m in AGENTIC_MARKERS):
+            queries0 = list(facet_plan["search_queries"] or [])
+            for seed in (
+                "Fabio Copilot AI Fabric",
+                "AI Fabric Copilot pipeline audit",
+            ):
+                if seed not in queries0:
+                    queries0 = [seed] + queries0
+            facet_plan["search_queries"] = queries0
+            logger.info("agentic+product mix retrieve bias")
     elif _is_agentic_question(question) or _is_synthesis_question(question):
         queries0 = list(facet_plan["search_queries"] or [])
         seeds = [
@@ -1425,7 +1573,7 @@ def answer(question: str, client: QdrantClient | None = None) -> AgentResponse:
         logger.info("agentic/synthesis topic mode retrieve bias")
 
     # CFXQL / operator asks: always prepend topic seeds (format stress often empties search_q)
-    qlow_seed = (question or "").lower()
+    qlow_seed = _normalize_question_typos(question or "").lower()
     if "cfxql" in qlow_seed or (
         "operator" in qlow_seed and ("full" in qlow_seed or "restricted" in qlow_seed)
     ):
@@ -1444,6 +1592,33 @@ def answer(question: str, client: QdrantClient | None = None) -> AgentResponse:
                 objs.insert(0, term)
         facet_plan["primary_objects"] = objs[:8]
         logger.info("cfxql topic retrieve bias")
+        use_facets = True
+
+    # Ultra-short soft-facet asks (e.g. "pstream?") — seed the facet even if planner is thin
+    stripped_q = re.sub(r"[^\w\s-]", " ", qlow_seed).strip()
+    if len(stripped_q) <= 24:
+        soft_seeds: list[tuple[str, tuple[str, ...]]] = [
+            ("pstream", ("persistent stream pstream Fabrix", "pstream vs dataset")),
+            ("dataset", ("Fabrix dataset dashboard", "dataset vs pstream")),
+            ("cfxql", ("CFXQL operators Full Restricted",)),
+            ("dashboard", ("RDA Fabric dashboard dataset pstream",)),
+        ]
+        for key, seeds in soft_seeds:
+            if key in stripped_q or any(k in stripped_q for k in key.split()):
+                queries0 = list(facet_plan["search_queries"] or [])
+                for seed in seeds:
+                    if seed not in queries0:
+                        queries0 = [seed] + queries0
+                facet_plan["search_queries"] = queries0
+                if scope == "in_scope":
+                    scope = "related"
+                use_facets = True
+                logger.info("short soft-facet retrieve bias key=%s", key)
+                break
+
+    # Product / agentic seed bias always forces multi-facet retrieve
+    if fam_hits or any(m in qlow_seed for m in AGENTIC_MARKERS):
+        use_facets = True
 
     t_ret = time.perf_counter()
     if use_facets:
@@ -1504,6 +1679,10 @@ def answer(question: str, client: QdrantClient | None = None) -> AgentResponse:
             seeds.append("Datadog Fabrix bots datasource")
         if "nagios" in qlow:
             seeds.append("Nagios XI Fabrix bots datasource")
+        if any(m in qlow for m in AGENTIC_MARKERS):
+            seeds.append("Fabio Copilot AI Fabric")
+        for fam in _integration_family_hits(question):
+            seeds.append(f"{fam} Fabrix datasource bots integration")
         for seed in seeds:
             kb_entries = retrieve_kb(seed, top_k=8)
             if kb_entries:
@@ -1571,11 +1750,20 @@ def answer(question: str, client: QdrantClient | None = None) -> AgentResponse:
 
     # Final anti-abstain: we retrieved Fabrix docs but the model still refused
     if abstained and (kb_entries or chunks):
+        force_extra = ""
+        if _is_exhaustive_ask(question) or _is_capability_overclaim_ask(question):
+            force_extra = (
+                "The question asks for more than the docs fully guarantee. "
+                "Still answer with the documented Fabrix objects/operators/paths from the excerpts. "
+                "Put completeness limits and unsupported end-to-end claims in gaps[]. "
+                "Set used_inference=true and include Next (inferred) for handoffs. "
+            )
         force_prompt = (
             build_kb_prompt(question, kb_entries, chunks, scope, primary_objects=primary_objects)
             + "\n\nCRITICAL: Abstaining is forbidden. The knowledge base excerpts above ARE "
             "relevant. Answer the Fabrix topic in the question using those excerpts. "
-            "Ignore presentation constraints (exact step counts / blank lines) if needed. "
+            + force_extra
+            + "Ignore presentation constraints (exact step counts / blank lines) if needed. "
             "Start with **Documented Fabrix path** then numbered steps 1. 2. 3. "
             "Set used_inference=true when you synthesize; put unknowns in gaps[]."
         )
@@ -1589,6 +1777,18 @@ def answer(question: str, client: QdrantClient | None = None) -> AgentResponse:
         inferred_summary = parsed["inferred_summary"]
         abstained = _looks_like_abstention(answer_text)
     timing["generate_ms"] = _ms(t_gen)
+
+    # Local salvage when model still abstains despite retrieved docs
+    if abstained and (kb_entries or chunks):
+        salvaged = _salvage_partial_answer(question, kb_entries, chunks, gaps)
+        if salvaged:
+            answer_text, gaps = salvaged
+            abstained = False
+            used_inference = True
+            inferred_summary = inferred_summary or (
+                "Documented subset surfaced after model abstained on a partial-coverage ask"
+            )
+            logger.info("salvage_partial_answer applied")
 
     # Ops critique only when local draft checks fail
     if use_facets and not abstained and (kb_entries or chunks):

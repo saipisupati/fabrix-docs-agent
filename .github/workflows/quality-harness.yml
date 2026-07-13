@@ -1,6 +1,7 @@
 name: Quality harness
 
 on:
+  workflow_dispatch:
   push:
     branches: [main]
     paths:
