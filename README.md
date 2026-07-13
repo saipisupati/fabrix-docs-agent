@@ -11,7 +11,7 @@ Local agent over the public doc export: **543** MD source files (214 bot catalog
 | Suite | Bar | Latest |
 |-------|-----|--------|
 | `eval_production.py` | 100% PASS | 22/22 |
-| `eval_break.py` (full cycle 1+2) | ≥95% PASS, 0 FAIL | 27/27 |
+| `eval_break.py` (full cycle 1+2) | ≥95% PASS, 0 FAIL | 28/28 |
 | `eval_readiness.py` | GREEN twice (pass ≥95%, p95 ≤ 45s) | GREEN ×2 |
 
 Run `python3 tests/run_quality_harness.py` (stop the API first; local Qdrant allows one process at a time). Exit 0 means the raised bar is met.
@@ -168,6 +168,33 @@ Optional: embed the ask widget on a documentation site and point it at a hosted 
 
 Run the quality harness until exit 0 before production deploy. See [docs/QUALITY_LOOP.md](docs/QUALITY_LOOP.md).
 
+## CI (quality harness)
+
+GitHub Actions runs [`.github/workflows/quality-harness.yml`](.github/workflows/quality-harness.yml) on pushes and PRs when `src/`, `tests/`, or `scripts/` change.
+
+**Repo secrets (required for a real gate):**
+
+| Secret | Purpose |
+|--------|---------|
+| `OPENROUTER_API_KEY` | Embeddings (same as local ingest/eval) |
+| `OPENAI_API_KEY` | Generation (`gpt-4o-mini`) |
+| `RUNTIME_DATA_URL` | HTTPS URL to `fabrix_runtime_data.tar.gz` (optional but needed for full eval) |
+
+CI cannot run ingest without your doc export. Eval needs prebuilt `data/qdrant_db/` and `data/kb/` from a machine that already ran ingest + `build_kb.py`.
+
+**Package runtime data** (on a machine with a fresh ingest + KB build):
+
+```bash
+./scripts/package_runtime_data.sh
+# uploads fabrix_runtime_data.tar.gz as a release asset or private blob; set RUNTIME_DATA_URL to that URL
+```
+
+**Behavior:**
+
+- With secrets + tarball: runs `tests/run_quality_harness.py` with `HARNESS_CI_MODE=1` (single readiness GREEN, not ×2 streak).
+- Without data or keys: exits 0 with `HARNESS SKIP` so PRs do not false-fail (`HARNESS_SKIP_IF_NO_DATA=1`).
+- Local pre-deploy still uses the ×2 readiness streak; see [docs/QUALITY_LOOP.md](docs/QUALITY_LOOP.md).
+
 Standalone chat UI for local or hosted testing: [docs/HOSTING_BETA.md](docs/HOSTING_BETA.md) (chat UI hosting guide).
 
 ## Eval
@@ -177,7 +204,7 @@ Standalone chat UI for local or hosted testing: [docs/HOSTING_BETA.md](docs/HOST
 | Script | Purpose |
 |--------|---------|
 | `tests/eval_production.py` | Production-style Fabrix ops battery (22 cases) |
-| `tests/eval_break.py` | Adversarial battery: format stress, traps, contamination (27 cases; `BREAK_CYCLE=2` for cycle 2 only) |
+| `tests/eval_break.py` | Adversarial battery: format stress, traps, contamination (28 cases; `BREAK_CYCLE=2` for cycle 2 only) |
 | `tests/eval_readiness.py` | PASS rate + p95 latency gate (14-case subset) |
 | `tests/run_quality_harness.py` | Raised bar: production 100% + break ≥95%/0 FAIL + readiness GREEN ×2 |
 

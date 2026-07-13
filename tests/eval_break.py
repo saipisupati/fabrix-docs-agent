@@ -297,6 +297,18 @@ BREAK_CASES = [
         "require_wiring_shape": True,
         "forbid_in_sources": ["servicenow", "prometheus"],
     },
+    {
+        "id": "c2_agentic_toolset_persona",
+        "attack": "synthesis_compare",
+        "cycle": 2,
+        "question": (
+            "When building Agentic AI on Fabrix, should I start with a Toolset or a Persona "
+            "for a read-only troubleshooting assistant?"
+        ),
+        "need_any": ["toolset", "persona"],
+        "forbid_in_sources": ["servicenow", "kubernetes", "prometheus"],
+        "expect_infer": True,
+    },
 ]
 
 

@@ -1,0 +1,52 @@
+name: Quality harness
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "src/**"
+      - "tests/**"
+      - "scripts/**"
+      - ".github/workflows/quality-harness.yml"
+  pull_request:
+    paths:
+      - "src/**"
+      - "tests/**"
+      - "scripts/**"
+      - ".github/workflows/quality-harness.yml"
+
+jobs:
+  quality-harness:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Download runtime data tarball
+        env:
+          RUNTIME_DATA_URL: ${{ secrets.RUNTIME_DATA_URL }}
+        run: |
+          if [ -z "${RUNTIME_DATA_URL:-}" ]; then
+            echo "RUNTIME_DATA_URL not set; skipping tarball download"
+            exit 0
+          fi
+          curl -fsSL -o fabrix_runtime_data.tar.gz "$RUNTIME_DATA_URL"
+          tar xzf fabrix_runtime_data.tar.gz
+          test -d data/qdrant_db
+          test -f data/kb/kb.json
+
+      - name: Run quality harness
+        env:
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          HARNESS_CI_MODE: "1"
+          HARNESS_SKIP_IF_NO_DATA: "1"
+        run: python3 tests/run_quality_harness.py

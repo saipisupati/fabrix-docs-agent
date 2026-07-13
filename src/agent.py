@@ -1405,16 +1405,24 @@ def answer(question: str, client: QdrantClient | None = None) -> AgentResponse:
             logger.info("single_product mode dominant=%s", fam_hits[0])
         else:
             logger.info("multi_product mode families=%s", fam_hits)
-    elif _is_agentic_question(question):
+    elif _is_agentic_question(question) or _is_synthesis_question(question):
         queries0 = list(facet_plan["search_queries"] or [])
-        for seed in (
+        seeds = [
             "Fabio Copilot AI Fabric",
             "AI Fabric Copilot pipeline audit",
-        ):
+        ]
+        if _is_synthesis_question(question):
+            qlow_syn = (question or "").lower()
+            if any(w in qlow_syn for w in ("toolset", "persona", "agentic", "copilot", "fabio")):
+                seeds = [
+                    "Toolsets Personas Agentic AI Fabrix",
+                    "AI Persona Toolset comparison",
+                ] + seeds
+        for seed in seeds:
             if seed not in queries0:
                 queries0 = [seed] + queries0
         facet_plan["search_queries"] = queries0
-        logger.info("agentic topic mode retrieve bias")
+        logger.info("agentic/synthesis topic mode retrieve bias")
 
     # CFXQL / operator asks: always prepend topic seeds (format stress often empties search_q)
     qlow_seed = (question or "").lower()

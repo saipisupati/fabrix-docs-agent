@@ -1,12 +1,15 @@
 """
-run_quality_harness.py — step-by-step quality gate for the Fabrix docs agent.
+run_quality_harness.py: step-by-step quality gate for the Fabrix docs agent
 
 Runs production → full break → readiness, writes a failure digest, and tracks
-readiness GREEN streak. Exit 0 only when all raised bars pass and streak >= 2.
+readiness GREEN streak. Exit 0 only when all raised bars pass and streak >= 2
 
-Stop the API first (local Qdrant file lock).
+Stop the API first (local Qdrant file lock)
 
   python3 tests/run_quality_harness.py
+
+CI (GitHub Actions): set HARNESS_CI_MODE=1 for single-readiness GREEN gate;
+HARNESS_SKIP_IF_NO_DATA=1 skips gracefully when secrets or runtime data are absent.
 
 Outputs (gitignored):
   tests/quality_harness_digest.md
@@ -32,7 +35,45 @@ PROD_RESULTS = os.path.join(TESTS_DIR, "eval_production_results.txt")
 BREAK_RESULTS = os.path.join(TESTS_DIR, "eval_break_results.txt")
 READY_RESULTS = os.path.join(TESTS_DIR, "eval_readiness_results.txt")
 
-STREAK_TARGET = 2
+STREAK_TARGET = 2  # local pre-deploy; CI uses single GREEN (see _streak_target)
+
+
+def _ci_mode() -> bool:
+    return os.environ.get("HARNESS_CI_MODE", "").strip().lower() in ("1", "true", "yes")
+
+
+def _skip_if_no_data() -> bool:
+    return os.environ.get("HARNESS_SKIP_IF_NO_DATA", "").strip().lower() in (
+        "1",
+        "true",
+        "yes",
+    )
+
+
+def _has_runtime_data() -> bool:
+    qdrant = os.path.join(ROOT, "data", "qdrant_db")
+    kb = os.path.join(ROOT, "data", "kb", "kb.json")
+    return os.path.isdir(qdrant) and os.path.isfile(kb)
+
+
+def _has_api_keys() -> bool:
+    return bool(os.environ.get("OPENROUTER_API_KEY")) and bool(os.environ.get("OPENAI_API_KEY"))
+
+
+def _preflight() -> tuple[bool, str]:
+    missing: list[str] = []
+    if not _has_api_keys():
+        missing.append("OPENROUTER_API_KEY and/or OPENAI_API_KEY")
+    if not _has_runtime_data():
+        missing.append("data/qdrant_db/ and/or data/kb/kb.json")
+    if not missing:
+        return True, ""
+    return False, "; ".join(missing)
+
+
+def _streak_target() -> int:
+    return 1 if _ci_mode() else STREAK_TARGET
+
 
 TAG_TO_FIX = {
     "contamination": "family fidelity / INTEGRATION_FAMILIES / source filter",
@@ -190,17 +231,43 @@ def _port_8080_listening() -> bool:
 
 def main() -> int:
     ts = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
+    ci = _ci_mode()
+    streak_target = _streak_target()
     digest: list[str] = [
         f"# Quality harness digest — {ts}",
         "",
         "## Raised bar",
         "- production: 100% PASS (0 FAIL, 0 PARTIAL)",
         "- break (full cycle1+2): ≥95% PASS and 0 FAIL",
-        "- readiness: GREEN twice in a row (streak ≥ 2)",
+        (
+            "- readiness: single GREEN (CI mode)"
+            if ci
+            else f"- readiness: GREEN twice in a row (streak ≥ {STREAK_TARGET})"
+        ),
         "",
         "Hard rule: fix agent with generic families/rules — never question-specific branches.",
         "",
     ]
+
+    ok, reason = _preflight()
+    if not ok:
+        if _skip_if_no_data():
+            print(f"HARNESS SKIP: {reason}", flush=True)
+            digest.append("## Verdict")
+            digest.append("")
+            digest.append(f"**SKIP** — {reason}. Wire repo secrets + runtime tarball for full CI gate.")
+            digest.append("")
+            with open(DIGEST_PATH, "w", encoding="utf-8") as f:
+                f.write("\n".join(digest) + "\n")
+            return 0
+        print(f"HARNESS FAIL preflight: {reason}", flush=True)
+        digest.append("## Verdict")
+        digest.append("")
+        digest.append(f"**FAIL** — preflight: {reason}")
+        digest.append("")
+        with open(DIGEST_PATH, "w", encoding="utf-8") as f:
+            f.write("\n".join(digest) + "\n")
+        return 1
 
     if _port_8080_listening():
         digest.append(
@@ -236,20 +303,28 @@ def main() -> int:
     )
     ready_green = _readiness_green(ready_text, rc_ready)
 
-    # Streak
-    streak_data = _load_streak()
-    if ready_green:
-        streak_data["streak"] = int(streak_data.get("streak") or 0) + 1
-        streak_data["last_gate"] = "GREEN"
+    # Streak (local pre-deploy tracks consecutive GREEN; CI resets each run)
+    if ci:
+        streak_data = {"streak": 0, "last_gate": None, "history": []}
+        if ready_green:
+            streak_data["streak"] = 1
+            streak_data["last_gate"] = "GREEN"
+        else:
+            streak_data["last_gate"] = "RED"
     else:
-        streak_data["streak"] = 0
-        streak_data["last_gate"] = "RED"
-    streak_data.setdefault("history", [])
-    streak_data["history"].append(
-        {"ts": ts, "gate": streak_data["last_gate"], "streak": streak_data["streak"]}
-    )
-    streak_data["history"] = streak_data["history"][-20:]
-    _save_streak(streak_data)
+        streak_data = _load_streak()
+        if ready_green:
+            streak_data["streak"] = int(streak_data.get("streak") or 0) + 1
+            streak_data["last_gate"] = "GREEN"
+        else:
+            streak_data["streak"] = 0
+            streak_data["last_gate"] = "RED"
+        streak_data.setdefault("history", [])
+        streak_data["history"].append(
+            {"ts": ts, "gate": streak_data["last_gate"], "streak": streak_data["streak"]}
+        )
+        streak_data["history"] = streak_data["history"][-20:]
+        _save_streak(streak_data)
     streak = int(streak_data["streak"])
 
     digest.append("## Suite results")
@@ -274,7 +349,10 @@ def main() -> int:
         f"{'GREEN' if ready_green else 'RED'} |"
     )
     digest.append("")
-    digest.append(f"**readiness_streak={streak}/{STREAK_TARGET}** (last={streak_data['last_gate']})")
+    digest.append(
+        f"**readiness_streak={streak}/{streak_target}** "
+        f"(last={streak_data['last_gate']}, ci={ci})"
+    )
     digest.append("")
 
     # Failures
@@ -316,22 +394,33 @@ def main() -> int:
         )
         digest.append("")
 
-    all_ok = prod_ok and break_ok and streak >= STREAK_TARGET
+    if ci:
+        all_ok = prod_ok and break_ok and ready_green
+    else:
+        all_ok = prod_ok and break_ok and streak >= streak_target
     digest.append("## Verdict")
     digest.append("")
     if all_ok:
-        digest.append(
-            f"**PASS** — production + break bars met and readiness streak ≥ {STREAK_TARGET}. "
-            "Ready to discuss docs embed (separate decision)."
-        )
+        if ci:
+            digest.append(
+                "**PASS** — production + break bars met and readiness GREEN (CI single-run gate)."
+            )
+        else:
+            digest.append(
+                f"**PASS** — production + break bars met and readiness streak ≥ {streak_target}. "
+                "Ready to discuss docs embed (separate decision)."
+            )
     else:
         reasons = []
         if not prod_ok:
             reasons.append("production bar")
         if not break_ok:
             reasons.append("break bar")
-        if streak < STREAK_TARGET:
-            reasons.append(f"readiness streak {streak}/{STREAK_TARGET}")
+        if ci:
+            if not ready_green:
+                reasons.append("readiness not GREEN")
+        elif streak < streak_target:
+            reasons.append(f"readiness streak {streak}/{streak_target}")
         digest.append(f"**FAIL** — need: {', '.join(reasons)}.")
         digest.append("")
         digest.append("Next: see Step 2 in `docs/QUALITY_LOOP.md`.")
@@ -342,7 +431,10 @@ def main() -> int:
         f.write(text + "\n")
     print("\n" + text)
     print(f"\nWrote {DIGEST_PATH}")
-    print(f"Wrote {STREAK_PATH} (streak={streak})")
+    if ci:
+        print(f"CI mode: streak not persisted (this run={streak}/{streak_target})")
+    else:
+        print(f"Wrote {STREAK_PATH} (streak={streak})")
 
     return 0 if all_ok else 1
 

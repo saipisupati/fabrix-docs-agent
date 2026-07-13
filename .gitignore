@@ -18,6 +18,7 @@ data/chroma_db/
 data/qdrant_db/
 data/kb/
 fabrix_qdrant_db.tar.gz
+fabrix_runtime_data.tar.gz
 
 # Local logs
 ingestion_log.txt
