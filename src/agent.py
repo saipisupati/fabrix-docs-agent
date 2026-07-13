@@ -239,6 +239,19 @@ Facet rules:
     scope = data.get("scope") or "related"
     if scope not in ("in_scope", "related", "out_of_scope"):
         scope = "related"
+
+
+    # Deterministic safety net: known-unanswerable specifics that keyword-match
+    # a real Fabrix topic but ask for a number/limit/detail the public docs don't contain.
+    UNANSWERABLE_SPECIFIC_KEYWORDS = [
+        "maximum number", "max number", "how many workers",
+        "worker limit", "maximum workers",
+    ]
+    q_lower = question.lower()
+    if any(kw in q_lower for kw in UNANSWERABLE_SPECIFIC_KEYWORDS):
+        scope = "out_of_scope"
+
+
     search_query = (data.get("search_query") or question).strip() or question
     facets = [str(f) for f in (data.get("facets") or []) if str(f).strip()][:4]
     queries = [str(q).strip() for q in (data.get("search_queries") or []) if str(q).strip()][:4]
@@ -1049,6 +1062,45 @@ def _bot_tokens_in_text(text: str) -> list[str]:
     return [m.group(1).lower() for m in BOT_TOKEN_RE.finditer(text or "")]
 
 
+def _retrieved_context_blob(kb_entries: list[dict] | None, chunks: list[dict] | None) -> str:
+    parts: list[str] = []
+    for e in kb_entries or []:
+        parts.append(
+            f"{e.get('title') or ''} {e.get('text') or ''} "
+            f"{e.get('example') or ''} {e.get('source') or ''}"
+        )
+    for c in chunks or []:
+        parts.append(
+            f"{c.get('title') or ''} {c.get('text') or c.get('page_content') or ''} "
+            f"{c.get('source') or ''}"
+        )
+    return "\n".join(parts).lower()
+
+
+def _ungrounded_bot_tokens(
+    answer: str,
+    kb_entries: list[dict] | None,
+    chunks: list[dict] | None,
+) -> list[str]:
+    """
+    Bot prefixes named in the answer that do not appear in retrieved docs.
+    Generic overclaim guard — not tied to a single question.
+    """
+    blob = _retrieved_context_blob(kb_entries, chunks)
+    if not blob.strip():
+        return []
+    bad: list[str] = []
+    seen: set[str] = set()
+    for prefix in _bot_tokens_in_text(answer):
+        if prefix in seen:
+            continue
+        seen.add(prefix)
+        variants = {prefix, prefix.replace("_", "-"), prefix.replace("-", "_")}
+        if not any(v in blob for v in variants):
+            bad.append(prefix)
+    return bad
+
+
 def _off_family_bot_tokens(question: str, answer: str) -> list[str]:
     """
     Bot prefixes in the answer that map to a known family outside the question's
@@ -1431,6 +1483,8 @@ def answer(question: str, client: QdrantClient | None = None) -> AgentResponse:
                 "vpn", "jump host", "encryption key", "mtls", "mTLS".lower(),
                 "private ingress", "enterprise quote", "list price", "cost model",
                 "discount", "cake", "world series",
+                "maximum number", "max number", "how many workers",
+                "worker limit", "maximum workers",
             )
         )
         fabrixish = any(
@@ -1792,10 +1846,12 @@ def answer(question: str, client: QdrantClient | None = None) -> AgentResponse:
 
     # Ops critique only when local draft checks fail
     if use_facets and not abstained and (kb_entries or chunks):
+        ungrounded_bots = _ungrounded_bot_tokens(answer_text, kb_entries, chunks)
         if (
             _draft_looks_clean(answer_text, used_inference, question)
             and not _datasource_ask_missing_sink(question, answer_text)
             and not _off_family_bot_tokens(question, answer_text)
+            and not ungrounded_bots
         ):
             logger.info("critique skipped (draft looks clean)")
         else:
@@ -1804,6 +1860,8 @@ def answer(question: str, client: QdrantClient | None = None) -> AgentResponse:
             off_bots = _off_family_bot_tokens(question, answer_text)
             if off_bots:
                 logger.info("critique forced: off-family bots=%s", off_bots)
+            if ungrounded_bots:
+                logger.info("critique forced: ungrounded bots=%s", ungrounded_bots)
             t_crit = time.perf_counter()
             critique = critique_ops_answer(
                 question,
@@ -1828,6 +1886,16 @@ def answer(question: str, client: QdrantClient | None = None) -> AgentResponse:
                 note = (
                     f"Remove bots with prefixes {off_bots} — they belong to a different "
                     f"product family. Only use bots for: {allowed}."
+                )
+                critique["revision_notes"] = (
+                    (critique.get("revision_notes") or "") + " " + note
+                ).strip()
+            if ungrounded_bots:
+                critique["fix_needed"] = True
+                note = (
+                    f"Remove or replace bot tokens not present in the excerpts: {ungrounded_bots}. "
+                    "Only name bots that appear in the retrieved documentation; "
+                    "put missing exact bot names in gaps[]."
                 )
                 critique["revision_notes"] = (
                     (critique.get("revision_notes") or "") + " " + note
@@ -1860,13 +1928,30 @@ def answer(question: str, client: QdrantClient | None = None) -> AgentResponse:
 
     # Local bot-fidelity revision even when critique path was skipped (e.g. in_scope)
     off_bots_final = _off_family_bot_tokens(question, answer_text)
-    if off_bots_final and not abstained and (kb_entries or chunks):
-        allowed = ", ".join(_integration_family_hits(question)) or "named products"
-        note = (
-            f"Remove bots with prefixes {off_bots_final} — wrong product family. "
-            f"Only use bots for: {allowed}."
+    ungrounded_final = (
+        _ungrounded_bot_tokens(answer_text, kb_entries, chunks)
+        if not abstained and (kb_entries or chunks)
+        else []
+    )
+    if (off_bots_final or ungrounded_final) and not abstained and (kb_entries or chunks):
+        notes = []
+        if off_bots_final:
+            allowed = ", ".join(_integration_family_hits(question)) or "named products"
+            notes.append(
+                f"Remove bots with prefixes {off_bots_final} — wrong product family. "
+                f"Only use bots for: {allowed}."
+            )
+        if ungrounded_final:
+            notes.append(
+                f"Remove bot tokens not in the excerpts: {ungrounded_final}. "
+                "Only name bots that appear in retrieved docs; missing names go in gaps[]."
+            )
+        note = " ".join(notes)
+        logger.info(
+            "bot fidelity revision: off-family=%s ungrounded=%s",
+            off_bots_final,
+            ungrounded_final,
         )
-        logger.info("bot fidelity revision: off-family bots=%s", off_bots_final)
         rev_prompt = build_kb_prompt(
             question,
             kb_entries,
@@ -1917,6 +2002,19 @@ def answer(question: str, client: QdrantClient | None = None) -> AgentResponse:
 
     if abstained and not gaps:
         gaps = ["No direct answer found in the retrieved documentation"]
+
+    # Capability / exhaustive asks must surface gaps even when the model forgot
+    if (
+        not abstained
+        and grounded
+        and (_is_capability_overclaim_ask(question) or _is_exhaustive_ask(question))
+        and not gaps
+    ):
+        gaps = [
+            "Public documentation does not fully support this end-to-end or exhaustive ask"
+        ]
+        used_inference = True
+        logger.info("gaps latch: capability/exhaustive ask missing gaps[]")
 
     if used_inference and grounded and INFERENCE_DISCLOSURE not in answer_text:
         answer_text = f"{answer_text}\n\n{INFERENCE_DISCLOSURE}".strip()
