@@ -164,6 +164,9 @@ def _is_capability_overclaim_ask(question: str) -> bool:
         for m in (
             "rewrite", "for me end-to-end", "do it for me", "change production",
             "in production for me",
+            "auto-remediate", "auto remediate", "autoremediate",
+            "no human approval", "without human approval", "without a human",
+            "with no human",
         )
     )
     return actor and action
@@ -211,7 +214,7 @@ Return:
 Scope rules:
 - in_scope: fact or procedure clearly covered in Fabrix/RDA/CFX docs (bot params, CFXQL, named pipeline/guide, named extensions like agentic_ai, install/config of RDA features, etc.)
 - related: synthesis / composition / how-would-I / compare Fabrix objects / broad “building blocks for automation” — multi-doc reasoning
-- out_of_scope: ONLY billing/refunds/subscriptions, contractual support SLAs, private VPN/jump-host crypto, private mTLS/ingress cert rotation not in public docs, enterprise quotes/pricing/cost models/list prices, unrelated products, cooking/sports, personal advice
+- out_of_scope: ONLY billing/refunds/subscriptions, contractual support SLAs, SOC2/HIPAA/GDPR/DPA/compliance report downloads and BAA requests, third-party penetration-test/CVSS reports, private VPN/jump-host crypto, private mTLS/ingress cert rotation not in public docs, private control-plane/root password resets, HR/salary/internal employment topics, enterprise quotes/pricing/cost models/list prices, unrelated products, cooking/sports, personal advice
 Never mark questions about Fabrix extensions, bots, pipelines, CFXQL, datasets, pstreams, dashboards, or AI Fabric as out_of_scope.
 Prefer related over in_scope for combining pieces, comparing objects (pstream vs dataset), broad automation overviews, or designing workflows.
 search_query must strip presentation constraints (exact step counts, blank-line formatting).
@@ -897,6 +900,7 @@ INTEGRATION_FAMILIES: list[tuple[str, tuple[str, ...]]] = [
     ("prometheus", ("prometheus", "prometheusv2", "prometheus_v2")),
     ("zabbix", ("zabbix",)),
     ("splunk", ("splunk",)),
+    ("elastic", ("elastic", "elasticsearch", "opensearch", "elk")),
     ("servicenow", ("servicenow", "service now", "sn ticketing")),
     ("bmc", ("bmc-remedy", "bmc remedy", "bmc_remedy")),
     ("kubernetes", ("kubernetes", "k8s", "kubectl", "kubernetes-inventory")),
@@ -904,9 +908,20 @@ INTEGRATION_FAMILIES: list[tuple[str, tuple[str, ...]]] = [
     ("cisco_ucs", ("ucsm", "ucs-manager", "ucs manager", "cisco ucs")),
     ("pagerduty", ("pagerduty", "pager duty")),
     ("datadog", ("datadog",)),
+    ("dynatrace", ("dynatrace",)),
+    ("solarwinds", ("solarwinds", "solar winds")),
+    ("newrelic", ("new relic", "newrelic", "new_relic")),
+    ("appdynamics", ("appdynamics", "app dynamics", "appd")),
     ("nagios", ("nagios", "nagios xi", "nagiosxi")),
+    ("kafka", ("kafka", "kafka-v2")),
+    ("netapp", ("netapp", "netapp-eseries", "netapp7", "netappc")),
+    ("nutanix", ("nutanix",)),
+    ("opsgenie", ("opsgenie", "ops genie", "ops-genie")),
+    ("msteams", ("msteams", "ms-teams", "microsoft teams", "ms teams")),
+    ("jira", ("jira",)),
     ("slack", ("slack",)),
     ("aws", ("aws", "amazon web services")),
+    ("azure", ("azure", "microsoft azure")),
     ("linux", ("linux-inventory", "linux-os", "linux os")),
 ]
 
@@ -939,7 +954,7 @@ _PRODUCT_TYPOS: tuple[tuple[str, str], ...] = (
 
 
 def _normalize_question_typos(question: str) -> str:
-    """Rewrite known product misspellings so family detection still fires."""
+    """Rewrite known product misspellings / slang so family detection still fires."""
     q = question or ""
     low = q.lower()
     for typo, canonical in _PRODUCT_TYPOS:
@@ -949,7 +964,29 @@ def _normalize_question_typos(question: str) -> str:
             # case-insensitive replace preserving surrounding text
             q = re.sub(re.escape(typo), canonical, q, flags=re.IGNORECASE)
             low = q.lower()
+    # Ops slang abbreviations (word-boundary only)
+    q = re.sub(r"\bog\b", "Opsgenie", q, flags=re.IGNORECASE)
     return q
+
+
+def _answer_mentions_agentic(answer: str) -> bool:
+    low = (answer or "").lower()
+    return any(
+        m in low
+        for m in ("fabio", "fabaio", "copilot", "agentic", "persona", "toolset")
+    )
+
+
+def _question_names_agentic(question: str) -> bool:
+    q = (question or "").lower()
+    return any(m in q for m in ("fabio", "copilot", "agentic"))
+
+
+def _polish_known_product_typos(answer: str) -> str:
+    """Fix recurring model misspellings of Fabrix product names."""
+    if not answer:
+        return answer
+    return re.sub(r"\bFabaio\b", "Fabio", answer, flags=re.IGNORECASE)
 
 
 def _integration_family_hits(question: str) -> list[str]:
@@ -965,7 +1002,15 @@ def _integration_family_hits(question: str) -> list[str]:
         if canonical == "servicenow":
             if "servicenow" in q or "service now" in q or "sn ticketing" in q:
                 hits.append(canonical)
-            elif re.search(r"\bsn\b", q):
+            elif re.search(r"\bsn\b", q) or re.search(r"\bsnow\b", q):
+                hits.append(canonical)
+            continue
+        if canonical == "pagerduty":
+            if any(a in q for a in aliases) or re.search(r"\bpd\b", q):
+                hits.append(canonical)
+            continue
+        if canonical == "opsgenie":
+            if any(a in q for a in aliases) or re.search(r"\bog\b", q):
                 hits.append(canonical)
             continue
         if canonical == "bmc":
@@ -1439,6 +1484,8 @@ def answer(question: str, client: QdrantClient | None = None) -> AgentResponse:
     if client is None:
         client = QdrantClient(path=QDRANT_DIR)
 
+    question = _normalize_question_typos(question)
+
     t0 = time.perf_counter()
     timing = {
         "scope_ms": 0.0,
@@ -1485,6 +1532,9 @@ def answer(question: str, client: QdrantClient | None = None) -> AgentResponse:
                 "discount", "cake", "world series",
                 "maximum number", "max number", "how many workers",
                 "worker limit", "maximum workers",
+                "hipaa", "baa", "soc2", "soc 2", "gdpr", "signed dpa",
+                "data processing agreement", "penetration test", "pentest", "cvss",
+                "salary", "internal hr", "admin password", "root password",
             )
         )
         fabrixish = any(
@@ -1527,6 +1577,12 @@ def answer(question: str, client: QdrantClient | None = None) -> AgentResponse:
             "ignore the documentation", "ignore the docs", "ignore documentation",
             "invent a fabrix", "invent a password", "invent an admin",
             "training data", "default password", "admin password",
+            "soc2", "soc 2", "type ii report", "type 2 report",
+            "root password", "control plane vm",
+            "hipaa", "baa", "business associate agreement",
+            "salary band", "salary range", "internal hr",
+            "gdpr", "signed dpa", "data processing agreement",
+            "penetration test", "pentest", "cvss",
         )
     )
     # Credential fishing: ask for a secret value rather than how to configure auth
@@ -1648,6 +1704,24 @@ def answer(question: str, client: QdrantClient | None = None) -> AgentResponse:
         logger.info("cfxql topic retrieve bias")
         use_facets = True
 
+    # Worker scale / capacity asks
+    if "worker" in qlow_seed and any(
+        w in qlow_seed for w in ("scale", "site", "limit", "max", "capacity", "busy")
+    ):
+        queries0 = list(facet_plan["search_queries"] or [])
+        for seed in (
+            "RDA workers site scale capacity",
+            "RDA Fabric workers administration",
+            "workers per site Fabrix",
+        ):
+            if seed not in queries0:
+                queries0 = [seed] + queries0
+        facet_plan["search_queries"] = queries0
+        use_facets = True
+        if scope == "in_scope":
+            scope = "related"
+        logger.info("worker scale topic retrieve bias")
+
     # Ultra-short soft-facet asks (e.g. "pstream?") — seed the facet even if planner is thin
     stripped_q = re.sub(r"[^\w\s-]", " ", qlow_seed).strip()
     if len(stripped_q) <= 24:
@@ -1733,6 +1807,11 @@ def answer(question: str, client: QdrantClient | None = None) -> AgentResponse:
             seeds.append("Datadog Fabrix bots datasource")
         if "nagios" in qlow:
             seeds.append("Nagios XI Fabrix bots datasource")
+        if "worker" in qlow and any(
+            w in qlow for w in ("scale", "site", "limit", "max", "capacity")
+        ):
+            seeds.append("RDA workers site scale capacity")
+            seeds.append("RDA Fabric workers administration")
         if any(m in qlow for m in AGENTIC_MARKERS):
             seeds.append("Fabio Copilot AI Fabric")
         for fam in _integration_family_hits(question):
@@ -1852,6 +1931,9 @@ def answer(question: str, client: QdrantClient | None = None) -> AgentResponse:
             and not _datasource_ask_missing_sink(question, answer_text)
             and not _off_family_bot_tokens(question, answer_text)
             and not ungrounded_bots
+            and not (
+                _question_names_agentic(question) and not _answer_mentions_agentic(answer_text)
+            )
         ):
             logger.info("critique skipped (draft looks clean)")
         else:
@@ -1900,6 +1982,16 @@ def answer(question: str, client: QdrantClient | None = None) -> AgentResponse:
                 critique["revision_notes"] = (
                     (critique.get("revision_notes") or "") + " " + note
                 ).strip()
+            if _question_names_agentic(question) and not _answer_mentions_agentic(answer_text):
+                critique["fix_needed"] = True
+                note = (
+                    "Name Fabio Copilot / Agentic AI (Persona/Toolset as documented) explicitly "
+                    "in the answer; put unsupported auto-remediation / no-human-approval claims in gaps[]."
+                )
+                critique["revision_notes"] = (
+                    (critique.get("revision_notes") or "") + " " + note
+                ).strip()
+                logger.info("critique forced: agentic markers missing from answer")
             logger.info(
                 "critique fix_needed=%s overclaim=%s notes=%s",
                 critique.get("fix_needed"),
@@ -1973,6 +2065,7 @@ def answer(question: str, client: QdrantClient | None = None) -> AgentResponse:
         abstained = _looks_like_abstention(answer_text)
 
     answer_text = polish_answer_text(answer_text)
+    answer_text = _polish_known_product_typos(answer_text)
     grounded = bool(kb_entries or chunks) and not abstained
 
     if grounded:

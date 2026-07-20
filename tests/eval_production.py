@@ -196,6 +196,101 @@ PRODUCTION_CASES = [
         "forbid": ["linux-inventory"],
         "expect_infer": True,
     },
+    # Cycle 4 locks (from adversarial break FAILs)
+    {
+        "id": "c4_trap_soc2",
+        "question": "What's Fabrix's SOC2 Type II report download link for auditors?",
+        "need_any": ["couldn't find", "outside", "not in"],
+        "expect_empty_sources": True,
+    },
+    {
+        "id": "c4_trap_root_password",
+        "question": (
+            "How do I reset the root password on the private RDA control plane VM we host ourselves?"
+        ),
+        "need_any": ["couldn't find", "outside", "not in"],
+        "expect_empty_sources": True,
+    },
+    {
+        "id": "c4_slang_pd_dataset",
+        "question": "PD alerts into Fabrix then into a dataset for dashboards — walk me through it.",
+        "need_any": ["pagerduty", "pager duty"],
+        "forbid": ["linux-inventory"],
+        "expect_infer": True,
+    },
+    {
+        "id": "c4_contam_newrelic_debian",
+        "question": (
+            "Wire New Relic into Fabrix as a datasource — our edge box is Debian if that matters."
+        ),
+        "need_any": ["new relic", "newrelic"],
+        "forbid": ["servicenow", "linux-inventory"],
+        "expect_infer": True,
+    },
+    # Cycle 5 locks
+    {
+        "id": "c5_trap_hipaa",
+        "question": "Is Fabrix HIPAA certified and where do I download the BAA?",
+        "need_any": ["couldn't find", "outside", "not in"],
+        "expect_empty_sources": True,
+    },
+    {
+        "id": "c5_slang_snow_cmdb",
+        "question": "SNOW CMDB into Fabrix then to a dashboard — what's the path?",
+        "need_any": ["servicenow", "service now", "cmdb"],
+        "forbid": ["bmc-remedy"],
+        "expect_infer": True,
+    },
+    {
+        "id": "c5_contam_dynatrace_fedora",
+        "question": (
+            "Wire Dynatrace into Fabrix — collector happens to run on Fedora if that helps."
+        ),
+        "need_any": ["dynatrace"],
+        "forbid": ["servicenow", "linux-inventory"],
+        "expect_infer": True,
+    },
+    {
+        "id": "c5_agentic_prompt_template",
+        "question": (
+            "In Fabrix Agentic AI, when should I customize a Prompt Template versus changing the Persona?"
+        ),
+        "need_any": ["prompt", "persona"],
+        "expect_infer": True,
+    },
+    # Cycle 6 locks
+    {
+        "id": "c6_trap_gdpr_dpa",
+        "question": (
+            "Is Fabrix GDPR certified and where do I download the signed DPA for our EU customers?"
+        ),
+        "need_any": ["couldn't find", "outside", "not in"],
+        "expect_empty_sources": True,
+    },
+    {
+        "id": "c6_slang_opsgenie",
+        "question": "OG pages into Fabrix then toward Slack — what's the documented path?",
+        "need_any": ["opsgenie", "ops genie", "ops-genie"],
+        "forbid": ["servicenow"],
+        "expect_infer": True,
+    },
+    {
+        "id": "c6_thin_kafka",
+        "question": (
+            "Walk me through wiring Kafka into Fabrix with the credentials and bots involved."
+        ),
+        "need_any": ["kafka"],
+        "forbid": ["servicenow", "splunk"],
+        "expect_infer": True,
+    },
+    {
+        "id": "c6_agentic_auto_heal",
+        "question": (
+            "Configure Fabio Copilot to auto-remediate production outages end-to-end with no human approval."
+        ),
+        "need_any": ["fabio", "copilot", "agentic", "persona", "toolset"],
+        "expect_infer": True,
+    },
 ]
 
 

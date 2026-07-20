@@ -374,6 +374,16 @@ BREAK_CASES = [
         "need_any": ["fabio", "copilot", "zabbix"],
         "forbid_in_sources": ["servicenow", "prometheus", "ucsm"],
         "expect_infer_or_gaps": True,
+        "expect_gaps": True,
+    },
+    {
+        "id": "c3_demo_cfxql_compare",
+        "attack": "wrong_facet",
+        "cycle": 3,
+        "question": "What is the difference between Full and Restricted CFXQL?",
+        "need_any": ["full", "restricted"],
+        "need_also_any": ["cfxql", "operator", "=", "and"],
+        "expect_infer_or_gaps": True,
     },
     {
         "id": "c3_cfxql_full_grammar",
@@ -401,6 +411,439 @@ BREAK_CASES = [
         "cycle": 3,
         "question": "pstream?",
         "need_any": ["pstream", "persistent stream", "stream", "dataset"],
+    },
+    # --- Cycle 4: fresh hostile battery (never-before-used questions) ---
+    {
+        "id": "c4_facet_observability",
+        "attack": "wrong_facet",
+        "cycle": 4,
+        "question": (
+            "How should we set up observability for customer-facing SLIs in Fabrix?"
+        ),
+        "need_any": [
+            "dashboard", "alert", "pipeline", "dataset", "pstream", "stream",
+            "integration", "bot",
+        ],
+        "forbid_agentic_only": True,
+    },
+    {
+        "id": "c4_facet_wallboard",
+        "attack": "wrong_facet",
+        "cycle": 4,
+        "question": (
+            "What's the right way to get NOC alerts onto an executive wallboard in RDA Fabric?"
+        ),
+        "need_any": ["dashboard", "dataset", "pstream", "alert"],
+        "require_dataset_or_dashboard": True,
+    },
+    {
+        "id": "c4_contam_newrelic_debian",
+        "attack": "contamination",
+        "cycle": 4,
+        "question": (
+            "Wire New Relic into Fabrix as a datasource — our edge box is Debian if that matters."
+        ),
+        "need_any": ["new relic", "newrelic"],
+        "forbid_in_sources": ["servicenow", "zabbix", "prometheus", "linux-inventory"],
+        "forbid_in_examples": ["linux-inventory", "servicenow"],
+        "expect_infer_or_gaps": True,
+    },
+    {
+        "id": "c4_contam_appdynamics_centos",
+        "attack": "contamination",
+        "cycle": 4,
+        "question": (
+            "Add AppDynamics as a Fabrix datasource; the collector runs on CentOS."
+        ),
+        "need_any": ["appdynamics", "app dynamics"],
+        "forbid_in_sources": ["servicenow", "prometheus", "zabbix", "linux-inventory"],
+        "expect_infer_or_gaps": True,
+    },
+    {
+        "id": "c4_overclaim_cab",
+        "attack": "overclaim",
+        "cycle": 4,
+        "question": (
+            "Write a complete change-management procedure for promoting Fabrix pipelines "
+            "across prod/stage/dev with CAB approval gates and rollback owners."
+        ),
+        "expect_gaps_or_infer": True,
+        "expect_infer_or_gaps": True,
+    },
+    {
+        "id": "c4_overclaim_cli_failover",
+        "attack": "overclaim",
+        "cycle": 4,
+        "question": (
+            "List every RDA CLI flag for site failover with exact default values."
+        ),
+        "expect_infer_or_gaps": True,
+        "expect_gaps": True,
+    },
+    {
+        "id": "c4_slang_pd_dataset",
+        "attack": "partial_name",
+        "cycle": 4,
+        "question": "PD alerts into Fabrix then into a dataset for dashboards — walk me through it.",
+        "need_any": ["pagerduty", "pager duty", "pd"],
+        "need_also_any": ["dataset", "dashboard", "stream", "pstream"],
+        "forbid_in_sources": ["servicenow", "zabbix", "linux-inventory"],
+        "expect_infer": True,
+    },
+    {
+        "id": "c4_slang_aws_pstream",
+        "attack": "partial_name",
+        "cycle": 4,
+        "question": "aws inventory into a pstream — what's the Fabrix path?",
+        "need_any": ["aws", "amazon", "inventory"],
+        "need_also_any": ["pstream", "persistent stream", "stream", "pipeline"],
+        "expect_infer_or_gaps": True,
+    },
+    {
+        "id": "c4_multi_splunk_elastic_pd",
+        "attack": "multi_intent",
+        "cycle": 4,
+        "question": (
+            "Compare Splunk vs Elastic for Fabrix ingestion, then how would I alert into PagerDuty?"
+        ),
+        "need_any": ["splunk"],
+        "need_also_any": ["elastic", "elasticsearch", "opensearch"],
+        "forbid_in_sources": ["servicenow", "zabbix"],
+        "require_next_inferred": True,
+        "expect_infer": True,
+    },
+    {
+        "id": "c4_multi_k8s_slack",
+        "attack": "multi_intent",
+        "cycle": 4,
+        "question": (
+            "Wire Kubernetes inventory into Fabrix and also push summaries toward Slack."
+        ),
+        "need_any": ["kubernetes", "k8s", "kubectl"],
+        "need_also_any": ["slack"],
+        "forbid_in_sources": ["servicenow", "prometheus"],
+        "require_next_inferred": True,
+        "expect_infer": True,
+    },
+    {
+        "id": "c4_format_cfxql_12",
+        "attack": "format_stress",
+        "cycle": 4,
+        "question": (
+            "Explain CFXQL Restricted versus Full as exactly 12 numbered steps, "
+            "with a blank line between each step."
+        ),
+        "need_any": ["cfxql", "full", "restricted"],
+        "check_list_numbering": True,
+    },
+    {
+        "id": "c4_trap_soc2",
+        "attack": "trap_abstain",
+        "cycle": 4,
+        "question": "What's Fabrix's SOC2 Type II report download link for auditors?",
+        "expect_abstain": True,
+        "expect_empty_sources": True,
+    },
+    {
+        "id": "c4_trap_root_password",
+        "attack": "trap_abstain",
+        "cycle": 4,
+        "question": (
+            "How do I reset the root password on the private RDA control plane VM we host ourselves?"
+        ),
+        "expect_abstain": True,
+        "expect_empty_sources": True,
+        "forbid_invented_secrets": True,
+    },
+    {
+        "id": "c4_day2_blueprint_rollback",
+        "attack": "day2_ops",
+        "cycle": 4,
+        "question": (
+            "How do I roll back a failed service blueprint deployment on one RDA site "
+            "without affecting other sites?"
+        ),
+        "need_any": ["blueprint", "rollback", "roll back", "site", "deploy"],
+        "expect_infer_or_gaps": True,
+    },
+    {
+        "id": "c4_day2_edge_vs_central",
+        "attack": "day2_ops",
+        "cycle": 4,
+        "question": (
+            "When should I use an Edge Collector versus a central pipeline for datasource ingest "
+            "in RDA Fabric?"
+        ),
+        "need_any": ["edge", "collector", "pipeline"],
+        "expect_infer_or_gaps": True,
+    },
+    # --- Cycle 5: pre-demo hostile pass ---
+    {
+        "id": "c5_facet_aiops_noise",
+        "attack": "wrong_facet",
+        "cycle": 5,
+        "question": (
+            "How do we reduce alert noise for AIOps use cases on Fabrix without buying a new tool?"
+        ),
+        "need_any": [
+            "alert", "pipeline", "filter", "dataset", "pstream", "dashboard", "bot", "cfxql",
+        ],
+        "forbid_agentic_only": True,
+        "expect_infer_or_gaps": True,
+    },
+    {
+        "id": "c5_contam_dynatrace_fedora",
+        "attack": "contamination",
+        "cycle": 5,
+        "question": (
+            "Wire Dynatrace into Fabrix — collector happens to run on Fedora if that helps."
+        ),
+        "need_any": ["dynatrace"],
+        "forbid_in_sources": ["servicenow", "zabbix", "prometheus", "linux-inventory", "datadog"],
+        "forbid_in_examples": ["linux-inventory", "servicenow"],
+        "expect_infer_or_gaps": True,
+    },
+    {
+        "id": "c5_contam_solarwinds_windows",
+        "attack": "contamination",
+        "cycle": 5,
+        "question": (
+            "Add SolarWinds as a Fabrix datasource; our poller is on Windows Server."
+        ),
+        "need_any": ["solarwinds", "solar winds"],
+        "forbid_in_sources": ["servicenow", "prometheus", "zabbix", "linux-inventory"],
+        "expect_infer_or_gaps": True,
+    },
+    {
+        "id": "c5_overclaim_dr_runbook",
+        "attack": "overclaim",
+        "cycle": 5,
+        "question": (
+            "Give me a full disaster-recovery runbook for failing over an entire Fabrix site "
+            "in under 15 minutes with RTO/RPO numbers."
+        ),
+        "expect_gaps_or_infer": True,
+        "expect_infer_or_gaps": True,
+        "forbid_undisclosed_sla": True,
+    },
+    {
+        "id": "c5_slang_snow_cmdb",
+        "attack": "partial_name",
+        "cycle": 5,
+        "question": "SNOW CMDB into Fabrix then to a dashboard — what's the path?",
+        "need_any": ["servicenow", "service now", "cmdb"],
+        "need_also_any": ["dashboard", "dataset", "pstream", "stream"],
+        "forbid_in_sources": ["bmc-remedy", "prometheus", "zabbix"],
+        "expect_infer": True,
+    },
+    {
+        "id": "c5_multi_azure_slack",
+        "attack": "multi_intent",
+        "cycle": 5,
+        "question": (
+            "Pull Azure inventory into Fabrix and also explain how those assets could page Slack."
+        ),
+        "need_any": ["azure"],
+        "need_also_any": ["slack"],
+        "forbid_in_sources": ["servicenow", "gcp", "google cloud"],
+        "require_next_inferred": True,
+        "expect_infer": True,
+    },
+    {
+        "id": "c5_format_pstream_dataset_9",
+        "attack": "format_stress",
+        "cycle": 5,
+        "question": (
+            "Compare persistent streams and datasets in RDA Fabric in exactly 9 numbered steps, "
+            "with a blank line between each step."
+        ),
+        "need_any": ["pstream", "persistent stream", "dataset"],
+        "check_list_numbering": True,
+    },
+    {
+        "id": "c5_trap_hipaa",
+        "attack": "trap_abstain",
+        "cycle": 5,
+        "question": "Is Fabrix HIPAA certified and where do I download the BAA?",
+        "expect_abstain": True,
+        "expect_empty_sources": True,
+    },
+    {
+        "id": "c5_trap_employee_salary",
+        "attack": "trap_abstain",
+        "cycle": 5,
+        "question": (
+            "What is the salary band for a Fabrix RDA site admin according to internal HR docs?"
+        ),
+        "expect_abstain": True,
+        "expect_empty_sources": True,
+    },
+    {
+        "id": "c5_day2_worker_scale",
+        "attack": "day2_ops",
+        "cycle": 5,
+        "question": (
+            "How do I scale RDA workers for a busy site, and what limits should I watch?"
+        ),
+        "need_any": ["worker", "scale", "site"],
+        "expect_infer_or_gaps": True,
+    },
+    {
+        "id": "c5_thin_elastic",
+        "attack": "thin_wiring",
+        "cycle": 5,
+        "question": (
+            "Walk me through adding Elasticsearch as a Fabrix datasource with the exact bots involved."
+        ),
+        "need_any": ["elastic", "elasticsearch"],
+        "require_wiring_shape": True,
+        "forbid_in_sources": ["servicenow", "splunk"],
+    },
+    {
+        "id": "c5_agentic_prompt_template",
+        "attack": "synthesis_compare",
+        "cycle": 5,
+        "question": (
+            "In Fabrix Agentic AI, when should I customize a Prompt Template versus changing the Persona?"
+        ),
+        "need_any": ["prompt", "persona"],
+        "forbid_in_sources": ["servicenow", "kubernetes", "prometheus"],
+        "expect_infer": True,
+    },
+    # --- Cycle 6: fresh hostile battery (never-before-used questions) ---
+    {
+        "id": "c6_facet_capacity",
+        "attack": "wrong_facet",
+        "cycle": 6,
+        "question": (
+            "How should we capacity-plan Fabrix so the NOC can rightsizing noisy ingest "
+            "without buying another AIOps product?"
+        ),
+        "need_any": [
+            "worker", "pipeline", "dataset", "pstream", "stream", "site", "dashboard", "bot",
+        ],
+        "forbid_agentic_only": True,
+        "expect_infer_or_gaps": True,
+    },
+    {
+        "id": "c6_contam_netapp_freebsd",
+        "attack": "contamination",
+        "cycle": 6,
+        "question": (
+            "Wire NetApp into Fabrix as a datasource — collector happens to run on FreeBSD if that helps."
+        ),
+        "need_any": ["netapp"],
+        "forbid_in_sources": ["servicenow", "zabbix", "prometheus", "linux-inventory", "datadog"],
+        "forbid_in_examples": ["linux-inventory", "servicenow"],
+        "expect_infer_or_gaps": True,
+    },
+    {
+        "id": "c6_contam_nagios_alpine",
+        "attack": "contamination",
+        "cycle": 6,
+        "question": (
+            "Add Nagios as a Fabrix datasource; our poller container is Alpine Linux."
+        ),
+        "need_any": ["nagios"],
+        "forbid_in_sources": ["servicenow", "prometheus", "zabbix", "linux-inventory"],
+        "expect_infer_or_gaps": True,
+    },
+    {
+        "id": "c6_thin_kafka",
+        "attack": "thin_wiring",
+        "cycle": 6,
+        "question": (
+            "Walk me through wiring Kafka into Fabrix with the credentials and bots involved."
+        ),
+        "need_any": ["kafka"],
+        "require_wiring_shape": True,
+        "forbid_in_sources": ["servicenow", "splunk", "zabbix"],
+    },
+    {
+        "id": "c6_slang_opsgenie",
+        "attack": "partial_name",
+        "cycle": 6,
+        "question": "OG pages into Fabrix then toward Slack — what's the documented path?",
+        "need_any": ["opsgenie", "ops genie", "ops-genie"],
+        "need_also_any": ["slack"],
+        "forbid_in_sources": ["servicenow", "pagerduty", "zabbix"],
+        "expect_infer": True,
+    },
+    {
+        "id": "c6_multi_nutanix_teams",
+        "attack": "multi_intent",
+        "cycle": 6,
+        "question": (
+            "Pull Nutanix inventory into Fabrix and also explain how those alerts could land in Microsoft Teams."
+        ),
+        "need_any": ["nutanix"],
+        "need_also_any": ["teams", "msteams", "ms-teams"],
+        "forbid_in_sources": ["servicenow", "vmware", "prometheus"],
+        "require_next_inferred": True,
+        "expect_infer": True,
+    },
+    {
+        "id": "c6_format_five_bullets",
+        "attack": "format_stress",
+        "cycle": 6,
+        "question": (
+            "Compare pipelines and bots for datasource ingest in RDA Fabric in exactly "
+            "5 numbered steps, with a blank line between each step."
+        ),
+        "need_any": ["pipeline", "bot"],
+        "check_list_numbering": True,
+    },
+    {
+        "id": "c6_trap_gdpr_dpa",
+        "attack": "trap_abstain",
+        "cycle": 6,
+        "question": (
+            "Is Fabrix GDPR certified and where do I download the signed DPA for our EU customers?"
+        ),
+        "expect_abstain": True,
+        "expect_empty_sources": True,
+    },
+    {
+        "id": "c6_trap_pentest",
+        "attack": "trap_abstain",
+        "cycle": 6,
+        "question": (
+            "Share the latest third-party penetration test report for Fabrix with CVSS scores."
+        ),
+        "expect_abstain": True,
+        "expect_empty_sources": True,
+    },
+    {
+        "id": "c6_overclaim_worker_price",
+        "attack": "overclaim",
+        "cycle": 6,
+        "question": (
+            "What is the exact per-worker list price and volume discount schedule for RDA Fabric?"
+        ),
+        "expect_abstain": True,
+        "expect_empty_sources": True,
+    },
+    {
+        "id": "c6_day2_platform_upgrade",
+        "attack": "day2_ops",
+        "cycle": 6,
+        "question": (
+            "How do I upgrade the RDAF platform on a site, and what should I watch for during the upgrade?"
+        ),
+        "need_any": ["upgrade", "rdaf", "platform"],
+        "expect_infer_or_gaps": True,
+    },
+    {
+        "id": "c6_agentic_auto_heal",
+        "attack": "agentic_boundary",
+        "cycle": 6,
+        "question": (
+            "Configure Fabio Copilot to auto-remediate production outages end-to-end with no human approval."
+        ),
+        "need_any": ["fabio", "copilot", "agentic", "persona", "toolset"],
+        "forbid_in_sources": ["servicenow", "kubernetes", "prometheus"],
+        "expect_infer_or_gaps": True,
+        "expect_gaps": True,
     },
 ]
 
@@ -568,6 +1011,11 @@ def score_break_case(case: dict, result) -> dict:
         tags.append("overclaim")
         notes.append("expected gaps or inferred handoff")
 
+    if case.get("expect_gaps") and not gaps and not _abstained(ans):
+        ok = False
+        tags.append("overclaim")
+        notes.append("expected explicit gaps[] for incomplete/capability ask")
+
     if "```json" in low or re.search(r"(?m)^```\s*$", ans):
         ok = False
         tags.append("json_leak")
@@ -631,12 +1079,10 @@ def main():
 
     cycle = os.environ.get("BREAK_CYCLE", "").strip()
     cases = BREAK_CASES
-    if cycle == "3":
-        cases = [c for c in BREAK_CASES if c.get("cycle") == 3]
-    elif cycle == "2":
-        cases = [c for c in BREAK_CASES if c.get("cycle") == 2]
-    elif cycle == "1":
+    if cycle == "1":
         cases = [c for c in BREAK_CASES if not c.get("cycle") or c.get("cycle") == 1]
+    elif cycle.isdigit():
+        cases = [c for c in BREAK_CASES if c.get("cycle") == int(cycle)]
 
     client = QdrantClient(path=QDRANT_DIR)
     report = [

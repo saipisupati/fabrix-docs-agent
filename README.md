@@ -10,13 +10,13 @@ Local agent over the public doc export: **543** MD source files (214 bot catalog
 
 | Suite | Bar | Latest |
 |-------|-----|--------|
-| `eval_production.py` | 100% PASS | 22/22 |
-| `eval_break.py` (full cycle 1–3) | ≥95% PASS, 0 FAIL | 37/37 |
+| `eval_production.py` | 100% PASS | 30/30 |
+| `eval_break.py` (full cycle 1–5) | ≥95% PASS, 0 FAIL | cycle5 12/12 |
 | `eval_readiness.py` | GREEN twice (pass ≥95%, p95 ≤ 45s) | GREEN ×2 |
 
 Run `python3 tests/run_quality_harness.py` (stop the API first; local Qdrant allows one process at a time). Exit 0 means the raised bar is met.
 
-Operator docs: [docs/QUALITY_LOOP.md](docs/QUALITY_LOOP.md), [docs/DEPLOY_CHECKLIST.md](docs/DEPLOY_CHECKLIST.md), [docs/NOTES.md](docs/NOTES.md).
+Operator docs: [docs/QUALITY_LOOP.md](docs/QUALITY_LOOP.md), [docs/CONTINUOUS_QUALITY.md](docs/CONTINUOUS_QUALITY.md), [docs/DEMO_2.md](docs/DEMO_2.md), [docs/DEPLOY_CHECKLIST.md](docs/DEPLOY_CHECKLIST.md), [docs/NOTES.md](docs/NOTES.md).
 
 ## How it works (local path: primary)
 
@@ -206,8 +206,8 @@ Standalone chat UI for local or hosted testing: [docs/HOSTING_BETA.md](docs/HOST
 
 | Script | Purpose |
 |--------|---------|
-| `tests/eval_production.py` | Production-style Fabrix ops battery (22 cases) |
-| `tests/eval_break.py` | Adversarial battery: format stress, traps, contamination (cycle 1–3; `BREAK_CYCLE=3` for cycle 3 only) |
+| `tests/eval_production.py` | Production-style Fabrix ops battery (30 cases) |
+| `tests/eval_break.py` | Adversarial battery: format stress, traps, contamination (cycle 1–5; `BREAK_CYCLE=5` for cycle 5 only) |
 | `tests/eval_readiness.py` | PASS rate + p95 latency gate (14-case subset) |
 | `tests/run_quality_harness.py` | Raised bar: production 100% + break ≥95%/0 FAIL + readiness GREEN ×2 |
 
