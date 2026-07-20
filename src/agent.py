@@ -22,6 +22,7 @@ sys.path.insert(0, os.path.dirname(__file__))
 from config import LLM_MODEL, QDRANT_DIR
 from doc_urls import BOTS_REL_PREFIX, chunk_metadata_to_url, public_doc_url
 from kb.store import retrieve_kb
+from live_docs import live_install_kb_entries
 from query_qdrant import (
     bot_name_hints,
     generate,
@@ -2028,6 +2029,16 @@ def answer(question: str, client: QdrantClient | None = None) -> AgentResponse:
             if rescued:
                 kb_entries = rescued[:10]
                 chunks = []
+
+        # Optional live browse of the same pages ChatGPT opens (fail-open)
+        live_entries = live_install_kb_entries()
+        if live_entries:
+            local = _rank_entries_for_install_ask(
+                _filter_kb_entries_for_install_ask(list(kb_entries or []), question),
+                question,
+            )
+            kb_entries = (live_entries + local)[:12]
+            logger.info("live_docs: prepended %s installation_guides page(s)", len(live_entries))
 
     # Last-chance topic seeds when format-stressed queries still miss
     if not kb_entries and not chunks:

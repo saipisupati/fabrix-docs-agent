@@ -96,7 +96,9 @@ python3 scripts/sync_docs_and_rebuild.py --rebuild
 python3 tests/run_quality_harness.py
 ```
 
-Do **not** scrape docs.fabrix.ai on every chat turn — refresh the MD snapshot in batch, then retrieve locally.
+Do **not** scrape docs.fabrix.ai on every chat turn for the full corpus — refresh the MD snapshot in batch, then retrieve locally.
+
+**Optional live browse (install/VM only):** with `LIVE_DOCS_FETCH=1` (default), install/prereq/VM asks also fetch `https://docs.fabrix.ai/installation_guides/` at answer time and prepend that text to context (fail-open if the network fails). Disable with `LIVE_DOCS_FETCH=0`.
 
 ---
 
