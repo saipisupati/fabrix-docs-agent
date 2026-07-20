@@ -172,6 +172,186 @@ def _is_capability_overclaim_ask(question: str) -> bool:
     return actor and action
 
 
+def _is_platform_install_ask(question: str) -> bool:
+    """
+    Platform / Studio / RDAF install, prerequisites, VM (virtual machine) or hardware sizing.
+    Excludes asks that name a datasource product family (those stay on integration docs).
+    """
+    if _integration_family_hits(question):
+        return False
+    q = _normalize_question_typos(question or "").lower()
+    # VM = virtual machine (sizing / host requirements)
+    vmish = bool(
+        re.search(r"\bvm\b", q)
+        or "virtual machine" in q
+        or "virtual machines" in q
+    )
+    installish = vmish or any(
+        w in q
+        for w in (
+            "install", "installation", "deploy", "deployment", "prerequisite",
+            "prerequisites", "hardware", "sizing",
+            "system requirement", "system requirements",
+            "software do i need", "software requirements",
+            "requirements if i want", "requirements for",
+        )
+    )
+    if not installish:
+        return False
+    return any(
+        w in q
+        for w in (
+            "fabrix", "rdaf", "rda fabric", "rda studio", "platform",
+            "agents", "worker", "on my own", "own vm", "own vms",
+        )
+    )
+
+
+# Prefer the same docs ChatGPT opens: https://docs.fabrix.ai/installation_guides/
+_INSTALL_GUIDE_PATH_MARKERS: tuple[str, ...] = (
+    "installation_guides/",
+    "docs.fabrix.ai/installation_guides",
+    "rda_studio_installation",
+    "rda studio installation",
+)
+
+_INSTALL_DOC_MARKERS: tuple[str, ...] = _INSTALL_GUIDE_PATH_MARKERS + (
+    "rda_studio",
+    "rdaf_cli",
+    "rdaf_k8s",
+    "deployment",
+    "fsm_preupgrade",
+    "fsm_installation",
+)
+
+_INSTALL_CONTENT_MARKERS: tuple[str, ...] = (
+    "docker", "docker-compose", "docker compose", "cpu", "memory", "ram",
+    "disk", "gib", "registry", "cloudfabrix.io", "rda studio", "pip3",
+    "python 3", "ubuntu", "rhel", "ports 4222", "9443", "virtual machine",
+)
+
+_INTEGRATION_PREREQ_NOISE: tuple[str, ...] = (
+    "servicenow", "service now", "qualys", "crowdstrike", "logrhythm",
+    "zabbix", "pagerduty", "ms team", "microsoft teams", "splunk",
+    "datadog", "prometheus", "bmc remedy",
+)
+
+
+def _entry_source_blob(entry: dict) -> str:
+    return (
+        f"{entry.get('title') or ''} {entry.get('source') or ''} "
+        f"{entry.get('url') or ''} {entry.get('text') or ''}"
+    ).lower()
+
+
+def _looks_like_install_guide_path(blob: str) -> bool:
+    """True when the hit is clearly under installation_guides (preferred index)."""
+    low = (blob or "").lower()
+    return any(m in low for m in _INSTALL_GUIDE_PATH_MARKERS)
+
+
+def _looks_like_install_doc(blob: str) -> bool:
+    low = (blob or "").lower()
+    if _looks_like_install_guide_path(low):
+        return True
+    if any(m in low for m in _INSTALL_DOC_MARKERS):
+        return True
+    return sum(1 for m in _INSTALL_CONTENT_MARKERS if m in low) >= 2
+
+
+def _looks_like_integration_prereq_noise(blob: str) -> bool:
+    """Datasource 'Prerequisites' chunks that steal install/platform retrieve."""
+    low = (blob or "").lower()
+    if _looks_like_install_doc(low):
+        return False
+    if "datasource_integrations" in low or "bots/" in low:
+        return any(n in low for n in _INTEGRATION_PREREQ_NOISE)
+    # Untitled "**__2. Prerequisites__**" integration snippets
+    if "prerequisite" in low and any(n in low for n in _INTEGRATION_PREREQ_NOISE):
+        return True
+    return False
+
+
+def _filter_kb_entries_for_install_ask(entries: list[dict], question: str) -> list[dict]:
+    if not entries or not _is_platform_install_ask(question):
+        return entries
+    kept = []
+    for e in entries:
+        blob = _entry_source_blob(e)
+        if _looks_like_integration_prereq_noise(blob):
+            continue
+        kept.append(e)
+    return kept or entries
+
+
+def _rank_entries_for_install_ask(entries: list[dict], question: str) -> list[dict]:
+    """Rank: installation_guides paths first, then other install-ish, then the rest."""
+    if not entries or not _is_platform_install_ask(question):
+        return entries
+    guide, installish, other = [], [], []
+    for e in entries:
+        blob = _entry_source_blob(e)
+        if _looks_like_install_guide_path(blob):
+            guide.append(e)
+        elif _looks_like_install_doc(blob):
+            installish.append(e)
+        else:
+            other.append(e)
+    return guide + installish + other
+
+
+def _filter_sources_for_install_ask(sources: list[dict], question: str) -> list[dict]:
+    if not sources or not _is_platform_install_ask(question):
+        return sources
+    kept = []
+    for s in sources:
+        blob = f"{s.get('title') or ''} {s.get('url') or ''} {s.get('excerpt') or ''}".lower()
+        if _looks_like_integration_prereq_noise(blob):
+            continue
+        kept.append(s)
+    if kept:
+        guide = [
+            s for s in kept
+            if _looks_like_install_guide_path(
+                f"{s.get('title') or ''} {s.get('url') or ''} {s.get('excerpt') or ''}"
+            )
+        ]
+        rest = [s for s in kept if s not in guide]
+        installish = [
+            s for s in rest
+            if _looks_like_install_doc(
+                f"{s.get('title') or ''} {s.get('url') or ''} {s.get('excerpt') or ''}"
+            )
+        ]
+        other = [s for s in rest if s not in installish]
+        return (guide + installish + other)[:12]
+    logger.info("install source filter emptied list; fail-open keeping original sources")
+    return sources
+
+
+def _answer_has_integration_prereq_drift(answer: str) -> bool:
+    low = (answer or "").lower()
+    return any(
+        n in low
+        for n in (
+            "servicenow", "qualys", "crowdstrike", "logrhythm",
+            "ms team's name", "microsoft teams",
+        )
+    )
+
+
+def _install_answer_missing_hardware(answer: str) -> bool:
+    """Platform install answers should surface Docker/CPU/RAM-style prerequisites."""
+    low = (answer or "").lower()
+    return not any(
+        w in low
+        for w in (
+            "docker", "cpu", "memory", "ram", "disk", "python", "gib",
+            "compose", "registry",
+        )
+    )
+
+
 def _strip_format_noise(question: str) -> str:
     """Drop presentation constraints that pollute retrieval queries."""
     q = question or ""
@@ -217,13 +397,15 @@ Scope rules:
 - out_of_scope: ONLY billing/refunds/subscriptions, contractual support SLAs, SOC2/HIPAA/GDPR/DPA/compliance report downloads and BAA requests, third-party penetration-test/CVSS reports, private VPN/jump-host crypto, private mTLS/ingress cert rotation not in public docs, private control-plane/root password resets, HR/salary/internal employment topics, enterprise quotes/pricing/cost models/list prices, unrelated products, cooking/sports, personal advice
 Never mark questions about Fabrix extensions, bots, pipelines, CFXQL, datasets, pstreams, dashboards, or AI Fabric as out_of_scope.
 Prefer related over in_scope for combining pieces, comparing objects (pstream vs dataset), broad automation overviews, or designing workflows.
+For platform install / prerequisites / VM or hardware sizing with no named datasource product: use facet install; search_queries must target RDA Studio / RDA Fabric installation_guides (Docker, CPU/RAM, registry) — never datasource integration credential prerequisites.
 search_query must strip presentation constraints (exact step counts, blank-line formatting).
 
 Facet rules:
-- needs_facets=true for related questions, comparisons, broad how-to/ops, dashboards, monitoring, multi-intent.
+- needs_facets=true for related questions, comparisons, broad how-to/ops, dashboards, monitoring, multi-intent, platform install/prereq/VM sizing.
 - needs_facets=false for simple single-doc lookups (bot params, one named fact).
 - When needs_facets: prefer classic RDA diversity (bots, CFXQL, pipelines, datasets, pstreams, dashboards, integrations);
   include ai_fabric only for agents/AI/toolsets/personas or broad automation.
+  For install/prereq/VM asks: prefer install facet and installation_guides queries over integrations.
 - Dashboard questions: include datasets and/or pstreams, not only collectors.
 - For out_of_scope: empty facets and search_queries.
 """
@@ -1722,6 +1904,33 @@ def answer(question: str, client: QdrantClient | None = None) -> AgentResponse:
             scope = "related"
         logger.info("worker scale topic retrieve bias")
 
+    # Platform install / VM / prerequisites (not datasource integration prereqs)
+    if _is_platform_install_ask(question):
+        queries0 = list(facet_plan["search_queries"] or [])
+        for seed in (
+            "RDA Studio installation prerequisites Docker CPU memory disk",
+            "RDA Fabric platform deployment hardware software requirements",
+            "installation_guides RDA Studio docker registry python",
+            "RDAF install Ubuntu Docker Compose system requirements",
+            "virtual machine VM requirements RDA Studio 8GB memory Docker",
+            "docs.fabrix.ai installation_guides prerequisites",
+        ):
+            if seed not in queries0:
+                queries0 = [seed] + queries0
+        facet_plan["search_queries"] = queries0
+        objs = list(facet_plan.get("primary_objects") or [])
+        for term in (
+            "RDA Studio", "installation_guides", "Docker", "prerequisites",
+            "CPU", "memory", "virtual machine",
+        ):
+            if term not in objs:
+                objs.insert(0, term)
+        facet_plan["primary_objects"] = objs[:8]
+        use_facets = True
+        if scope == "in_scope":
+            scope = "related"
+        logger.info("platform install topic retrieve bias")
+
     # Ultra-short soft-facet asks (e.g. "pstream?") — seed the facet even if planner is thin
     stripped_q = re.sub(r"[^\w\s-]", " ", qlow_seed).strip()
     if len(stripped_q) <= 24:
@@ -1790,6 +1999,36 @@ def answer(question: str, client: QdrantClient | None = None) -> AgentResponse:
         kb_entries = retrieve_kb(topic_q, top_k=8)
         chunks = retrieve(topic_q, client, top_k=8, filter_dict=None)
 
+    # Install asks: rescue when similarity latched onto datasource "Prerequisites"
+    if _is_platform_install_ask(question):
+        cleaned = _filter_kb_entries_for_install_ask(list(kb_entries or []), question)
+        installish = [
+            e for e in cleaned if _looks_like_install_doc(_entry_source_blob(e))
+        ]
+        if len(installish) < 2:
+            logger.info("install retrieve rescue: seeding installation_guides")
+            rescued: list[dict] = []
+            seen_ids: set[str] = set()
+            for seed in (
+                "RDA Studio installation prerequisites Docker CPU memory disk",
+                "RDA Fabric platform deployment hardware software requirements",
+                "installation_guides RDA Studio docker registry python pip3",
+                "RDAF install Ubuntu Docker Compose system requirements",
+                "virtual machine VM requirements RDA Studio Docker memory",
+            ):
+                for e in retrieve_kb(seed, top_k=8):
+                    eid = str(e.get("id") or "")
+                    if eid and eid in seen_ids:
+                        continue
+                    if eid:
+                        seen_ids.add(eid)
+                    rescued.append(e)
+            rescued = _filter_kb_entries_for_install_ask(rescued, question)
+            rescued = _rank_entries_for_install_ask(rescued, question)
+            if rescued:
+                kb_entries = rescued[:10]
+                chunks = []
+
     # Last-chance topic seeds when format-stressed queries still miss
     if not kb_entries and not chunks:
         qlow = (question or "").lower()
@@ -1814,6 +2053,14 @@ def answer(question: str, client: QdrantClient | None = None) -> AgentResponse:
             seeds.append("RDA Fabric workers administration")
         if any(m in qlow for m in AGENTIC_MARKERS):
             seeds.append("Fabio Copilot AI Fabric")
+        if _is_platform_install_ask(question):
+            seeds.extend(
+                [
+                    "RDA Studio installation prerequisites Docker CPU memory",
+                    "RDA Fabric deployment hardware software requirements",
+                    "installation_guides docker registry python pip3",
+                ]
+            )
         for fam in _integration_family_hits(question):
             seeds.append(f"{fam} Fabrix datasource bots integration")
         for seed in seeds:
@@ -1841,7 +2088,9 @@ def answer(question: str, client: QdrantClient | None = None) -> AgentResponse:
 
     primary_objects = list(facet_plan.get("primary_objects") or [])
     kb_entries = _filter_kb_entries_to_families(kb_entries, question)
+    kb_entries = _filter_kb_entries_for_install_ask(kb_entries, question)
     kb_entries = _rank_entries_for_product(kb_entries, question)
+    kb_entries = _rank_entries_for_install_ask(kb_entries, question)
     prompt = build_kb_prompt(
         question, kb_entries, chunks, scope, primary_objects=primary_objects
     )
@@ -1934,6 +2183,13 @@ def answer(question: str, client: QdrantClient | None = None) -> AgentResponse:
             and not (
                 _question_names_agentic(question) and not _answer_mentions_agentic(answer_text)
             )
+            and not (
+                _is_platform_install_ask(question)
+                and (
+                    _answer_has_integration_prereq_drift(answer_text)
+                    or _install_answer_missing_hardware(answer_text)
+                )
+            )
         ):
             logger.info("critique skipped (draft looks clean)")
         else:
@@ -1944,6 +2200,11 @@ def answer(question: str, client: QdrantClient | None = None) -> AgentResponse:
                 logger.info("critique forced: off-family bots=%s", off_bots)
             if ungrounded_bots:
                 logger.info("critique forced: ungrounded bots=%s", ungrounded_bots)
+            if _is_platform_install_ask(question) and (
+                _answer_has_integration_prereq_drift(answer_text)
+                or _install_answer_missing_hardware(answer_text)
+            ):
+                logger.info("critique forced: install answer missing hardware/prereq facet")
             t_crit = time.perf_counter()
             critique = critique_ops_answer(
                 question,
@@ -1991,7 +2252,23 @@ def answer(question: str, client: QdrantClient | None = None) -> AgentResponse:
                 critique["revision_notes"] = (
                     (critique.get("revision_notes") or "") + " " + note
                 ).strip()
-                logger.info("critique forced: agentic markers missing from answer")
+            if _is_platform_install_ask(question) and (
+                _answer_has_integration_prereq_drift(answer_text)
+                or _install_answer_missing_hardware(answer_text)
+            ):
+                critique["fix_needed"] = True
+                note = (
+                    "This is a platform install / VM (virtual machine) / hardware prerequisites "
+                    "question. Remove ServiceNow/Qualys/Teams/Crowdstrike integration credential "
+                    "prerequisites. Lead with RDA Studio installation_guides "
+                    "(https://docs.fabrix.ai/installation_guides/): CPU, memory/RAM, disk, Docker, "
+                    "Docker Compose, Python/pip, registry, ports. CLI/Kubernetes paths are secondary. "
+                    "Put missing production sizing numbers in gaps[]."
+                )
+                critique["revision_notes"] = (
+                    (critique.get("revision_notes") or "") + " " + note
+                ).strip()
+            logger.info("critique forced: agentic markers missing from answer")
             logger.info(
                 "critique fix_needed=%s overclaim=%s notes=%s",
                 critique.get("fix_needed"),
@@ -2092,6 +2369,7 @@ def answer(question: str, client: QdrantClient | None = None) -> AgentResponse:
             seen.add(u)
             deduped.append(s)
         sources = _filter_sources_to_topic(deduped[:12], question)
+        sources = _filter_sources_for_install_ask(sources, question)
 
     if abstained and not gaps:
         gaps = ["No direct answer found in the retrieved documentation"]

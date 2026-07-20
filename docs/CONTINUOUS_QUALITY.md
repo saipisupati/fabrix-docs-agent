@@ -77,19 +77,26 @@ BREAK_CYCLE=N python3 tests/eval_break.py
 python3 tests/run_quality_harness.py
 ```
 
-Latest completed hostile pass: **cycle 6** (12 cases). Next unused cycle id: **7**.
+Latest completed hostile pass: **cycle 7** (install/VM facet). Next unused cycle id: **8**.
 
 ---
 
 ## Docs change checklist
 
 ```bash
+# Optional: confirm live site (incl. /installation_guides/) is up
+python3 scripts/sync_docs_and_rebuild.py --check-live
+
+# Refresh local markdown under DOCS_ROOT / BOTS_DIR first, then:
 python3 scripts/audit_ingest_sources.py
-python3 src/ingest_qdrant.py
 # stop API first if upserting into the same Qdrant path
-python3 src/build_kb.py
+python3 scripts/sync_docs_and_rebuild.py --rebuild
+# or manually:
+#   python3 src/ingest_qdrant.py && python3 src/build_kb.py
 python3 tests/run_quality_harness.py
 ```
+
+Do **not** scrape docs.fabrix.ai on every chat turn — refresh the MD snapshot in batch, then retrieve locally.
 
 ---
 

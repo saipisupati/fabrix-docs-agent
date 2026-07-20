@@ -291,6 +291,34 @@ PRODUCTION_CASES = [
         "need_any": ["fabio", "copilot", "agentic", "persona", "toolset"],
         "expect_infer": True,
     },
+    # Cycle 7 locks — platform install facet (not integration Prerequisites)
+    {
+        "id": "c7_install_platform_prereqs",
+        "question": (
+            "Can you give me prerequisites if I want to install Fabrix.ai platform"
+        ),
+        "need_any": ["docker", "python", "cpu", "memory", "ram", "disk", "studio"],
+        "forbid": ["servicenow", "qualys", "crowdstrike"],
+        "expect_infer": True,
+    },
+    {
+        "id": "c7_install_vm_agents",
+        "question": (
+            "Can you give me VM requirements if I want to install Fabrix.ai agents"
+        ),
+        "need_any": ["cpu", "memory", "ram", "disk", "docker", "studio"],
+        "forbid": ["zabbix", "servicenow", "qualys"],
+        "expect_infer": True,
+    },
+    {
+        "id": "c7_install_virtual_machine",
+        "question": (
+            "What virtual machine specs do I need before installing Fabrix RDA Studio?"
+        ),
+        "need_any": ["cpu", "memory", "ram", "disk", "docker", "studio"],
+        "forbid": ["servicenow", "zabbix", "qualys"],
+        "expect_infer": True,
+    },
 ]
 
 

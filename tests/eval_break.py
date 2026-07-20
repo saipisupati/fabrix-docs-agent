@@ -845,6 +845,68 @@ BREAK_CASES = [
         "expect_infer_or_gaps": True,
         "expect_gaps": True,
     },
+    # --- Cycle 7: install / platform facet (not integration "Prerequisites") ---
+    {
+        "id": "c7_install_platform_prereqs",
+        "attack": "wrong_facet",
+        "cycle": 7,
+        "question": (
+            "Can you give me prerequisites if I want to install Fabrix.ai platform"
+        ),
+        "need_any": [
+            "docker", "python", "cpu", "memory", "ram", "disk", "studio",
+            "registry", "compose",
+        ],
+        "forbid_in_sources": [
+            "servicenow", "qualys", "crowdstrike", "logrhythm", "zabbix", "pagerduty",
+        ],
+        "forbid_in_examples": ["servicenow", "qualys", "crowdstrike", "zabbix"],
+        "expect_infer_or_gaps": True,
+    },
+    {
+        "id": "c7_install_vm_agents",
+        "attack": "wrong_facet",
+        "cycle": 7,
+        "question": (
+            "Can you give me VM requirements if I want to install Fabrix.ai agents"
+        ),
+        "need_any": [
+            "cpu", "memory", "ram", "disk", "docker", "vm", "ubuntu", "studio",
+            "worker", "hardware",
+        ],
+        "forbid_in_sources": [
+            "zabbix", "servicenow", "qualys", "crowdstrike", "logrhythm",
+        ],
+        "forbid_in_examples": ["zabbix", "servicenow", "qualys"],
+        "expect_infer_or_gaps": True,
+    },
+    {
+        "id": "c7_install_virtual_machine",
+        "attack": "wrong_facet",
+        "cycle": 7,
+        "question": (
+            "What virtual machine specs do I need before installing Fabrix RDA Studio?"
+        ),
+        "need_any": [
+            "cpu", "memory", "ram", "disk", "docker", "studio", "python", "compose",
+        ],
+        "forbid_in_sources": ["servicenow", "zabbix", "qualys", "crowdstrike"],
+        "expect_infer_or_gaps": True,
+    },
+    {
+        "id": "c7_install_rdaf_hardware",
+        "attack": "wrong_facet",
+        "cycle": 7,
+        "question": (
+            "What hardware and software do I need before deploying RDA Fabric on my own VMs?"
+        ),
+        "need_any": [
+            "docker", "cpu", "memory", "ram", "disk", "linux", "ubuntu", "python",
+            "studio", "compose",
+        ],
+        "forbid_in_sources": ["servicenow", "zabbix", "qualys", "crowdstrike"],
+        "expect_infer_or_gaps": True,
+    },
 ]
 
 
