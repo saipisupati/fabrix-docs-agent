@@ -907,6 +907,16 @@ BREAK_CASES = [
         "forbid_in_sources": ["servicenow", "zabbix", "qualys", "crowdstrike"],
         "expect_infer_or_gaps": True,
     },
+    {
+        "id": "c7_upgrade_rdaf_site",
+        "attack": "wrong_facet",
+        "cycle": 7,
+        "question": "How do I upgrade the RDAF platform on a site?",
+        "need_any": ["rdaf", "cli", "upgrade", "backup", "registry", "status", "docker"],
+        "need_also_any": ["backup", "registry", "status", "pip", "kubernetes", "infra"],
+        "forbid_in_sources": ["servicenow", "zabbix", "qualys"],
+        "expect_infer_or_gaps": True,
+    },
 ]
 
 

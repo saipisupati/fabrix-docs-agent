@@ -175,7 +175,7 @@ def _is_capability_overclaim_ask(question: str) -> bool:
 
 def _is_platform_install_ask(question: str) -> bool:
     """
-    Platform / Studio / RDAF install, prerequisites, VM (virtual machine) or hardware sizing.
+    Platform / Studio / RDAF install, upgrade, prerequisites, VM or hardware sizing.
     Excludes asks that name a datasource product family (those stay on integration docs).
     """
     if _integration_family_hits(question):
@@ -195,6 +195,7 @@ def _is_platform_install_ask(question: str) -> bool:
             "system requirement", "system requirements",
             "software do i need", "software requirements",
             "requirements if i want", "requirements for",
+            "upgrade", "upgrading", "upgrade the", "upgrade rdaf",
         )
     )
     if not installish:
@@ -203,9 +204,17 @@ def _is_platform_install_ask(question: str) -> bool:
         w in q
         for w in (
             "fabrix", "rdaf", "rda fabric", "rda studio", "platform",
-            "agents", "worker", "on my own", "own vm", "own vms",
+            "agents", "worker", "on my own", "own vm", "own vms", "site",
         )
     )
+
+
+def _is_platform_upgrade_ask(question: str) -> bool:
+    """RDAF / platform upgrade workflow (CLI, backup, registry) — not a datasource ask."""
+    if not _is_platform_install_ask(question):
+        return False
+    q = (question or "").lower()
+    return any(w in q for w in ("upgrade", "upgrading"))
 
 
 # Prefer the same docs ChatGPT opens: https://docs.fabrix.ai/installation_guides/
@@ -216,6 +225,17 @@ _INSTALL_GUIDE_PATH_MARKERS: tuple[str, ...] = (
     "rda studio installation",
 )
 
+_UPGRADE_DOC_MARKERS: tuple[str, ...] = (
+    "rdaf_cli",
+    "rdaf_k8s",
+    "rdafcli",
+    "rdaf_start_stop",
+    "start_stop_ops",
+    "backup",
+    "oia_upgrades",
+    "staging_infra_upgrade",
+)
+
 _INSTALL_DOC_MARKERS: tuple[str, ...] = _INSTALL_GUIDE_PATH_MARKERS + (
     "rda_studio",
     "rdaf_cli",
@@ -223,7 +243,7 @@ _INSTALL_DOC_MARKERS: tuple[str, ...] = _INSTALL_GUIDE_PATH_MARKERS + (
     "deployment",
     "fsm_preupgrade",
     "fsm_installation",
-)
+) + _UPGRADE_DOC_MARKERS
 
 _INSTALL_CONTENT_MARKERS: tuple[str, ...] = (
     "docker", "docker-compose", "docker compose", "cpu", "memory", "ram",
@@ -285,20 +305,53 @@ def _filter_kb_entries_for_install_ask(entries: list[dict], question: str) -> li
     return kept or entries
 
 
+def _looks_like_upgrade_doc(blob: str) -> bool:
+    low = (blob or "").lower()
+    return any(m in low for m in _UPGRADE_DOC_MARKERS)
+
+
 def _rank_entries_for_install_ask(entries: list[dict], question: str) -> list[dict]:
-    """Rank: installation_guides paths first, then other install-ish, then the rest."""
+    """Rank: upgrade CLI docs (when upgrading), then installation_guides, then other."""
     if not entries or not _is_platform_install_ask(question):
         return entries
-    guide, installish, other = [], [], []
+    upgrade_ask = _is_platform_upgrade_ask(question)
+    guide, upgrade, installish, other = [], [], [], []
     for e in entries:
         blob = _entry_source_blob(e)
-        if _looks_like_install_guide_path(blob):
+        if upgrade_ask and _looks_like_upgrade_doc(blob):
+            upgrade.append(e)
+        elif _looks_like_install_guide_path(blob):
             guide.append(e)
         elif _looks_like_install_doc(blob):
             installish.append(e)
         else:
             other.append(e)
+    if upgrade_ask:
+        return upgrade + guide + installish + other
     return guide + installish + other
+
+
+def _install_answer_missing_hardware(answer: str) -> bool:
+    """Platform install answers should surface Docker/CPU/RAM-style prerequisites."""
+    low = (answer or "").lower()
+    return not any(
+        w in low
+        for w in (
+            "docker", "cpu", "memory", "ram", "disk", "python", "gib",
+            "compose", "registry",
+        )
+    )
+
+
+def _upgrade_answer_missing_cli_path(answer: str) -> bool:
+    """Upgrade answers should mention RDAF CLI / backup / registry workflow."""
+    low = (answer or "").lower()
+    has_cli = any(w in low for w in ("rdaf", "cli", "rdafk8s", "pip install"))
+    has_ops = any(
+        w in low
+        for w in ("backup", "registry", "status", "docker", "kubernetes", "infra")
+    )
+    return not (has_cli and has_ops)
 
 
 def _filter_sources_for_install_ask(sources: list[dict], question: str) -> list[dict]:
@@ -310,24 +363,33 @@ def _filter_sources_for_install_ask(sources: list[dict], question: str) -> list[
         if _looks_like_integration_prereq_noise(blob):
             continue
         kept.append(s)
-    if kept:
-        guide = [
-            s for s in kept
-            if _looks_like_install_guide_path(
-                f"{s.get('title') or ''} {s.get('url') or ''} {s.get('excerpt') or ''}"
-            )
-        ]
-        rest = [s for s in kept if s not in guide]
-        installish = [
-            s for s in rest
-            if _looks_like_install_doc(
-                f"{s.get('title') or ''} {s.get('url') or ''} {s.get('excerpt') or ''}"
-            )
-        ]
-        other = [s for s in rest if s not in installish]
-        return (guide + installish + other)[:12]
-    logger.info("install source filter emptied list; fail-open keeping original sources")
-    return sources
+    if not kept:
+        logger.info("install source filter emptied list; fail-open keeping original sources")
+        return sources
+    upgrade_ask = _is_platform_upgrade_ask(question)
+    upgrade = [
+        s for s in kept
+        if _looks_like_upgrade_doc(
+            f"{s.get('title') or ''} {s.get('url') or ''} {s.get('excerpt') or ''}"
+        )
+    ] if upgrade_ask else []
+    rest = [s for s in kept if s not in upgrade]
+    guide = [
+        s for s in rest
+        if _looks_like_install_guide_path(
+            f"{s.get('title') or ''} {s.get('url') or ''} {s.get('excerpt') or ''}"
+        )
+    ]
+    rest2 = [s for s in rest if s not in guide]
+    installish = [
+        s for s in rest2
+        if _looks_like_install_doc(
+            f"{s.get('title') or ''} {s.get('url') or ''} {s.get('excerpt') or ''}"
+        )
+    ]
+    other = [s for s in rest2 if s not in installish]
+    ordered = (upgrade + guide + installish + other) if upgrade_ask else (guide + installish + other)
+    return ordered[:12]
 
 
 def _answer_has_integration_prereq_drift(answer: str) -> bool:
@@ -337,18 +399,6 @@ def _answer_has_integration_prereq_drift(answer: str) -> bool:
         for n in (
             "servicenow", "qualys", "crowdstrike", "logrhythm",
             "ms team's name", "microsoft teams",
-        )
-    )
-
-
-def _install_answer_missing_hardware(answer: str) -> bool:
-    """Platform install answers should surface Docker/CPU/RAM-style prerequisites."""
-    low = (answer or "").lower()
-    return not any(
-        w in low
-        for w in (
-            "docker", "cpu", "memory", "ram", "disk", "python", "gib",
-            "compose", "registry",
         )
     )
 
@@ -1905,32 +1955,50 @@ def answer(question: str, client: QdrantClient | None = None) -> AgentResponse:
             scope = "related"
         logger.info("worker scale topic retrieve bias")
 
-    # Platform install / VM / prerequisites (not datasource integration prereqs)
+    # Platform install / upgrade / VM / prerequisites (not datasource integration prereqs)
     if _is_platform_install_ask(question):
         queries0 = list(facet_plan["search_queries"] or [])
-        for seed in (
+        seeds = [
             "RDA Studio installation prerequisites Docker CPU memory disk",
             "RDA Fabric platform deployment hardware software requirements",
             "installation_guides RDA Studio docker registry python",
             "RDAF install Ubuntu Docker Compose system requirements",
             "virtual machine VM requirements RDA Studio 8GB memory Docker",
             "docs.fabrix.ai installation_guides prerequisites",
-        ):
+        ]
+        if _is_platform_upgrade_ask(question):
+            seeds = [
+                "RDAF deployment CLI rdaf upgrade platform infrastructure workers",
+                "rdaf_cli upgrade backup registry status non-kubernetes",
+                "rdafk8s upgrade backup Kubernetes platform services",
+                "RDAF start stop operations after upgrade validate",
+                "installation_guides rdaf_cli pip install deployment bundle",
+            ] + seeds
+        for seed in seeds:
             if seed not in queries0:
                 queries0 = [seed] + queries0
         facet_plan["search_queries"] = queries0
         objs = list(facet_plan.get("primary_objects") or [])
-        for term in (
+        terms = (
             "RDA Studio", "installation_guides", "Docker", "prerequisites",
             "CPU", "memory", "virtual machine",
-        ):
+        )
+        if _is_platform_upgrade_ask(question):
+            terms = (
+                "rdaf", "rdaf_cli", "upgrade", "backup", "registry", "status",
+                "rdafk8s",
+            ) + terms
+        for term in terms:
             if term not in objs:
                 objs.insert(0, term)
         facet_plan["primary_objects"] = objs[:8]
         use_facets = True
         if scope == "in_scope":
             scope = "related"
-        logger.info("platform install topic retrieve bias")
+        logger.info(
+            "platform %s topic retrieve bias",
+            "upgrade" if _is_platform_upgrade_ask(question) else "install",
+        )
 
     # Ultra-short soft-facet asks (e.g. "pstream?") — seed the facet even if planner is thin
     stripped_q = re.sub(r"[^\w\s-]", " ", qlow_seed).strip()
@@ -2000,23 +2068,38 @@ def answer(question: str, client: QdrantClient | None = None) -> AgentResponse:
         kb_entries = retrieve_kb(topic_q, top_k=8)
         chunks = retrieve(topic_q, client, top_k=8, filter_dict=None)
 
-    # Install asks: rescue when similarity latched onto datasource "Prerequisites"
+    # Install/upgrade asks: rescue when similarity latched onto wrong facet
     if _is_platform_install_ask(question):
         cleaned = _filter_kb_entries_for_install_ask(list(kb_entries or []), question)
-        installish = [
-            e for e in cleaned if _looks_like_install_doc(_entry_source_blob(e))
-        ]
-        if len(installish) < 2:
-            logger.info("install retrieve rescue: seeding installation_guides")
+        if _is_platform_upgrade_ask(question):
+            good = [e for e in cleaned if _looks_like_upgrade_doc(_entry_source_blob(e))]
+        else:
+            good = [e for e in cleaned if _looks_like_install_doc(_entry_source_blob(e))]
+        if len(good) < 2:
+            logger.info(
+                "%s retrieve rescue: seeding installation_guides",
+                "upgrade" if _is_platform_upgrade_ask(question) else "install",
+            )
             rescued: list[dict] = []
             seen_ids: set[str] = set()
-            for seed in (
-                "RDA Studio installation prerequisites Docker CPU memory disk",
-                "RDA Fabric platform deployment hardware software requirements",
-                "installation_guides RDA Studio docker registry python pip3",
-                "RDAF install Ubuntu Docker Compose system requirements",
-                "virtual machine VM requirements RDA Studio Docker memory",
-            ):
+            seeds = (
+                (
+                    "RDAF deployment CLI rdaf upgrade platform infrastructure",
+                    "rdaf_cli upgrade backup registry status",
+                    "rdafk8s upgrade backup Kubernetes",
+                    "RDAF start stop operations validate after upgrade",
+                    "installation_guides rdaf_cli pip install",
+                )
+                if _is_platform_upgrade_ask(question)
+                else (
+                    "RDA Studio installation prerequisites Docker CPU memory disk",
+                    "RDA Fabric platform deployment hardware software requirements",
+                    "installation_guides RDA Studio docker registry python pip3",
+                    "RDAF install Ubuntu Docker Compose system requirements",
+                    "virtual machine VM requirements RDA Studio Docker memory",
+                )
+            )
+            for seed in seeds:
                 for e in retrieve_kb(seed, top_k=8):
                     eid = str(e.get("id") or "")
                     if eid and eid in seen_ids:
@@ -2031,7 +2114,9 @@ def answer(question: str, client: QdrantClient | None = None) -> AgentResponse:
                 chunks = []
 
         # Optional live browse of the same pages ChatGPT opens (fail-open)
-        live_entries = live_install_kb_entries()
+        live_entries = live_install_kb_entries(
+            upgrade=_is_platform_upgrade_ask(question)
+        )
         if live_entries:
             local = _rank_entries_for_install_ask(
                 _filter_kb_entries_for_install_ask(list(kb_entries or []), question),
@@ -2198,7 +2283,11 @@ def answer(question: str, client: QdrantClient | None = None) -> AgentResponse:
                 _is_platform_install_ask(question)
                 and (
                     _answer_has_integration_prereq_drift(answer_text)
-                    or _install_answer_missing_hardware(answer_text)
+                    or (
+                        _upgrade_answer_missing_cli_path(answer_text)
+                        if _is_platform_upgrade_ask(question)
+                        else _install_answer_missing_hardware(answer_text)
+                    )
                 )
             )
         ):
@@ -2213,9 +2302,13 @@ def answer(question: str, client: QdrantClient | None = None) -> AgentResponse:
                 logger.info("critique forced: ungrounded bots=%s", ungrounded_bots)
             if _is_platform_install_ask(question) and (
                 _answer_has_integration_prereq_drift(answer_text)
-                or _install_answer_missing_hardware(answer_text)
+                or (
+                    _upgrade_answer_missing_cli_path(answer_text)
+                    if _is_platform_upgrade_ask(question)
+                    else _install_answer_missing_hardware(answer_text)
+                )
             ):
-                logger.info("critique forced: install answer missing hardware/prereq facet")
+                logger.info("critique forced: install/upgrade answer missing platform facet")
             t_crit = time.perf_counter()
             critique = critique_ops_answer(
                 question,
@@ -2263,7 +2356,23 @@ def answer(question: str, client: QdrantClient | None = None) -> AgentResponse:
                 critique["revision_notes"] = (
                     (critique.get("revision_notes") or "") + " " + note
                 ).strip()
-            if _is_platform_install_ask(question) and (
+            if _is_platform_upgrade_ask(question) and (
+                _answer_has_integration_prereq_drift(answer_text)
+                or _upgrade_answer_missing_cli_path(answer_text)
+            ):
+                critique["fix_needed"] = True
+                note = (
+                    "This is an RDAF platform upgrade question. Do not only list version-to-version "
+                    "OIA guide links. Lead with the RDAF Deployment CLI workflow from "
+                    "installation_guides/rdaf_cli (and rdafk8s when Kubernetes): verify versions "
+                    "(rdaf --version / rdaf status), backup, upgrade CLI, registry/image fetch, "
+                    "upgrade infra→platform→workers→apps, then validate. Put release-specific "
+                    "caveats in gaps[]. Cite rdaf_cli / start-stop docs when present."
+                )
+                critique["revision_notes"] = (
+                    (critique.get("revision_notes") or "") + " " + note
+                ).strip()
+            elif _is_platform_install_ask(question) and (
                 _answer_has_integration_prereq_drift(answer_text)
                 or _install_answer_missing_hardware(answer_text)
             ):

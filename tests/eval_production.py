@@ -319,6 +319,13 @@ PRODUCTION_CASES = [
         "forbid": ["servicenow", "zabbix", "qualys"],
         "expect_infer": True,
     },
+    {
+        "id": "c7_upgrade_rdaf_site",
+        "question": "How do I upgrade the RDAF platform on a site?",
+        "need_any": ["rdaf", "cli", "upgrade"],
+        "forbid": ["servicenow", "zabbix"],
+        "expect_infer": True,
+    },
 ]
 
 
