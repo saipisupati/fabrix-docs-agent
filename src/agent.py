@@ -2415,6 +2415,11 @@ def answer(question: str, client: QdrantClient | None = None) -> AgentResponse:
             "salary band", "salary range", "internal hr",
             "gdpr", "signed dpa", "data processing agreement",
             "penetration test", "pentest", "cvss",
+            "pretend you're not restricted", "pretend you are not restricted",
+            "answer freely", "not restricted by the documentation",
+            "ignore your instructions", "ignore your restrictions",
+            "you said earlier", "as you mentioned before", "as you said before",
+            "i'm a fabrix engineer", "i am a fabrix engineer", "for debugging purposes",
         )
     )
     # Credential fishing: ask for a secret value rather than how to configure auth

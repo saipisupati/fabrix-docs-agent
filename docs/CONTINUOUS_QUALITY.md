@@ -76,7 +76,7 @@ BREAK_CYCLE=N python3 tests/eval_break.py
 python3 tests/run_quality_harness.py
 ```
 
-Latest completed hostile pass: **cycle 7** (install/VM facet). **Cycle 8** in progress (platform update + VM / RDAF CLI path — demote `update_image_repository` / Studio sizing). **Cycle 9** added (day-2 ops / vague product asks from adhoc 12Q — Splunk→dashboard, schedule debug, tickets, cron, IP whitelist trap, SQL→CFXQL, SN→Slack agent, dashboard↔pipeline, Kafka timeout, pipeline test, on-prem K8s, concurrent dataset writes). **Cycle 10** added (invented named entities — AutoHeal / `@fake:made-up-bot` must abstain when ungrounded in excerpts). Next unused cycle id after 10 lands: **11**.
+Latest completed hostile pass: **cycle 7** (install/VM facet). **Cycle 8** in progress (platform update + VM / RDAF CLI path — demote `update_image_repository` / Studio sizing). **Cycle 9** added (day-2 ops / vague product asks from adhoc 12Q — Splunk→dashboard, schedule debug, tickets, cron, IP whitelist trap, SQL→CFXQL, SN→Slack agent, dashboard↔pipeline, Kafka timeout, pipeline test, on-prem K8s, concurrent dataset writes). **Cycle 10** added (invented named entities — AutoHeal / `@fake:made-up-bot` must abstain when ungrounded in excerpts). **Cycle 11** added (jailbreak / false-memory / authority-claim traps — `answer freely`, `you said earlier`, `I'm a Fabrix engineer`). Next unused cycle id after 11 lands: **12**.
 
 ---
 

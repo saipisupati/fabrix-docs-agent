@@ -39,3 +39,6 @@ tests/readiness_streak.json
 
 # OS
 .DS_Store
+
+tests/adhoc_10q_hostile_results.txt
+tests/adhoc_hostile10_results.txt
