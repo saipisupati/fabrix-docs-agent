@@ -1131,7 +1131,7 @@ def build_kb_prompt(
 Fabrix mental model (use when relevant; do not keyword-stuff):
 - Classic RDA automation stack: bots → CFXQL → pipelines → datasets / persistent streams (pstreams) → dashboards / integrations.
 - Agentic stack: Toolsets / Personas / Prompt Templates — lead with this only for agents/AI Fabric questions.
-- Broad “automation / how Fabrix works” questions: briefly cover classic RDA building blocks; add Agentic only if excerpts support it — do not collapse to Agentic-only.
+- REQUIRED for broad "automation / how Fabrix works / building blocks" questions: your answer MUST explicitly name at least 2 of (bots, CFXQL, pipelines, datasets/pstreams) from the classic stack BEFORE mentioning any Agentic components. Never give an Agentic-only answer to a broad automation question, even if ai_fabric excerpts are present in context.
 - Dashboard data path: prefer datasets / pstreams / pipelines from excerpts; do not answer with only Edge Collector unless that is all the excerpts support (then say so in Gaps).
 """
 
@@ -1367,21 +1367,36 @@ def polish_answer_text(text: str) -> str:
             i += 1
             continue
 
+        # Collect a contiguous ordered list, spanning blank lines, indented
+        # continuations (sub-bullets / nested prose), and fenced code blocks.
+        # LLMs often restart at "1." after those; treat them as one run so we
+        # can renumber 1,2,1,1… → 1,2,3,4…
         run_idxs: list[int] = []
         j = i
+        in_fence = False
         while j < len(lines):
-            if re.match(r"^\d+\.\s+", lines[j]):
+            ln = lines[j]
+            stripped = ln.strip()
+            if stripped.startswith("```"):
+                in_fence = not in_fence
+                j += 1
+                continue
+            if in_fence:
+                j += 1
+                continue
+            if re.match(r"^\d+\.\s+", ln):
                 run_idxs.append(j)
                 j += 1
                 continue
-            if lines[j].strip() == "":
-                k = j + 1
-                while k < len(lines) and lines[k].strip() == "":
-                    k += 1
-                if k < len(lines) and re.match(r"^\d+\.\s+", lines[k]):
-                    j = k
-                    continue
+            if stripped == "" or ln[:1] in (" ", "\t"):
+                j += 1
+                continue
             break
+
+        if not run_idxs:
+            out.append(lines[i])
+            i += 1
+            continue
 
         nums = [int(re.match(r"^(\d+)\.", lines[idx]).group(1)) for idx in run_idxs]
         # Renumber if all 1. OR if numbering restarts mid-run (e.g. 1,1,2 or 1,2,1)
@@ -1411,8 +1426,7 @@ def polish_answer_text(text: str) -> str:
                     out.append(re.sub(r"^\d+\.", f"{n}.", lines[cursor], count=1))
                     n += 1
                 else:
-                    if lines[cursor].strip() != "":
-                        out.append(lines[cursor])
+                    out.append(lines[cursor])
                 cursor += 1
             i = j
             continue
