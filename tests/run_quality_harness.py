@@ -1,8 +1,10 @@
 """
 run_quality_harness.py: step-by-step quality gate for the Fabrix docs agent
 
-Runs production → full break → readiness, writes a failure digest, and tracks
-readiness GREEN streak. Exit 0 only when all raised bars pass and streak >= 2
+Runs production → full break → readiness → Phase 1–5 benchmarks → customer
+bakeoff (local), writes a failure digest, and tracks readiness GREEN streak.
+Exit 0 only when all raised bars pass and streak >= 2 (local) or readiness
+GREEN once (HARNESS_CI_MODE=1).
 
 Stop the API first (local Qdrant file lock)
 
@@ -14,6 +16,8 @@ HARNESS_SKIP_IF_NO_DATA=1 skips gracefully when secrets or runtime data are abse
 Outputs (gitignored):
   tests/quality_harness_digest.md
   tests/readiness_streak.json
+  tests/benchmark_phases_results.txt
+  tests/eval_customer_bakeoff_results.txt
 """
 
 from __future__ import annotations
@@ -34,8 +38,11 @@ STREAK_PATH = os.path.join(TESTS_DIR, "readiness_streak.json")
 PROD_RESULTS = os.path.join(TESTS_DIR, "eval_production_results.txt")
 BREAK_RESULTS = os.path.join(TESTS_DIR, "eval_break_results.txt")
 READY_RESULTS = os.path.join(TESTS_DIR, "eval_readiness_results.txt")
+BENCH_RESULTS = os.path.join(TESTS_DIR, "benchmark_phases_results.txt")
+BAKEOFF_RESULTS = os.path.join(TESTS_DIR, "eval_customer_bakeoff_results.txt")
 
 STREAK_TARGET = 2  # local pre-deploy; CI uses single GREEN (see _streak_target)
+SRC_PYTHONPATH = os.path.join(ROOT, "src")
 
 
 def _ci_mode() -> bool:
@@ -103,27 +110,39 @@ def _parse_summary(text: str) -> dict:
         r"Summary:\s*PASS=(\d+)\s+PARTIAL=(\d+)\s+FAIL=(\d+)\s+\(scored\s+(\d+)\)",
         text,
     )
-    if not m:
-        # readiness-style summary
-        m2 = re.search(
-            r"Summary:\s*PASS=(\d+)\s+PARTIAL=(\d+)\s+FAIL=(\d+).*?pass_rate=([\d.]+)%",
-            text,
-        )
-        if m2:
-            return {
-                "PASS": int(m2.group(1)),
-                "PARTIAL": int(m2.group(2)),
-                "FAIL": int(m2.group(3)),
-                "scored": int(m2.group(1)) + int(m2.group(2)) + int(m2.group(3)),
-                "pass_rate": float(m2.group(4)) / 100.0,
-            }
-        return {"PASS": 0, "PARTIAL": 0, "FAIL": 0, "scored": 0}
-    return {
-        "PASS": int(m.group(1)),
-        "PARTIAL": int(m.group(2)),
-        "FAIL": int(m.group(3)),
-        "scored": int(m.group(4)),
-    }
+    if m:
+        return {
+            "PASS": int(m.group(1)),
+            "PARTIAL": int(m.group(2)),
+            "FAIL": int(m.group(3)),
+            "scored": int(m.group(4)),
+        }
+    # readiness-style summary
+    m2 = re.search(
+        r"Summary:\s*PASS=(\d+)\s+PARTIAL=(\d+)\s+FAIL=(\d+).*?pass_rate=([\d.]+)%",
+        text,
+    )
+    if m2:
+        return {
+            "PASS": int(m2.group(1)),
+            "PARTIAL": int(m2.group(2)),
+            "FAIL": int(m2.group(3)),
+            "scored": int(m2.group(1)) + int(m2.group(2)) + int(m2.group(3)),
+            "pass_rate": float(m2.group(4)) / 100.0,
+        }
+    # benchmark / bakeoff: PASS + FAIL only
+    m3 = re.search(
+        r"Summary:\s*PASS=(\d+)\s+FAIL=(\d+)\s+\(scored\s+(\d+)\)",
+        text,
+    )
+    if m3:
+        return {
+            "PASS": int(m3.group(1)),
+            "PARTIAL": 0,
+            "FAIL": int(m3.group(2)),
+            "scored": int(m3.group(3)),
+        }
+    return {"PASS": 0, "PARTIAL": 0, "FAIL": 0, "scored": 0}
 
 
 def _parse_case_blocks(text: str) -> list[dict]:
@@ -244,6 +263,8 @@ def main() -> int:
             if ci
             else f"- readiness: GREEN twice in a row (streak ≥ {STREAK_TARGET})"
         ),
+        "- benchmark_phases (Phase 1–5): exit 0 / 0 FAIL",
+        "- customer bakeoff (local): exit 0 / 0 FAIL",
         "",
         "Hard rule: fix agent with generic families/rules — never question-specific branches.",
         "",
@@ -284,14 +305,29 @@ def main() -> int:
     rc_prod = _run_suite("eval_production.py")
     rc_break = _run_suite("eval_break.py")
     rc_ready = _run_suite("eval_readiness.py")
+    rc_bench = _run_suite(
+        "benchmark_phases.py",
+        env={"PYTHONPATH": SRC_PYTHONPATH},
+    )
+    rc_bake = _run_suite(
+        "eval_customer_bakeoff.py",
+        env={
+            "PYTHONPATH": SRC_PYTHONPATH,
+            "BAKEOFF_MODE": "local",
+        },
+    )
 
     prod_text = _read_file(PROD_RESULTS)
     break_text = _read_file(BREAK_RESULTS)
     ready_text = _read_file(READY_RESULTS)
+    bench_text = _read_file(BENCH_RESULTS)
+    bake_text = _read_file(BAKEOFF_RESULTS)
 
     prod_sum = _parse_summary(prod_text)
     break_sum = _parse_summary(break_text)
     ready_sum = _parse_summary(ready_text)
+    bench_sum = _parse_summary(bench_text)
+    bake_sum = _parse_summary(bake_text)
 
     prod_ok = rc_prod == 0 and prod_sum.get("FAIL", 1) == 0 and prod_sum.get("PARTIAL", 1) == 0
     break_n = break_sum.get("scored") or 1
@@ -302,6 +338,8 @@ def main() -> int:
         and break_pass_rate >= 0.95
     )
     ready_green = _readiness_green(ready_text, rc_ready)
+    bench_ok = rc_bench == 0 and bench_sum.get("FAIL", 1) == 0
+    bake_ok = rc_bake == 0 and bake_sum.get("FAIL", 1) == 0
 
     # Streak (local pre-deploy tracks consecutive GREEN; CI resets each run)
     if ci:
@@ -348,6 +386,16 @@ def main() -> int:
         f"{ready_sum.get('FAIL', '?')} | {ready_sum.get('scored', '?')} | {rc_ready} | "
         f"{'GREEN' if ready_green else 'RED'} |"
     )
+    digest.append(
+        f"| benchmark_phases | {bench_sum.get('PASS', '?')} | {bench_sum.get('PARTIAL', 0)} | "
+        f"{bench_sum.get('FAIL', '?')} | {bench_sum.get('scored', '?')} | {rc_bench} | "
+        f"{'OK' if bench_ok else 'FAIL'} |"
+    )
+    digest.append(
+        f"| customer_bakeoff | {bake_sum.get('PASS', '?')} | {bake_sum.get('PARTIAL', 0)} | "
+        f"{bake_sum.get('FAIL', '?')} | {bake_sum.get('scored', '?')} | {rc_bake} | "
+        f"{'OK' if bake_ok else 'FAIL'} |"
+    )
     digest.append("")
     digest.append(
         f"**readiness_streak={streak}/{streak_target}** "
@@ -360,6 +408,12 @@ def main() -> int:
     # readiness failures
     for c in _parse_case_blocks(ready_text):
         c["id"] = f"ready:{c['id']}"
+        failures.append(c)
+    for c in _parse_case_blocks(bench_text):
+        c["id"] = f"bench:{c['id']}"
+        failures.append(c)
+    for c in _parse_case_blocks(bake_text):
+        c["id"] = f"bakeoff:{c['id']}"
         failures.append(c)
 
     digest.append("## FAIL / PARTIAL cases")
@@ -394,20 +448,23 @@ def main() -> int:
         )
         digest.append("")
 
+    phase_gates_ok = bench_ok and bake_ok
     if ci:
-        all_ok = prod_ok and break_ok and ready_green
+        all_ok = prod_ok and break_ok and ready_green and phase_gates_ok
     else:
-        all_ok = prod_ok and break_ok and streak >= streak_target
+        all_ok = prod_ok and break_ok and streak >= streak_target and phase_gates_ok
     digest.append("## Verdict")
     digest.append("")
     if all_ok:
         if ci:
             digest.append(
-                "**PASS** — production + break bars met and readiness GREEN (CI single-run gate)."
+                "**PASS** — production + break + readiness GREEN + Phase 1–5 "
+                "benchmarks + customer bakeoff (CI single-run gate)."
             )
         else:
             digest.append(
-                f"**PASS** — production + break bars met and readiness streak ≥ {streak_target}. "
+                f"**PASS** — production + break bars met, readiness streak ≥ {streak_target}, "
+                "Phase 1–5 benchmarks + customer bakeoff. "
                 "Ready to discuss docs embed (separate decision)."
             )
     else:
@@ -421,6 +478,10 @@ def main() -> int:
                 reasons.append("readiness not GREEN")
         elif streak < streak_target:
             reasons.append(f"readiness streak {streak}/{streak_target}")
+        if not bench_ok:
+            reasons.append("benchmark_phases")
+        if not bake_ok:
+            reasons.append("customer bakeoff")
         digest.append(f"**FAIL** — need: {', '.join(reasons)}.")
         digest.append("")
         digest.append("Next: see Step 2 in `docs/QUALITY_LOOP.md`.")

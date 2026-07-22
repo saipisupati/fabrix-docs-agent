@@ -17,6 +17,7 @@ secrets.json
 data/chroma_db/
 data/qdrant_db/
 data/kb/
+data/scrape_manifest.json
 fabrix_qdrant_db.tar.gz
 fabrix_runtime_data.tar.gz
 
@@ -30,6 +31,9 @@ tests/eval_kb_results.txt
 tests/eval_production_results.txt
 tests/eval_break_results.txt
 tests/eval_readiness_results.txt
+tests/eval_customer_bakeoff_results.txt
+tests/benchmark_phases_results.txt
+tests/adhoc_12q_results.txt
 tests/quality_harness_digest.md
 tests/readiness_streak.json
 

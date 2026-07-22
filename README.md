@@ -168,9 +168,11 @@ Optional: embed the ask widget on a documentation site and point it at a hosted 
 
 Run the quality harness until exit 0 before production deploy. See [docs/QUALITY_LOOP.md](docs/QUALITY_LOOP.md).
 
-## CI (quality harness)
+## CI (quality harness + docs freshness)
 
-GitHub Actions runs [`.github/workflows/quality-harness.yml`](.github/workflows/quality-harness.yml) on pushes/PRs when `src/`, `tests/`, or `scripts/` change, and via **Run workflow** (`workflow_dispatch`).
+GitHub Actions runs [`.github/workflows/quality-harness.yml`](.github/workflows/quality-harness.yml) on pushes/PRs when `src/`, `tests/`, or `scripts/` change, and via **Run workflow** (`workflow_dispatch`). That job uses the private runtime tarball — **no full docs scrape on every PR**.
+
+Weekly (Monday 08:00 UTC) and on demand, [`.github/workflows/docs-freshness.yml`](.github/workflows/docs-freshness.yml) scrapes `docs.fabrix.ai`, rebuilds Qdrant/KB, and runs Phase 1–5 gates (`benchmark_phases` + customer bakeoff). On success it uploads `fabrix_runtime_data.tar.gz` so operators can refresh `RUNTIME_DATA_URL`.
 
 **Repo secrets (required for a real gate):**
 
@@ -180,11 +182,11 @@ GitHub Actions runs [`.github/workflows/quality-harness.yml`](.github/workflows/
 | `OPENAI_API_KEY` | Generation (`gpt-4o-mini`) |
 | `RUNTIME_DATA_URL` | Private HTTPS URL to `fabrix_runtime_data.tar.gz` |
 
-CI cannot run ingest without your doc export. Eval needs prebuilt `data/qdrant_db/` and `data/kb/` from a machine that already ran ingest + `build_kb.py`.
+CI cannot run ingest without your doc export (except the weekly freshness workflow, which scrapes). PR eval needs prebuilt `data/qdrant_db/` and `data/kb/` from a machine that already ran ingest + `build_kb.py`, or from a freshness artifact.
 
 **Do not** publish the runtime tarball as a public GitHub Release or world-readable link. Host it on a **private** bucket (or use a short-lived signed URL) and store only that URL in `RUNTIME_DATA_URL`.
 
-**Package + wire private URL** (on a machine with a fresh ingest + KB build):
+**Package + wire private URL** (on a machine with a fresh ingest + KB build, or from the weekly artifact):
 
 ```bash
 ./scripts/package_runtime_data.sh
@@ -194,22 +196,25 @@ CI cannot run ingest without your doc export. Eval needs prebuilt `data/qdrant_d
 
 **Behavior:**
 
-- With secrets + reachable tarball: runs `tests/run_quality_harness.py` with `HARNESS_CI_MODE=1` (single readiness GREEN, not ×2 streak).
+- With secrets + reachable tarball: runs `tests/run_quality_harness.py` with `HARNESS_CI_MODE=1` (single readiness GREEN, not ×2 streak), including Phase 1–5 benchmarks + local customer bakeoff.
 - Without data or keys: exits 0 with `HARNESS SKIP` so PRs do not false-fail (`HARNESS_SKIP_IF_NO_DATA=1`).
-- Local pre-deploy still uses the ×2 readiness streak; see [docs/QUALITY_LOOP.md](docs/QUALITY_LOOP.md).
-
+- Weekly freshness fails the job if scrape/rebuild/bakeoff regresses; upload artifact on success for `RUNTIME_DATA_URL` refresh.
+- Local pre-deploy still uses the ×2 readiness streak; see [docs/QUALITY_LOOP.md](docs/QUALITY_LOOP.md) and [docs/CONTINUOUS_QUALITY.md](docs/CONTINUOUS_QUALITY.md) Phase 6.
 Standalone chat UI for local or hosted testing: [docs/HOSTING_BETA.md](docs/HOSTING_BETA.md) (chat UI hosting guide).
 
 ## Eval
 
-**Primary gate:** `tests/run_quality_harness.py` runs production → full break → readiness and tracks a readiness GREEN streak. Playbook: [docs/QUALITY_LOOP.md](docs/QUALITY_LOOP.md). Individual suites (stop API first):
+**Primary gate:** `tests/run_quality_harness.py` runs production → full break → readiness → Phase 1–5 benchmarks → customer bakeoff (local) and tracks a readiness GREEN streak. Playbook: [docs/QUALITY_LOOP.md](docs/QUALITY_LOOP.md). Individual suites (stop API first):
 
 | Script | Purpose |
 |--------|---------|
 | `tests/eval_production.py` | Production-style Fabrix ops battery (30 cases) |
 | `tests/eval_break.py` | Adversarial battery: format stress, traps, contamination (cycle 1–5; `BREAK_CYCLE=5` for cycle 5 only) |
 | `tests/eval_readiness.py` | PASS rate + p95 latency gate (14-case subset) |
-| `tests/run_quality_harness.py` | Raised bar: production 100% + break ≥95%/0 FAIL + readiness GREEN ×2 |
+| `tests/benchmark_phases.py` | Phase 1–5 regression (page expand, bot lookup, KB params, family retrieve, critique) |
+| `tests/eval_customer_bakeoff.py` | Public customer bakeoff (8/8); `BAKEOFF_MODE=local` when API is down |
+| `tests/run_quality_harness.py` | Raised bar: production 100% + break ≥95%/0 FAIL + readiness GREEN ×2 + Phase 1–5 + bakeoff |
+| `scripts/run_freshness_pipeline.py` | Phase 6: scrape → rebuild → benchmarks + bakeoff |
 
 **Legacy / development evals:**
 

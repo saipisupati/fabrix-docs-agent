@@ -117,6 +117,9 @@ def chunk_bot_catalog_markdown(filepath, source_name):
                 "cfxql_type": cfxql_type,
                 "type": "bot",
                 "source": source_name,
+                # Phase 4: extension/family stem for retrieve filtering (filename without .md)
+                "extension": source_name.removesuffix(".md"),
+                "family": source_name.removesuffix(".md").lower().replace("_", "-"),
             }
         })
 

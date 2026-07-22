@@ -1,0 +1,422 @@
+{
+  "generated_at": "2026-07-21T02:11:06Z",
+  "method": "agent=/ask ; chatgpt_proxy=gpt-4o-mini+live docs browse ; judge=gpt-4o-mini",
+  "disclaimer": "ChatGPT column is an automated browse proxy (same model family + live docs pages), not chat.openai.com UI.",
+  "questions": [
+    {
+      "id": "sn_ticketing_stream",
+      "theme": "integration wiring",
+      "question": "How do I get ServiceNow incidents into a Fabrix stream so downstream bots can act on them?",
+      "agent": {
+        "answer": "**Documented Fabrix path**  \n1. Ensure you have a ServiceNow user account with read-only permissions to enable API-based access [4].  \n2. Use the `incident-processing-bot` from the ServiceNow family to fetch incident data [3].  \n3. Pass the data from the `incident-processing-bot` to the Fabrix stream, specifically designed for processing ServiceNow incidents, which is referred to as `@c:fabric-stream`.  \n4. Optionally, connect the stream to datasets or dashboards for visualizing or further integrating the incident data downstream.  \n\n**Next (inferred):** Ensure network access is properly configured for API calls from Fabrix to ServiceNow, which may include security group settings or jump-box configurations.\n\n**Prerequisites** Make sure to have the necessary ServiceNow read-only user credentials set up and ready for API integration.\n\n*Includes inferred Fabrix guidance not stated verbatim in the docs.*",
+        "scope": "related",
+        "sources": [
+          "https://docs.fabrix.ai/Datasource_Integrations/servicenow/"
+        ],
+        "gaps": [
+          "Missing details on specific API endpoints or payload structures for fetching incidents",
+          "No information on potential delays in real-time data ingestion"
+        ],
+        "latency_s": 14.5
+      },
+      "chatgpt_proxy": {
+        "answer": "To get ServiceNow incidents into a Fabrix stream so that downstream bots can act on them, you can follow these steps using the appropriate bots from the Fabrix documentation.\n\n1. **Load the ServiceNow Incidents Data**: First, you need to load the incidents data into your Fabrix environment. You can use the `@snowv2:list-incidents` bot to retrieve all incidents from your ServiceNow instance. Here\u2019s how you can do it:\n\n   ```plaintext\n   @snowv2:list-incidents\n   ```\n\n   This command will list all incidents available in your ServiceNow instance.\n\n2. **Stream the Data**: If you want to stream the incidents data to a downstream bot, you can use the `@snowv2:query-table-stream` bot. This allows you to stream data from the specified ServiceNow table (in this case, the incidents table). Here\u2019s an example command:\n\n   ```plaintext\n   @snowv2:query-table-stream table_name = 'incident' --> @your_downstream_bot\n   ```\n\n   Replace `@your_downstream_bot` with the actual bot you want to send the data to.\n\n3. **Append or Create Incidents**: If you need to create new incidents based on the data you have, you can use the `@snowv2:create-incident` bot. You will need to specify the mandatory columns that must be present in your input dataset. Here\u2019s an example:\n\n   ```plaintext\n   @your_input_dataset --> @snowv2:create-incident table = 'incident' & mandatory_cols = 'short_description, priority'\n   ```\n\n   Ensure that your input dataset contains the required columns like `short_description` and `priority`.\n\n4. **Attach Data to Existing Incidents**: If you want to attach additional data to existing incidents, you can use the `@snowv2:attach-to-incident` bot. You will need to specify the dataset and the incident number. Here\u2019s an example:\n\n   ```plaintext\n   @your_input_dataset --> @snowv2:attach-to-incident dataset = 'your_dataset_name' & id_field_name = 'number'\n   ```\n\nBy following these steps, you can effectively get ServiceNow incidents into a Fabrix stream and enable downstream bots to act on them. If you have any specific requirements or need further customization, please refer to the relevant bot documentation or let me know!",
+        "sources": [
+          "https://docs.fabrix.ai/Bots/cfxdm/",
+          "https://docs.fabrix.ai/Bots/servicenow_v2/",
+          "https://docs.fabrix.ai/Datasets/"
+        ],
+        "latency_s": 7.0,
+        "note": "GPT-4o-mini + live docs.fabrix.ai pages (browse proxy), not ChatGPT web UI"
+      },
+      "grade": {
+        "agent": {
+          "accuracy": "mixed",
+          "docs_grounded": true,
+          "issues": [
+            "short"
+          ],
+          "strengths": [
+            "correctly identified the need for ServiceNow user permissions",
+            "mentioned the use of a bot for processing incidents"
+          ]
+        },
+        "chatgpt_proxy": {
+          "accuracy": "weak",
+          "docs_grounded": false,
+          "issues": [
+            "invented commands",
+            "wrong product drift",
+            "false confidence on OOS topics"
+          ],
+          "strengths": [
+            "attempted to provide a step-by-step process"
+          ]
+        },
+        "winner": "agent",
+        "reason": "The agent provided a more grounded response based on the documentation, while the chatgpt_proxy included invented commands and incorrect information."
+      }
+    },
+    {
+      "id": "cfxql_full_vs_restricted",
+      "theme": "CFXQL",
+      "question": "What is the difference between Full CFXQL and Restricted CFXQL?",
+      "agent": {
+        "answer": "**Documented Fabrix path**  \n1. Full CFXQL: This supports several SQL-like operators and allows developers to convey complex data querying intents. It employs logical groupings of operations, such as **AND** and **OR**, and can match all data with the `*` operator. Example queries can be quite comprehensive and look similar to SQL statements [3][5].  \n2. Restricted CFXQL: This is a simpler version primarily used by API bots, which simplifies parameters and mainly utilizes the **'='** operator along with **AND** for queries. It is designed for use with specific bots that have limited querying capabilities [1][2][4][8][11].  \n\n**Next (inferred):** Understanding when to use each variant comes down to the complexity of the query and the capabilities of the bot in question.  \n**Prerequisites** None.\n\n*Includes inferred Fabrix guidance not stated verbatim in the docs.*",
+        "scope": "related",
+        "sources": [
+          "https://docs.fabrix.ai/reference_guides/cfxql/",
+          "https://docs.fabrix.ai/Bots/cfxvault/",
+          "https://docs.fabrix.ai/Bots/cisco-ios/",
+          "https://docs.fabrix.ai/Bots/cfxdm/",
+          "https://docs.fabrix.ai/Bots/cisco-ucs-cimc/",
+          "https://docs.fabrix.ai/Bots/rda_agents/"
+        ],
+        "gaps": [
+          "Detailed comparison on performance or specific use cases between Full CFXQL and Restricted CFXQL."
+        ],
+        "latency_s": 16.4
+      },
+      "chatgpt_proxy": {
+        "answer": "The difference between Full CFXQL and Restricted CFXQL lies in their usage and the context in which they are applied within the Fabrix framework:\n\n1. **Full CFXQL**:\n   - This type of CFXQL is used by bots that apply queries on data that is already loaded from previous bots or from a source. \n   - Examples of bots that expect Full CFXQL include:\n     - `*bcs-oi:assets`\n     - `*bcs-oi:config-details`\n     - `*bcs-oi:config-rules`\n     - `*bcs-oi:device-groups`\n   - Full CFXQL allows for more complex queries and interactions with the data.\n\n2. **Restricted CFXQL**:\n   - This type of CFXQL is used by bots that require specific parameters to be defined, often related to data management or specific operations.\n   - Examples of bots that expect Restricted CFXQL include:\n     - `@dm:add-bounded-dataset`\n     - `@dm:add-checksum`\n     - `@asset-discovery:access-check`\n   - Restricted CFXQL typically involves simpler queries with defined parameters and is often used for tasks like adding datasets, checksums, or missing columns.\n\nIn summary, Full CFXQL is for querying already loaded data with more flexibility, while Restricted CFXQL is for executing specific operations with defined parameters.",
+        "sources": [
+          "https://docs.fabrix.ai/Bots/cfxdm/",
+          "https://docs.fabrix.ai/Bots/asset-discovery/",
+          "https://docs.fabrix.ai/Bots/cisco-bcs-ops-insights/"
+        ],
+        "latency_s": 3.6,
+        "note": "GPT-4o-mini + live docs.fabrix.ai pages (browse proxy), not ChatGPT web UI"
+      },
+      "grade": {
+        "agent": {
+          "accuracy": "mixed",
+          "docs_grounded": true,
+          "issues": [
+            "short"
+          ],
+          "strengths": [
+            "correctly identifies the purpose of both CFXQL types"
+          ]
+        },
+        "chatgpt_proxy": {
+          "accuracy": "strong",
+          "docs_grounded": true,
+          "issues": [],
+          "strengths": [
+            "provides clear examples of bots for each CFXQL type",
+            "accurately describes the differences"
+          ]
+        },
+        "winner": "chatgpt_proxy",
+        "reason": "The chatgpt_proxy provides a more comprehensive and accurate explanation with examples, while the agent's response is shorter and less detailed."
+      }
+    },
+    {
+      "id": "pstream_vs_dataset",
+      "theme": "data objects",
+      "question": "When should an engineer use a persistent stream instead of a regular dataset in RDA Fabric?",
+      "agent": {
+        "answer": "When considering whether to use a persistent stream versus a regular dataset in RDA Fabric, it's essential to understand their distinct purposes and capabilities.\n\n**Documented Fabrix path**  \n1. **Use case focus**: Persistent streams are designed for scenarios that require continuous data ingestion, processing, and consumption at scale, making them suitable for applications like AIOps, Asset Intelligence, and Log Intelligence solutions. Regular datasets, on the other hand, are typically used for static or less frequently changing data sets that do not require real-time processing.\n2. **Data Lifecycle**: Persistent streams allow for real-time data management, including retention and purging policies, providing dynamic control for ongoing data flow. Regular datasets may not necessitate such continuous management and can represent historical or aggregated data without the same resource demands.\n3. **Destination flexibility**: Processed data from persistent streams can be delivered to various destinations, including data lakes, data warehousing, and ITSM tools, facilitating integration across diverse platforms. While datasets can also store processed data, their integration points may not be as versatile or dynamic as those offered by persistent streams.\n\n**Next (inferred):** Since persistent streams enable continuous updates and real-time data flows, they are beneficial when engineers need to handle changing data conditions more actively than what regular datasets are designed for.\n\n**Prerequisites**: Understanding the specific use case requirements and data management needs is necessary to choose the appropriate approach.\n\n*Includes inferred Fabrix guidance not stated verbatim in the docs.*",
+        "scope": "related",
+        "sources": [
+          "https://docs.fabrix.ai/beginners_guide/persistent_streams/",
+          "https://docs.fabrix.ai/beginners_guide/ps_ui/",
+          "https://docs.fabrix.ai/beginners_guide/data_control/",
+          "https://docs.fabrix.ai/beginners_guide/data_ingestion/",
+          "https://docs.fabrix.ai/beginners_guide/data_in_motion/",
+          "https://docs.fabrix.ai/beginners_guide/data_at_rest/"
+        ],
+        "gaps": [
+          "No specific comparison metrics or thresholds on when to prefer one over the other are documented."
+        ],
+        "latency_s": 14.1
+      },
+      "chatgpt_proxy": {
+        "answer": "In RDA Fabric, engineers should consider using a **persistent stream** instead of a regular dataset in the following scenarios:\n\n1. **Real-Time Data Processing**: If the application requires continuous data ingestion and processing, persistent streams are designed to handle real-time data flows. They allow for querying and retrieving data incrementally, which is essential for applications that need up-to-date information.\n\n2. **Long-Term Data Retention**: Persistent streams are suitable for scenarios where data needs to be retained for a specific period (e.g., days, weeks). They support retention policies, allowing you to specify how long data should be kept.\n\n3. **Incremental Data Queries**: If you need to perform queries that return new data as it arrives, persistent streams support operations like `tail`, which continuously queries for incremental data every few seconds.\n\n4. **Complex Data Management**: Persistent streams provide features for managing data attributes, such as unique keys and metadata, which can be crucial for applications that require detailed data management and organization.\n\n5. **Integration with OpenSearch**: If your application requires integration with OpenSearch for querying and storing data, persistent streams are designed to work seamlessly with it.\n\n### Commands for Managing Persistent Streams\nHere are some relevant commands for working with persistent streams:\n\n- **List Persistent Streams**: \n  ```bash\n  rdac pstream list\n  ```\n\n- **Get Information About a Persistent Stream**: \n  ```bash\n  rdac pstream get --name <stream_name>\n  ```\n\n- **Add a New Persistent Stream**: \n  ```bash\n  rdac pstream add --name <stream_name> --index <index_name> --retention_days <days>\n  ```\n\n- **Query Persistent Stream Data**: \n  ```bash\n  rdac pstream query --name <stream_name>\n  ```\n\nIn contrast, regular datasets may be more appropriate for static data that does not require real-time processing or long-term retention. If your use case does not involve these requirements, a regular dataset might suffice.",
+        "sources": [
+          "https://docs.fabrix.ai/ai_fabric/agentic_building_guide/tool_handlers_guide/",
+          "https://docs.fabrix.ai/beginners_guide/Rda_Fabric_Pstream/",
+          "https://docs.fabrix.ai/beginners_guide/architecture/"
+        ],
+        "latency_s": 8.3,
+        "note": "GPT-4o-mini + live docs.fabrix.ai pages (browse proxy), not ChatGPT web UI"
+      },
+      "grade": {
+        "agent": {
+          "accuracy": "mixed",
+          "docs_grounded": true,
+          "issues": [
+            "short"
+          ],
+          "strengths": [
+            "correctly identifies use cases for persistent streams"
+          ]
+        },
+        "chatgpt_proxy": {
+          "accuracy": "strong",
+          "docs_grounded": true,
+          "issues": [
+            "none"
+          ],
+          "strengths": [
+            "provides detailed scenarios and relevant commands"
+          ]
+        },
+        "winner": "chatgpt_proxy",
+        "reason": "The chatgpt_proxy provided a more comprehensive and accurate response with relevant commands, while the agent's answer was less detailed."
+      }
+    },
+    {
+      "id": "zabbix_linux_host",
+      "theme": "contamination stress",
+      "question": "How do I add Zabbix as a datasource? Our collector also runs on a Linux host if that matters.",
+      "agent": {
+        "answer": "**Documented Fabrix path**  \n1. For Zabbix integration, you need to configure alert notifications over a Webhook, ensuring the network configuration between your Linux host and the Zabbix server is properly established. This includes allowing communication through firewalls and ensuring the Zabbix server is accessible from your host.\n2. Set up HTTP Basic authentication for the Zabbix Webhook with the following credentials:\n   - Username: `cfxuser`\n   - Password: `cfxuser`\n   The authorization header should be structured as: \n   ```\n   req.AddHeader('Authorization: Basic Y2Z4dXNlcjpjZnh1c2Vy');\n   ```\n1. Use the Zabbix bots to gather data:\n   - **zabbix:zabbix-hosts** for host inventory\n   - **zabbix:proxy-hosts** for proxy host inventory\n   - **zabbix:zabbix-hostgroups** for host group inventory  \n   These bots apply queries on the data already loaded from your source.\n1. Stream or dataset handoff will occur as the data flows through the bots mentioned. After the data is processed, you can visualize it in a dashboard if needed, depending on your setup.\n\n**Next (inferred):** Ensure proper network firewalls and access controls between the Linux host, Zabbix server, and CloudFabrix AIOPs platform are configured. Verify that all servers can communicate without restrictions.\n\n**Prerequisites** Ensure that the Zabbix server is properly configured to accept Webhook notifications, and that your host can reach the server over the network.\n\n*Includes inferred Fabrix guidance not stated verbatim in the docs.*",
+        "scope": "related",
+        "sources": [
+          "https://docs.fabrix.ai/Datasource_Integrations/Zabbix/",
+          "https://docs.fabrix.ai/Bots/zabbix/",
+          "https://docs.fabrix.ai/Datasource_Integrations/ms_teams/"
+        ],
+        "gaps": [
+          "Specific details on network configuration steps between the Linux host and Zabbix server."
+        ],
+        "latency_s": 24.7
+      },
+      "chatgpt_proxy": {
+        "answer": "To add Zabbix as a datasource in the CloudFabrix AIOPs platform, follow these steps:\n\n### Prerequisites\n1. Ensure you have access to the Zabbix monitoring tool.\n2. You will need to set up a webhook for alert notifications.\n\n### Steps to Configure Zabbix for Alert Notifications via Webhook\n\n1. **Login to Zabbix**:\n   - Access your Zabbix monitoring tool through a web browser.\n\n2. **Create Media Type**:\n   - Navigate to **Administration** > **Media types**.\n   - Click on **Create media type**.\n\n3. **Configure Media Type**:\n   - Enter a name for the Webhook.\n   - Select **Type** as **Webhook** from the dropdown.\n   - Add the following parameters:\n     - `Alert_Date => {EVENT.DATE}`\n     - `Alert_HostAddress => {HOST.IP}`\n     - `Alert_Hostname => {HOST.NAME}`\n     - `Alert_RecoveryDate => {EVENT.RECOVERY.DATE}`\n     - `Alert_RecoveryTime => {EVENT.RECOVERY.TIME}`\n     - `Alert_RecoveryName => {EVENT.RECOVERY.NAME}`\n     - `Alert_RecoveryTags => {EVENT.RECOVERY.TAGSJSON}`\n     - `Alert_ServiceDescription => {EVENT.NAME}`\n     - `Alert_ServiceEventId => {EVENT.ID}`\n     - `Alert_ServiceOutput => {EVENT.OPDATA}`\n     - `Alert_ServiceSeverity => {EVENT.SEVERITY}`\n     - `Alert_Time => {EVENT.TIME}`\n     - `Alert_Status => {EVENT.STATUS}`\n     - `Alert_Message => {ALERT.MESSAGE}`\n     - `Alert_HostGroup => {TRIGGER.HOSTGROUP.NAME}`\n     - `Alert_Tags => {EVENT.TAGSJSON}`\n     - `Alert_Template => {TRIGGER.TEMPLATE.NAME}`\n     - `Alert_OS => {INVENTORY.OS}`\n     - `Alert_RecoveryStatus => {EVENT.RECOVERY.STATUS}`\n     - `Alert_ResolvedDuration => {EVENT.DURATION}`\n     - `Alert_WebHookURL => {ALERT.SENDTO}`\n\n4. **Edit the Script Field**:\n   - Add the following JavaScript code to handle the webhook:\n     ```javascript\n     var params = JSON.parse(value), req = new CurlHttpRequest(), resp;\n     req.AddHeader('Content-Type: application/json');\n     // If using HTTP Basic authentication, uncomment the following line and replace with your credentials\n     // req.AddHeader('Authorization: Basic <base64encoded - username:password>');\n     var params = JSON.parse(value);\n     payload = {};\n     payload.Alert_ServiceEventId = params.Alert_ServiceEventId;\n     payload.Alert_HostNa",
+        "sources": [
+          "https://docs.fabrix.ai/Datasource_Integrations/NodePing/",
+          "https://docs.fabrix.ai/Datasource_Integrations/Zabbix/",
+          "https://docs.fabrix.ai/Datasource_Integrations/rda_datasource_integrations/"
+        ],
+        "latency_s": 13.5,
+        "note": "GPT-4o-mini + live docs.fabrix.ai pages (browse proxy), not ChatGPT web UI"
+      },
+      "grade": {
+        "agent": {
+          "accuracy": "mixed",
+          "docs_grounded": true,
+          "issues": [
+            "short",
+            "invented commands/params"
+          ],
+          "strengths": [
+            "correctly identified the need for webhook configuration",
+            "provided some relevant details about network configuration"
+          ]
+        },
+        "chatgpt_proxy": {
+          "accuracy": "strong",
+          "docs_grounded": true,
+          "issues": [
+            "short"
+          ],
+          "strengths": [
+            "detailed step-by-step instructions",
+            "correctly referenced parameters and setup for Zabbix"
+          ]
+        },
+        "winner": "chatgpt_proxy",
+        "reason": "The chatgpt_proxy provided a comprehensive and accurate step-by-step guide directly aligned with the documentation, while the agent included invented commands and inferred guidance."
+      }
+    },
+    {
+      "id": "kafka_consume_params",
+      "theme": "bot lookup",
+      "question": "What parameters does the kafka-v2 consume / read bot take?",
+      "agent": {
+        "answer": "The `@kafka-v2:poll-topic` bot from the kafka-v2 family takes several parameters that can be specified using the **'='** operator and **AND** logical operation. However, the specific details about the parameters expected by this bot are not provided in the documentation excerpts available.\n\nFor the `@kafka:poll-topic` bot (the legacy option), it also expects parameters defined in a similar manner, but again, the specific parameter names and types are not listed in the excerpts.\n\nIn summary, while we know that both bots expect parameters formatted using specific operators, the exact parameters they require are not detailed in the current documentation.",
+        "scope": "in_scope",
+        "sources": [
+          "https://docs.fabrix.ai/Bots/kafka-v2/",
+          "https://docs.fabrix.ai/Extensions/extensions_D_E/",
+          "https://docs.fabrix.ai/Bots/kafka/",
+          "https://docs.fabrix.ai/beginners_guide/incident_wait_rca_publisher/"
+        ],
+        "gaps": [
+          "Specific parameter names and types for @kafka-v2:poll-topic and @kafka:poll-topic are not provided."
+        ],
+        "latency_s": 7.9
+      },
+      "chatgpt_proxy": {
+        "answer": "The `@kafka-v2:read-stream` bot in the Fabrix Kafka extension takes the following parameters:\n\n1. **name** (Text, required) - Stream name.\n2. **group** (Text, required) - Data receiver (consumer) group name.\n3. **offset_reset** (Text, optional) - Stream offset reset position. Valid values are 'earliest' or 'latest'.\n4. **batch_size** (Text, optional, default: 100) - Maximum rows to read in each batch.\n5. **batch_wait** (Text, optional, default: 5) - Maximum number of seconds to wait once one or more events are received.\n6. **lazy_commit** (Text, optional, default: 'no') - Commit the messages only after the pipeline has completed processing them.\n7. **max_poll_interval_ms** (Text, optional, default: 300000) - Milliseconds to wait for the next pipeline steps to complete before failing.\n8. **retention_ms** (Text, optional, default: 604800000) - Maximum time in milliseconds to retain a log before discarding old log segments.\n9. **commit_retries** (Text, optional, default: 5) - If `lazy_commit` is set to 'yes', number of times commit will be tried before failing.\n10. **commit_retry_interval** (Text, optional, default: 5) - If `lazy_commit` is set to 'yes', number of seconds to wait before retries.\n11. **num_partitions** (Text, optional) - Number of partitions for the topic. Only used when creating a new topic.\n12. **replication_factor** (Text, optional) - Replication factor for the topics. Only used when creating a new topic.\n\nThis bot also accepts wildcard parameters, allowing for additional `name = 'value'` parameters to be passed.",
+        "sources": [
+          "https://docs.fabrix.ai/Bots/kafka-v2/",
+          "https://docs.fabrix.ai/ai_fabric/agentic_building_guide/toolsets/",
+          "https://docs.fabrix.ai/beginners_guide/incident_wait_rca_publisher/"
+        ],
+        "latency_s": 6.4,
+        "note": "GPT-4o-mini + live docs.fabrix.ai pages (browse proxy), not ChatGPT web UI"
+      },
+      "grade": {
+        "agent": {
+          "accuracy": "wrong",
+          "docs_grounded": false,
+          "issues": [
+            "invented command",
+            "wrong product drift"
+          ],
+          "strengths": []
+        },
+        "chatgpt_proxy": {
+          "accuracy": "strong",
+          "docs_grounded": true,
+          "issues": [],
+          "strengths": [
+            "correct parameters",
+            "honest and detailed response"
+          ]
+        },
+        "winner": "chatgpt_proxy",
+        "reason": "The agent provided incorrect information about a non-existent bot and failed to reference the correct bot parameters, while the chatgpt_proxy accurately listed the parameters for the correct bot."
+      }
+    },
+    {
+      "id": "fabio_auto_remediate",
+      "theme": "honesty / overclaim",
+      "question": "Can Fabio Copilot automatically remediate production outages end-to-end with no human approval?",
+      "agent": {
+        "answer": "I couldn't find that in the Fabrix / RDA documentation. This question looks outside the public docs scope.",
+        "scope": "out_of_scope",
+        "sources": [],
+        "gaps": [
+          "Out of scope for public Fabrix/CFX documentation"
+        ],
+        "latency_s": 2.8
+      },
+      "chatgpt_proxy": {
+        "answer": "Fabio Copilot (Fabaio) is designed to automate workflows and execute operational tasks across various domains, including IT operations and AIOps. However, the documentation does not explicitly state that Fabaio can automatically remediate production outages end-to-end without human approval.\n\n### Key Features Relevant to Automation:\n1. **Tool-Aware Intelligence**: Fabaio can automatically identify and invoke the necessary tools, APIs, and services to complete tasks.\n2. **Workflow Automation**: It orchestrates complex multi-step workflows and agent interactions, which could be leveraged for remediation tasks.\n3. **Access Policy Configuration**: You can configure personas with specific access policies that may include auto-execution of mandatory tools, which could facilitate automated responses.\n\n### Configuration for Automation:\nTo set up a persona that could potentially handle remediation tasks, you would need to:\n- **Define the Access Policy**: This includes specifying which tools the persona can use and whether mandatory internal tools should auto-execute. For example:\n   ```json\n   {\n     \"mcpserver\": \"rdaf\",\n     \"toolset_pattern\": \"aiops.*|network_automation|context_cache.*\",\n     \"prepolulateMandatoryTools\": true\n   }\n   ```\n\n### Limitations:\n- **Human Approval**: The documentation does not confirm that Fabaio can operate entirely without human oversight. The implementation of guardrails and access policies suggests that there are safety measures in place that may require human intervention.\n- **Specific Commands/Parameters**: The exact commands or parameters for fully automating remediation without human approval are not detailed in the provided documentation.\n\n### Conclusion:\nWhile Fabaio has the capabilities to automate certain tasks and workflows, the documentation does not guarantee that it can handle production outages end-to-end without any human approval. Further configuration and testing would be necessary to explore the extent of its automation capabilities in a production environment.",
+        "sources": [
+          "https://docs.fabrix.ai/ai_fabric/fabio_copilot/conversations/",
+          "https://docs.fabrix.ai/ai_fabric/fabio_copilot/fabio_copilot/",
+          "https://docs.fabrix.ai/ai_fabric/fabio_copilot/personas/"
+        ],
+        "latency_s": 6.6,
+        "note": "GPT-4o-mini + live docs.fabrix.ai pages (browse proxy), not ChatGPT web UI"
+      },
+      "grade": {
+        "agent": {
+          "accuracy": "strong",
+          "docs_grounded": true,
+          "issues": [],
+          "strengths": [
+            "correctly identified the question as out of scope"
+          ]
+        },
+        "chatgpt_proxy": {
+          "accuracy": "mixed",
+          "docs_grounded": true,
+          "issues": [
+            "invented commands/params",
+            "false confidence on OOS topics"
+          ],
+          "strengths": [
+            "provided relevant features of Fabaio"
+          ]
+        },
+        "winner": "agent",
+        "reason": "The agent accurately recognized the question as out of scope, while the chatgpt_proxy provided potentially misleading information about capabilities not confirmed in the documentation."
+      }
+    },
+    {
+      "id": "pipeline_every_15m",
+      "theme": "pipelines / scheduling",
+      "question": "How do I schedule an RDA Fabric pipeline to run every 15 minutes?",
+      "agent": {
+        "answer": "**Documented Fabrix path**  \n1. To schedule a pipeline in RDA Fabric, navigate to the **Service Blueprints** section.  \n2. Within your Service Blueprint, locate the **Scheduled Pipelines Section** (`scheduled_pipelines`), where you can define your pipeline's scheduling frequency.  \n3. For a 15-minute interval, specify the appropriate cron expression or scheduling option within this section.  \n4. Once configured, the pipeline will run automatically according to your schedule, executing every 15 minutes.  \n\n**Next (inferred):** Considerations for scheduling jobs may include ensuring the RDA Fabric instance is running and properly configured.  \n\n**Prerequisites**: You must have access to create and modify Service Blueprints in RDA Fabric.\n\n*Includes inferred Fabrix guidance not stated verbatim in the docs.*",
+        "scope": "related",
+        "sources": [
+          "https://docs.fabrix.ai/beginners_guide/",
+          "https://docs.fabrix.ai/installation_guides/rda_github/",
+          "https://docs.fabrix.ai/beginners_guide/scheduled_pipelines/",
+          "https://docs.fabrix.ai/installation_guides/evict_stuck_pipelines/",
+          "https://docs.fabrix.ai/beginners_guide/data_in_motion/"
+        ],
+        "gaps": [
+          "Specific details on cron expression for every 15 minutes,"
+        ],
+        "latency_s": 8.0
+      },
+      "chatgpt_proxy": {
+        "answer": "To schedule an RDA Fabric pipeline to run every 15 minutes, you need to define a scheduled pipeline within your service blueprint using a cron expression. Here\u2019s how you can do it:\n\n1. **Define the Scheduled Pipeline**: In your service blueprint YAML, you will need to add a section for `scheduled_pipelines`. Here\u2019s an example configuration:\n\n```yaml\nscheduled_pipelines:\n  - name: sample-scheduled-pipeline\n    label: Sample Scheduled Pipeline\n    version: '*'\n    site: rda.*\n    cron_expression: '*/15 * * * *'  # This cron expression schedules the pipeline to run every 15 minutes\n    site_type: regex\n    max_execution_mins: 5  # Optional: sets a limit on execution time\n```\n\n2. **Parameters Explained**:\n   - `name`: A unique identifier for your scheduled pipeline.\n   - `label`: A human-readable label for the pipeline.\n   - `version`: The version of the pipeline to use; `*` implies any latest version.\n   - `site`: The site pattern for the RDA Worker(s).\n   - `cron_expression`: The cron schedule expression. `*/15 * * * *` means every 15 minutes.\n   - `site_type`: Can be `regex` or `name`, indicating how the site parameter is interpreted.\n   - `max_execution_mins`: Optional field to specify a maximum execution time for the pipeline.\n\n3. **Deploy the Blueprint**: After defining the scheduled pipeline in your blueprint, deploy it to activate the scheduling.\n\nThis setup will ensure that your RDA Fabric pipeline runs every 15 minutes as specified. If you have any further questions or need additional configurations, feel free to ask!",
+        "sources": [
+          "https://docs.fabrix.ai/ai_fabric/agentic_building_guide/async_tool_call/",
+          "https://docs.fabrix.ai/ai_fabric/agentic_building_guide/tool_handlers_guide/",
+          "https://docs.fabrix.ai/beginners_guide/scheduled_pipelines/"
+        ],
+        "latency_s": 12.2,
+        "note": "GPT-4o-mini + live docs.fabrix.ai pages (browse proxy), not ChatGPT web UI"
+      },
+      "grade": {
+        "agent": {
+          "accuracy": "mixed",
+          "docs_grounded": true,
+          "issues": [
+            "short"
+          ],
+          "strengths": [
+            "provides a clear step-by-step process"
+          ]
+        },
+        "chatgpt_proxy": {
+          "accuracy": "strong",
+          "docs_grounded": true,
+          "issues": [
+            "none"
+          ],
+          "strengths": [
+            "includes example YAML configuration",
+            "thorough explanation of parameters"
+          ]
+        },
+        "winner": "chatgpt_proxy",
+        "reason": "The chatgpt_proxy provided a more detailed and accurate response with a clear example, while the agent's answer was less specific."
+      }
+    },
+    {
+      "id": "p1_sla_trap",
+      "theme": "out of scope",
+      "question": "What is Fabrix's contractual P1 support SLA response time?",
+      "agent": {
+        "answer": "I couldn't find that in the Fabrix / RDA documentation. This question looks outside the public docs scope.",
+        "scope": "out_of_scope",
+        "sources": [],
+        "gaps": [
+          "Out of scope for public Fabrix/CFX documentation"
+        ],
+        "latency_s": 1.7
+      },
+      "chatgpt_proxy": {
+        "answer": "The Fabrix documentation does not provide specific information regarding the contractual P1 support SLA response time. For details on support SLAs, you may need to consult your contract or reach out directly to Fabrix support for clarification.",
+        "sources": [
+          "https://docs.fabrix.ai/Bots/cfxdm/",
+          "https://docs.fabrix.ai/Datasource_Integrations/Check_MK/",
+          "https://docs.fabrix.ai/Datasource_Integrations/NodePing/"
+        ],
+        "latency_s": 1.2,
+        "note": "GPT-4o-mini + live docs.fabrix.ai pages (browse proxy), not ChatGPT web UI"
+      },
+      "grade": {
+        "agent": {
+          "accuracy": "strong",
+          "docs_grounded": false,
+          "issues": [],
+          "strengths": [
+            "Honest about the lack of information in the documentation"
+          ]
+        },
+        "chatgpt_proxy": {
+          "accuracy": "strong",
+          "docs_grounded": false,
+          "issues": [],
+          "strengths": [
+            "Correctly identifies the lack of information in the documentation and suggests contacting support"
+          ]
+        },
+        "winner": "tie",
+        "reason": "Both responses accurately acknowledge the lack of information in the documentation and suggest reaching out for further clarification."
+      }
+    }
+  ]
+}

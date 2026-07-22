@@ -72,6 +72,7 @@ PRODUCTION_CASES = [
         "id": "lookup_bot",
         "question": "What parameters does the timed-loop bot take?",
         "need_any": ["interval", "max_iterations", "stop_after"],
+        "expect_zero_llm_calls": True,
     },
     {
         "id": "lookup_cfxql",
@@ -326,6 +327,42 @@ PRODUCTION_CASES = [
         "forbid": ["servicenow", "zabbix"],
         "expect_infer": True,
     },
+    # Phase 1 bakeoff locks (real customer questions)
+    {
+        "id": "bakeoff_kafka_params",
+        "question": "What parameters does the kafka-v2 consume / read bot take?",
+        "need_any": ["name", "group", "offset_reset", "batch_size", "read-stream"],
+        "forbid": ["not provided in the documentation excerpts"],
+        "expect_zero_llm_calls": True,
+    },
+    {
+        "id": "bakeoff_pipeline_15m",
+        "question": "How do I schedule an RDA Fabric pipeline to run every 15 minutes?",
+        "need_any": ["cron", "scheduled_pipelines", "*/15", "15"],
+        "forbid": ["pipeline-scheduler", "schedule-pipeline"],
+        "expect_infer": True,
+    },
+    {
+        "id": "bakeoff_cfxql",
+        "question": "What is the difference between Full CFXQL and Restricted CFXQL?",
+        "need_any": ["restricted", "full"],
+        "expect_infer": True,
+    },
+    {
+        "id": "bakeoff_p1_sla",
+        "question": "What is Fabrix's contractual P1 support SLA response time?",
+        "need_any": [
+            "couldn't find",
+            "not in",
+            "do not",
+            "don't",
+            "not state",
+            "not specified",
+            "outside",
+            "contract",
+        ],
+        "expect_abstain": True,
+    },
 ]
 
 
@@ -418,6 +455,19 @@ def score_case(case: dict, result) -> dict:
         if has_ds and not (used or disc) and "next (inferred)" not in low:
             partial = True
             notes.append("dataset/dashboard handoff without clear inference labeling")
+
+    if case.get("expect_abstain"):
+        if not _abstained(ans):
+            ok = False
+            notes.append("expected abstain on trap question")
+        if case.get("expect_empty_sources") and sources:
+            ok = False
+            notes.append("trap answered with sources")
+
+    llm_calls = int((getattr(result, "timing", None) or {}).get("llm_calls") or 0)
+    if case.get("expect_zero_llm_calls") and llm_calls > 0:
+        ok = False
+        notes.append(f"expected zero LLM calls, got {llm_calls}")
 
     grade = "PASS" if ok and not partial else ("PARTIAL" if ok and partial else "FAIL")
     return {

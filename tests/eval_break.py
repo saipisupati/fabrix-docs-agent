@@ -917,6 +917,206 @@ BREAK_CASES = [
         "forbid_in_sources": ["servicenow", "zabbix", "qualys"],
         "expect_infer_or_gaps": True,
     },
+    # --- Cycle 8: platform update + VM (ChatGPT-class day-2) ---
+    {
+        "id": "c8_update_platform_and_vms",
+        "attack": "wrong_facet",
+        "cycle": 8,
+        "question": (
+            "how can i update fabrix.ai platform and use vm's properly"
+        ),
+        "need_any": ["rdaf", "backup", "registry", "cli", "upgrade", "status"],
+        "need_also_any": [
+            "infra", "platform", "worker", "docker2", "pip", "tar.gz", "rdafcli",
+        ],
+        "forbid": [
+            "docker1.cloudfabrix",
+            "missing specific commands for upgrading",
+            "docs don't cover",
+            "docs do not cover",
+        ],
+        "forbid_in_sources": ["servicenow", "ms_teams", "microsoft teams", "zabbix"],
+        "expect_infer_or_gaps": True,
+    },
+    {
+        "id": "c8_update_rdaf_cli_path",
+        "attack": "wrong_facet",
+        "cycle": 8,
+        "question": (
+            "What is the documented path to update an existing RDAF deployment "
+            "with the deployment CLI?"
+        ),
+        "need_any": ["rdaf", "backup", "upgrade", "cli"],
+        "need_also_any": ["registry", "status", "pip", "infra", "worker", "platform"],
+        "forbid": ["docker1.cloudfabrix"],
+        "forbid_in_sources": ["servicenow", "qualys"],
+        "expect_infer_or_gaps": True,
+    },
+    {
+        "id": "c8_upgrade_not_studio_sizing",
+        "attack": "wrong_facet",
+        "cycle": 8,
+        "question": (
+            "We need to upgrade our Fabrix platform on production VMs — "
+            "what should we do first and which CLI commands matter?"
+        ),
+        "need_any": ["backup", "rdaf", "upgrade"],
+        "need_also_any": ["status", "registry", "cli", "infra", "platform"],
+        "forbid": ["docker1.cloudfabrix"],
+        "expect_infer_or_gaps": True,
+    },
+    # --- Cycle 9: day-2 ops / vague product asks (adhoc 12Q battery) ---
+    {
+        "id": "c9_splunk_into_dashboard",
+        "attack": "wrong_facet",
+        "cycle": 9,
+        "question": "How do I get my Splunk data into a dashboard?",
+        "need_any": ["splunk"],
+        "need_also_any": ["dashboard", "dataset", "pstream", "stream", "bot"],
+        "forbid": ["@bmc-remedy:create-ticket"],
+        "forbid_in_sources": ["bmc-remedy", "bmc_remedy", "qualys"],
+        "require_wiring_shape": True,
+        "expect_infer_or_gaps": True,
+    },
+    {
+        "id": "c9_pipeline_not_on_schedule",
+        "attack": "wrong_facet",
+        "cycle": 9,
+        "question": "Why isn't my pipeline running on schedule?",
+        "need_any": ["cron", "scheduled", "schedule"],
+        "need_also_any": [
+            "blueprint", "status", "audit", "site", "expression", "pipeline",
+        ],
+        "forbid_in_sources": ["servicenow", "zabbix", "qualys"],
+        "expect_infer_or_gaps": True,
+    },
+    {
+        "id": "c9_pull_tickets_auto",
+        "attack": "contamination",
+        "cycle": 9,
+        "question": "What's the easiest way to pull ticket data automatically?",
+        "need_any": [
+            "ticket", "servicenow", "snow", "jira", "incident", "remedy",
+        ],
+        "need_also_any": [
+            "list", "query", "stream", "pstream", "bot", "credential", "api",
+        ],
+        "forbid": ["@bmc-remedy:create-ticket"],
+        "forbid_in_sources": ["aws.md", "prometheus"],
+        "require_wiring_shape": True,
+        "expect_infer_or_gaps": True,
+    },
+    {
+        "id": "c9_cron_for_bot",
+        "attack": "wrong_facet",
+        "cycle": 9,
+        "question": "Where do I set up a cron job for a bot?",
+        "need_any": ["cron", "scheduled_pipelines", "schedule"],
+        "need_also_any": ["blueprint", "pipeline", "expression", "yaml"],
+        "forbid_in_sources": ["zabbix", "qualys"],
+        "expect_infer_or_gaps": True,
+    },
+    {
+        "id": "c9_whitelist_ip_api",
+        "attack": "trap",
+        "cycle": 9,
+        "question": "How do I whitelist an IP for the API?",
+        "expect_abstain": True,
+        "expect_empty_sources": True,
+    },
+    {
+        "id": "c9_sql_datasets",
+        "attack": "wrong_facet",
+        "cycle": 9,
+        "question": "Can I use SQL to query my datasets directly?",
+        "need_any": ["cfxql"],
+        "need_also_any": ["sql", "query", "dataset"],
+        "forbid": [
+            "yes, you can use sql directly",
+            "native sql",
+            "standard sql against datasets",
+        ],
+        "expect_infer_or_gaps": True,
+    },
+    {
+        "id": "c9_snow_slack_agent",
+        "attack": "multi_intent",
+        "cycle": 9,
+        "question": (
+            "I want an AI agent that watches my ServiceNow tickets and posts "
+            "summaries to Slack -- what do I need?"
+        ),
+        "need_any": ["servicenow", "snow"],
+        "need_also_any": ["slack", "post-message", "channel"],
+        "forbid_in_sources": ["zabbix", "prometheus", "linux-inventory"],
+        "require_wiring_shape": True,
+        "require_next_inferred": True,
+        "expect_infer_or_gaps": True,
+    },
+    {
+        "id": "c9_dashboard_trigger_pipelines",
+        "attack": "overclaim",
+        "cycle": 9,
+        "question": (
+            "Can dashboards trigger pipelines automatically, or is that only one-way?"
+        ),
+        "need_any": ["dashboard", "pipeline"],
+        "need_also_any": [
+            "one-way", "one way", "not documented", "do not", "don't",
+            "cannot", "can't", "no documented", "gaps", "not have",
+        ],
+        "expect_infer_or_gaps": True,
+    },
+    {
+        "id": "c9_kafka_timeout",
+        "attack": "wrong_facet",
+        "cycle": 9,
+        "question": "My Kafka bot keeps timing out, what should I check?",
+        "need_any": ["kafka"],
+        "need_also_any": [
+            "max_poll", "timeout", "poll", "commit", "group", "topic", "parameter",
+        ],
+        "forbid_in_sources": ["servicenow", "zabbix", "linux-inventory"],
+        "expect_infer_or_gaps": True,
+    },
+    {
+        "id": "c9_test_pipeline_before_live",
+        "attack": "wrong_facet",
+        "cycle": 9,
+        "question": "Is there a way to test a pipeline before deploying it live?",
+        "need_any": ["pipeline", "run-pipeline", "exec", "draft"],
+        "need_also_any": ["bot", "dataset", "draft", "published", "test", "exec"],
+        "forbid_in_sources": ["servicenow", "zabbix"],
+        "expect_infer_or_gaps": True,
+    },
+    {
+        "id": "c9_onprem_kubernetes",
+        "attack": "wrong_facet",
+        "cycle": 9,
+        "question": (
+            "Do you support on-prem Kubernetes or only cloud-managed clusters?"
+        ),
+        "need_any": ["kubernetes", "k8s", "kubectl"],
+        "need_also_any": [
+            "inventory", "ssh", "api", "on-prem", "on prem", "cluster", "bot",
+        ],
+        "expect_infer_or_gaps": True,
+    },
+    {
+        "id": "c9_concurrent_dataset_writes",
+        "attack": "overclaim",
+        "cycle": 9,
+        "question": (
+            "What happens if two bots try to write to the same dataset at once?"
+        ),
+        "need_any": ["dataset", "write", "bot"],
+        "expect_infer_or_gaps": True,
+        "forbid": [
+            "ensures that only one write operation can proceed",
+            "preventing potential data corruption",
+            "queued, depending on the specific implementation",
+        ],
+    },
 ]
 
 

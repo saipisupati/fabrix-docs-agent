@@ -92,30 +92,34 @@ def bot_name_hints(question):
 
 
 def rerank_by_bot_name(question, chunks):
-    # bump chunks whose bot_name matches slugs parsed from the question
-    hints = bot_name_hints(question)
-    if not hints:
+    from bot_lookup import bot_family_hints, bot_operation_hints, hybrid_boost_chunks, rerank_lookup_chunks
+
+    families = bot_family_hints(question)
+    if not families:
         return chunks
-
-    def sort_key(chunk):
-        name = chunk["metadata"].get("bot_name", "").lower()
-        match = any(hint in name for hint in hints)
-        return (match, chunk["score"])
-
-    return sorted(chunks, key=sort_key, reverse=True)
+    ops = bot_operation_hints(question)
+    # Hybrid boost first (product + OS demotion), then lookup-style family/op scoring
+    boosted = hybrid_boost_chunks(question, chunks)
+    return rerank_lookup_chunks(boosted, families, ops)
 
 
 def prune_lookup_chunks(question, chunks, category):
     """For lookup questions, drop sibling bots that share a slug with rank-1."""
+    from bot_lookup import bot_family_hints, bot_operation_hints, prune_lookup_chunks_for_families
+
     if category != "lookup" or not chunks:
         return chunks
-    hints = bot_name_hints(question)
-    if not hints:
+    families = bot_family_hints(question)
+    if not families:
         return chunks[:2]
-    top_name = chunks[0]["metadata"].get("bot_name", "").lower()
-    if not all(h in top_name for h in hints):
+    ops = bot_operation_hints(question)
+    pruned = prune_lookup_chunks_for_families(chunks, families, ops, limit=5)
+    if not pruned:
         return chunks[:2]
-    return [c for c in chunks if c["metadata"].get("bot_name", "").lower() == top_name]
+    top_name = (pruned[0].get("metadata") or {}).get("bot_name", "").lower()
+    if not any(fam.lower() in top_name or fam.lower().replace("-", "_") in top_name for fam in families):
+        return pruned[:2]
+    return [c for c in pruned if (c.get("metadata") or {}).get("bot_name", "").lower() == top_name] or pruned[:2]
 
 
 _PARAM_TABLE_HEADER_RE = re.compile(r"^\|\s*Parameter\s+Name\s*\|", re.IGNORECASE)
@@ -124,6 +128,11 @@ _HTML_TAG_RE = re.compile(r"<[^>]+>")
 
 def _strip_html(s: str) -> str:
     return _HTML_TAG_RE.sub("", s or "").strip()
+
+
+def _normalize_param_field(text: str) -> str:
+    s = (text or "").replace("\\_", "_").replace("\\*", "")
+    return s.replace("\\", "").strip()
 
 
 def parse_bot_param_table(text: str):
@@ -162,7 +171,7 @@ def parse_bot_param_table(text: str):
             continue
 
         name_raw, type_raw, default_raw, desc_raw = (parts + ["", "", "", ""])[:4]
-        name_text = _strip_html(name_raw)
+        name_text = _normalize_param_field(_strip_html(name_raw))
         desc_text = _strip_html(desc_raw)
 
         # Required markers show up as asterisk or HTML span with red marker.
@@ -175,8 +184,8 @@ def parse_bot_param_table(text: str):
             {
                 "name": name_text,
                 "required": required,
-                "type": _strip_html(type_raw),
-                "default": _strip_html(default_raw),
+                "type": _normalize_param_field(_strip_html(type_raw)),
+                "default": _normalize_param_field(_strip_html(default_raw)),
                 "description": desc_text,
             }
         )
@@ -212,14 +221,16 @@ def retrieve_remote(question, top_k=5, filter_dict=None):
 
 
 def retrieve(question, client, top_k=3, filter_dict=None):
-    # local Qdrant or remote wrapper, then bot-name rerank and trim to top_k
+    # local Qdrant or remote wrapper, then bot-name / product-family rerank and trim to top_k
+    from bot_lookup import bot_family_hints
+
     if REMOTE_BASE_URL:
-        hints = bot_name_hints(question)
+        hints = bot_name_hints(question) or bot_family_hints(question)
         remote_limit = max(top_k * 10, 300) if hints else top_k
         chunks = retrieve_remote(question, top_k=remote_limit, filter_dict=filter_dict)
         return rerank_by_bot_name(question, chunks)[:top_k]
 
-    hints = bot_name_hints(question)
+    hints = bot_name_hints(question) or bot_family_hints(question)
     candidate_limit = max(top_k * 10, 300) if hints else top_k
 
     query_vector = embed_question(question)

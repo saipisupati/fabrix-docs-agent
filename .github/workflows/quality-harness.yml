@@ -50,4 +50,19 @@ jobs:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           HARNESS_CI_MODE: "1"
           HARNESS_SKIP_IF_NO_DATA: "1"
+          PYTHONPATH: src
         run: python3 tests/run_quality_harness.py
+
+      - name: Upload harness artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: quality-harness-results
+          path: |
+            tests/quality_harness_digest.md
+            tests/benchmark_phases_results.txt
+            tests/eval_customer_bakeoff_results.txt
+            tests/eval_production_results.txt
+            tests/eval_break_results.txt
+            tests/eval_readiness_results.txt
+          if-no-files-found: ignore

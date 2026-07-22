@@ -1,5 +1,5 @@
 """
-kb/extract.py — rule-based KB extraction from public Fabrix markdown docs.
+kb/extract.py: rule-based KB extraction from public Fabrix markdown docs.
 """
 
 from __future__ import annotations
@@ -20,6 +20,7 @@ from config import (
 )
 from doc_urls import BOTS_REL_PREFIX, public_doc_url
 from kb.schema import Entity, Fact, KnowledgeBase, Procedure, Relation, Topic
+from query_qdrant import parse_bot_param_table
 
 _HEADER_RE = re.compile(r"^(#{1,4})\s+(.+)$", re.MULTILINE)
 _NUMBERED_STEP_RE = re.compile(r"^\s*(?:\d+[\.\)]\s+|[-*]\s+)(.+)$", re.MULTILINE)
@@ -86,6 +87,30 @@ def _topic_for_section(section: str) -> Topic:
     )
 
 
+def _format_params_fact_text(bot_name: str, rows: list[dict]) -> str:
+    """Embeddable summary of structured bot parameters for retrieve_kb."""
+    parts = []
+    for r in rows:
+        name = r.get("name") or ""
+        if not name:
+            continue
+        req = "required" if r.get("required") else "optional"
+        typ = r.get("type") or ""
+        default = r.get("default") or ""
+        desc = (r.get("description") or "")[:120]
+        bit = f"{name} ({req}"
+        if typ:
+            bit += f", {typ}"
+        if default:
+            bit += f", default {default}"
+        bit += ")"
+        if desc:
+            bit += f": {desc}"
+        parts.append(bit)
+    joined = "; ".join(parts)
+    return f"{bot_name} parameters: {joined}"[:4000]
+
+
 def extract_bots(kb: KnowledgeBase) -> None:
     if not BOTS_DIR or not os.path.isdir(BOTS_DIR):
         return
@@ -96,12 +121,13 @@ def extract_bots(kb: KnowledgeBase) -> None:
         filepath = os.path.join(BOTS_DIR, filename)
         with open(filepath, encoding="utf-8") as f:
             cleaned = clean_markdown(f.read())
-        ext_id = f"extension-{_slug(filename.removesuffix('.md'))}"
+        ext_slug = filename.removesuffix(".md")
+        ext_id = f"extension-{_slug(ext_slug)}"
         kb.entities.append(
             Entity(
                 id=ext_id,
                 kind="extension",
-                name=filename.removesuffix(".md"),
+                name=ext_slug,
                 summary=f"Bot extension catalog page {filename}",
                 section="Bots",
                 source=filename,
@@ -117,6 +143,7 @@ def extract_bots(kb: KnowledgeBase) -> None:
             body = chunk.page_content.strip()
             summary = _first_paragraph(body, 350)
             example = _extract_example(body)
+            param_rows = parse_bot_param_table(body)
             entity_id = f"bot-{_slug(bot_name)}"
             kb.entities.append(
                 Entity(
@@ -130,6 +157,9 @@ def extract_bots(kb: KnowledgeBase) -> None:
                     metadata={
                         "prefix": meta["prefix"],
                         "example": example or "",
+                        "extension": ext_slug,
+                        "parameters": param_rows,
+                        "param_names": [r.get("name") for r in param_rows if r.get("name")],
                     },
                 )
             )
@@ -141,6 +171,18 @@ def extract_bots(kb: KnowledgeBase) -> None:
                     relation="bot_in_extension",
                 )
             )
+            if param_rows:
+                kb.facts.append(
+                    Fact(
+                        id=f"fact-params-{entity_id}",
+                        text=_format_params_fact_text(bot_name, param_rows),
+                        source=filename,
+                        url=public_doc_url(f"{BOTS_REL_PREFIX}/{filename}"),
+                        section="Bots",
+                        entity_id=entity_id,
+                        example=example,
+                    )
+                )
 
 
 def extract_narrative_file(kb: KnowledgeBase, filepath: str, rel_source: str, section: str) -> None:

@@ -1,5 +1,5 @@
 """
-live_docs.py — optional fetch of public docs.fabrix.ai pages at answer time.
+live_docs.py: optional fetch of public docs.fabrix.ai pages at answer time.
 
 Used for platform install / VM / upgrade asks so the agent can ground on the same
 pages ChatGPT opens (e.g. /installation_guides/, /installation_guides/rdaf_cli/),
@@ -151,7 +151,11 @@ def live_install_kb_entries(max_pages: int = 2, upgrade: bool = False) -> list[d
             src = (
                 "installation_guides/rdaf_cli.md"
                 if i == 0
-                else "installation_guides/rdaf_start_stop_ops.md"
+                else (
+                    "installation_guides/rdaf_start_stop_ops.md"
+                    if i == 1
+                    else "installation_guides/rdaf_k8s_cli.md"
+                )
             )
         else:
             src = (

@@ -1,5 +1,5 @@
 """
-kb/schema.py — structured knowledge-base record types for Fabrix public docs.
+kb/schema.py: structured knowledge-base record types for Fabrix public docs.
 """
 
 from __future__ import annotations
@@ -107,15 +107,32 @@ class KnowledgeBase:
                 "example": "",
             })
         for e in self.entities:
+            meta = e.metadata or {}
+            text = f"{e.kind} {e.name}. {e.summary}"
+            # Phase 3: include structured bot params so retrieve_kb surfaces param tables
+            params = meta.get("parameters") or []
+            if e.kind == "bot" and params:
+                names = meta.get("param_names") or [p.get("name") for p in params if p.get("name")]
+                bits = []
+                for p in params[:20]:
+                    n = p.get("name") or ""
+                    if not n:
+                        continue
+                    req = "required" if p.get("required") else "optional"
+                    bits.append(f"{n} ({req})")
+                text = (
+                    f"bot {e.name} parameters {', '.join(names[:16])}. "
+                    f"{e.summary}. Details: {'; '.join(bits)}"
+                )[:4000]
             entries.append({
                 "id": f"entity:{e.id}",
                 "kind": e.kind,
                 "title": e.name,
-                "text": f"{e.kind} {e.name}. {e.summary}",
+                "text": text,
                 "source": e.source,
                 "url": e.url,
                 "section": e.section,
-                "example": (e.metadata or {}).get("example", "") or "",
+                "example": meta.get("example", "") or "",
             })
         for f in self.facts:
             entries.append({
