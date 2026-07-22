@@ -206,6 +206,65 @@ def _agentic_honesty_fallback(question: str, existing_gaps: list[str] | None = N
     return text, gaps
 
 
+def _is_full_script_automation_ask(question: str) -> bool:
+    """Asks for a turnkey script/playbook chaining an end-to-end automation."""
+    q = (question or "").lower()
+    wants_artifact = any(
+        w in q
+        for w in (
+            "bash script", "shell script", "write me a script", "write a script",
+            "write me a bash", "playbook", "automate", "automation script",
+        )
+    )
+    end_to_end = any(
+        w in q
+        for w in ("end-to-end", "end to end", "e2e", "full script", "complete script")
+    )
+    return wants_artifact and (end_to_end or "automat" in q)
+
+
+def _answer_has_turnkey_script_risk(answer: str) -> bool:
+    """Detect invented ready-to-run scripts / credential placeholders."""
+    text = answer or ""
+    low = text.lower()
+    if re.search(r"(?m)^#!/bin/(?:ba)?sh\b", text):
+        return True
+    if "$password" in low or "${password}" in low:
+        return True
+    if re.search(r"(?i)\b(?:password|passwd)\s*=", text):
+        return True
+    if "admin:changeme" in low:
+        return True
+    return False
+
+
+def _full_script_honesty_fallback(
+    question: str,
+    existing_gaps: list[str] | None = None,
+) -> tuple[str, list[str]]:
+    """Refuse turnkey scripts; point users at documented steps + manual verification."""
+    text = (
+        "**Documented Fabrix path** (not a turnkey script)\n"
+        "I will not invent a ready-to-run bash/playbook that chains an end-to-end "
+        "upgrade/automation with placeholder versions, paths, or credentials.\n\n"
+        "Use the individual documented commands/steps from the RDAF upgrade / "
+        "installation guides in order (CLI install/upgrade, backup/registry as "
+        "documented, infra/platform/worker/app status checks). Exact values "
+        "(version tags, hostnames, paths) must come from your environment and "
+        "release notes — verify each step manually before production use.\n\n"
+        "**Next (inferred):** Operator runbooks and site-specific sequencing may "
+        "differ; treat any automation you build as requiring human verification."
+    )
+    gaps = list(existing_gaps or [])
+    gap = (
+        "Public docs list commands/procedures but do not provide a verified "
+        "end-to-end turnkey upgrade script"
+    )
+    if gap not in gaps:
+        gaps.insert(0, gap)
+    return text, gaps[:8]
+
+
 def _is_platform_install_ask(question: str) -> bool:
     """
     Platform / Studio / RDAF install, upgrade, prerequisites, VM or hardware sizing.
@@ -1168,13 +1227,21 @@ Fabrix mental model (use when relevant; do not keyword-stuff):
 - Trailer examples: concrete excerpt lines only from the same product family.
 """
 
+    code_gen_guardrail = ""
+    if _is_full_script_automation_ask(question):
+        code_gen_guardrail = """
+- If asked to write a complete script, playbook, or end-to-end automation that chains multiple commands/steps together, do NOT invent a single ready-to-run script with placeholder versions, paths, or credentials.
+- Instead: list the individual documented commands/steps in order (as shown in the excerpts), explicitly note that exact values (version tags, paths, hostnames) must be filled in from the user's own environment/release notes, and flag this as something requiring manual verification, not turnkey automation.
+- Never invent password variables, default credentials, or example secrets in code blocks, even as placeholders like $PASSWORD or admin:changeme.
+"""
+
     if scope == "related":
         infer_guidance = f"""
 - Write ONE coherent best answer that combines documented facts with limited Fabrix
   technical synthesis implied by the docs.
 - Cite documented claims with [1], [2], … Do NOT put [n] on inferred reasoning.
 - Set used_inference=true and fill inferred_summary when you synthesize beyond verbatim docs.
-{objects_line}{full_page_line}{fidelity_line}{ungrounded_line}{path_first}
+{objects_line}{full_page_line}{fidelity_line}{ungrounded_line}{path_first}{code_gen_guardrail}
 """
     else:
         infer_guidance = f"""
@@ -1182,7 +1249,7 @@ Fabrix mental model (use when relevant; do not keyword-stuff):
 - If you add connective technical reasoning beyond a single excerpt, set used_inference=true
   and fill inferred_summary. Otherwise used_inference=false and inferred_summary="".
 - Do NOT put [n] on inferred reasoning.
-{objects_line}{full_page_line}{fidelity_line}{ungrounded_line}{path_first}
+{objects_line}{full_page_line}{fidelity_line}{ungrounded_line}{path_first}{code_gen_guardrail}
 """
 
     revision_block = ""
@@ -3294,6 +3361,20 @@ def answer(question: str, client: QdrantClient | None = None) -> AgentResponse:
         inferred_summary = ""
         examples = []
         logger.info("named-entity honesty fallback (post-revision) for %s", ungrounded_entities)
+
+    if _is_full_script_automation_ask(question) and (
+        _answer_has_turnkey_script_risk(answer_text)
+        or _looks_like_abstention(answer_text)
+    ):
+        answer_text, gaps = _full_script_honesty_fallback(question, gaps)
+        abstained = False
+        used_inference = True
+        inferred_summary = inferred_summary or (
+            "Documented upgrade commands require environment-specific values; "
+            "no turnkey script from public docs"
+        )
+        examples = []
+        logger.info("full-script invention/abstain fallback applied")
 
     answer_text = polish_answer_text(answer_text)
     answer_text = _polish_known_product_typos(answer_text)
