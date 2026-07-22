@@ -1518,6 +1518,15 @@ def _normalize_question_typos(question: str) -> str:
             low = q.lower()
     # Ops slang abbreviations (word-boundary only)
     q = re.sub(r"\bog\b", "Opsgenie", q, flags=re.IGNORECASE)
+    # SQL-as-dataset-query → CFXQL (Fabrix's SQL-like language). Keep "SQL" in the
+    # text so answers can address the user's framing; expand for retrieve/scope.
+    low = q.lower()
+    if re.search(r"\bsql\b", low) and "cfxql" not in low:
+        if any(
+            w in low
+            for w in ("dataset", "datasets", "query", "queries", "querying", "filter")
+        ):
+            q = re.sub(r"\bSQL\b", "SQL CFXQL", q, flags=re.IGNORECASE)
     return q
 
 

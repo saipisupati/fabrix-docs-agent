@@ -75,6 +75,12 @@ PRODUCTION_CASES = [
         "expect_zero_llm_calls": True,
     },
     {
+        "id": "sql_to_cfxql",
+        "question": "Can I use SQL to query my datasets directly?",
+        "need_any": ["cfxql", "sql-like", "query language"],
+        "expect_no_abstain": True,
+    },
+    {
         "id": "lookup_cfxql",
         "question": "Which CFXQL style do API bots (@) use versus source filtering bots (#)?",
         "need_any": ["restricted", "full"],
@@ -463,6 +469,10 @@ def score_case(case: dict, result) -> dict:
         if case.get("expect_empty_sources") and sources:
             ok = False
             notes.append("trap answered with sources")
+
+    if case.get("expect_no_abstain") and _abstained(ans):
+        ok = False
+        notes.append("unexpected abstain; expected documented CFXQL redirect")
 
     llm_calls = int((getattr(result, "timing", None) or {}).get("llm_calls") or 0)
     if case.get("expect_zero_llm_calls") and llm_calls > 0:
