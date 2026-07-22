@@ -1096,6 +1096,7 @@ def build_kb_prompt(
     scope: str,
     primary_objects: list[str] | None = None,
     revision_notes: str = "",
+    ungrounded_named_entities: list[str] | None = None,
 ) -> str:
     kb_ctx = _format_kb_context(kb_entries)
     chunk_ctx = _format_chunk_context(chunks, start_index=len(kb_entries) + 1)
@@ -1125,6 +1126,17 @@ def build_kb_prompt(
             "- Product fidelity: only name bots whose prefix/family matches products in the "
             f"question ({', '.join(allowed_fams)}). Never cite sibling-product bots "
             "(e.g. BMC/Remedy bots on a ServiceNow question, Zabbix on a Prometheus question).\n"
+        )
+
+    ungrounded_line = ""
+    if ungrounded_named_entities:
+        terms = ", ".join(f"'{t}'" for t in ungrounded_named_entities[:6])
+        ungrounded_line = (
+            f"- NAMED ENTITY NOT IN EXCERPTS: the user asked about {terms}, which does not "
+            "appear anywhere in the retrieved documentation excerpts. Do NOT assume it exists "
+            "or describe how to use/configure/enable it. State clearly that you do not see "
+            "this specific feature/bot documented. You may briefly mention genuinely related "
+            "documented concepts only if helpful, without implying the named thing is real.\n"
         )
 
     mental_model = """
@@ -1162,7 +1174,7 @@ Fabrix mental model (use when relevant; do not keyword-stuff):
   technical synthesis implied by the docs.
 - Cite documented claims with [1], [2], … Do NOT put [n] on inferred reasoning.
 - Set used_inference=true and fill inferred_summary when you synthesize beyond verbatim docs.
-{objects_line}{full_page_line}{fidelity_line}{path_first}
+{objects_line}{full_page_line}{fidelity_line}{ungrounded_line}{path_first}
 """
     else:
         infer_guidance = f"""
@@ -1170,7 +1182,7 @@ Fabrix mental model (use when relevant; do not keyword-stuff):
 - If you add connective technical reasoning beyond a single excerpt, set used_inference=true
   and fill inferred_summary. Otherwise used_inference=false and inferred_summary="".
 - Do NOT put [n] on inferred reasoning.
-{objects_line}{full_page_line}{fidelity_line}{path_first}
+{objects_line}{full_page_line}{fidelity_line}{ungrounded_line}{path_first}
 """
 
     revision_block = ""
@@ -1711,11 +1723,143 @@ def _retrieved_context_blob(kb_entries: list[dict] | None, chunks: list[dict] | 
             f"{e.get('example') or ''} {e.get('source') or ''}"
         )
     for c in chunks or []:
+        meta = c.get("metadata") or {}
         parts.append(
             f"{c.get('title') or ''} {c.get('text') or c.get('page_content') or ''} "
-            f"{c.get('source') or ''}"
+            f"{c.get('source') or ''} {meta.get('source') or ''} {meta.get('bot_name') or ''}"
         )
     return "\n".join(parts).lower()
+
+
+# Platform / product tokens that are common in questions and should not trigger
+# "invented feature" checks even when a thin retrieve misses them.
+_KNOWN_DOC_ENTITY_ALLOW = frozenset(
+    {
+        "fabrix", "cloudfabrix", "rda", "rdaf", "rdafabric", "cfxql", "cfx", "aiops",
+        "oia", "mcp", "kafka", "splunk", "zabbix", "prometheus", "servicenow", "snow",
+        "datadog", "pagerduty", "newrelic", "dynatrace", "solarwinds", "nagios",
+        "opsgenie", "slack", "kubernetes", "k8s", "docker", "ubuntu", "linux",
+        "toolset", "persona", "copilot", "fabio", "pipeline", "pstream", "dataset",
+        "dashboard", "bot", "bots", "cli", "api", "vm", "vms", "sql", "yaml",
+    }
+)
+
+_BOT_ENTITY_RE = re.compile(r"@([A-Za-z][A-Za-z0-9_-]*):([A-Za-z0-9_-]+)")
+_QUOTED_ENTITY_RE = re.compile(r"['\"]([A-Za-z][A-Za-z0-9 _-]{1,60})['\"]")
+_CAMEL_ENTITY_RE = re.compile(r"\b([A-Z][a-z]+(?:[A-Z][a-zA-Z0-9]+)+)\b")
+_CALLED_ENTITY_RE = re.compile(
+    r"(?:feature\s+called|called|named)\s+['\"]?([A-Za-z][A-Za-z0-9_-]{2,40})['\"]?",
+    re.IGNORECASE,
+)
+
+
+def _named_entity_candidates(question: str) -> list[str]:
+    """Proper-noun / bot-style terms from the question worth grounding in excerpts."""
+    q = question or ""
+    found: list[str] = []
+    seen: set[str] = set()
+
+    def _add(term: str) -> None:
+        t = (term or "").strip()
+        if not t:
+            return
+        key = t.lower()
+        if key in seen or key in _KNOWN_DOC_ENTITY_ALLOW:
+            return
+        # Skip pure sentence starters / tiny tokens
+        if len(key) < 3:
+            return
+        seen.add(key)
+        found.append(t)
+
+    for m in _BOT_ENTITY_RE.finditer(q):
+        _add(f"@{m.group(1)}:{m.group(2)}")
+    for m in _QUOTED_ENTITY_RE.finditer(q):
+        _add(m.group(1).strip())
+    for m in _CAMEL_ENTITY_RE.finditer(q):
+        _add(m.group(1))
+    for m in _CALLED_ENTITY_RE.finditer(q):
+        _add(m.group(1))
+    return found
+
+
+def _term_grounded_in_blob(term: str, blob: str) -> bool:
+    """Case-insensitive grounding with light punctuation folding."""
+    if not term or not blob:
+        return False
+    t = term.lower().strip()
+    variants = {
+        t,
+        t.lstrip("@"),
+        t.replace("_", "-"),
+        t.replace("-", "_"),
+        t.replace(" ", ""),
+        t.replace(" ", "-"),
+        t.replace(" ", "_"),
+    }
+    return any(v and v in blob for v in variants)
+
+
+def _ungrounded_named_entities(
+    question: str,
+    kb_entries: list[dict] | None,
+    chunks: list[dict] | None,
+) -> list[str]:
+    """Named question entities that never appear in retrieved excerpt text."""
+    candidates = _named_entity_candidates(question)
+    if not candidates:
+        return []
+    blob = _retrieved_context_blob(kb_entries, chunks)
+    if not blob.strip():
+        return candidates
+    return [t for t in candidates if not _term_grounded_in_blob(t, blob)]
+
+
+def _answer_acknowledges_ungrounded(answer: str, terms: list[str]) -> bool:
+    low = (answer or "").lower()
+    honesty = any(
+        m in low
+        for m in (
+            "don't see",
+            "do not see",
+            "doesn't appear",
+            "does not appear",
+            "not documented",
+            "not in the documentation",
+            "couldn't find",
+            "could not find",
+            "no feature called",
+            "not a real bot",
+            "doesn't exist",
+            "does not exist",
+            "isn't documented",
+            "is not documented",
+            "no bot named",
+            "not a documented",
+            "outside the",
+            "out of scope",
+        )
+    )
+    return honesty
+
+
+def _ungrounded_entity_honesty(
+    terms: list[str],
+    existing_gaps: list[str] | None = None,
+) -> tuple[str, list[str]]:
+    """Deterministic refusal when a named feature/bot is absent from excerpts."""
+    shown = ", ".join(f"'{t}'" for t in terms[:4]) or "that named feature/bot"
+    text = (
+        f"I don't see {shown} in the Fabrix / RDA documentation excerpts. "
+        "I won't invent how to enable, configure, or use a feature or bot that isn't "
+        "documented. If you meant a different documented product or bot family, ask "
+        "with that exact name and I can look it up."
+    )
+    gaps = list(existing_gaps or [])
+    gap = f"{shown} is not present in the retrieved public docs"
+    if gap not in gaps:
+        gaps.insert(0, gap)
+    return text, gaps[:8]
 
 
 def _ungrounded_bot_tokens(
@@ -2730,9 +2874,24 @@ def answer(question: str, client: QdrantClient | None = None) -> AgentResponse:
     if expanded_pages:
         expanded_kb = pages_to_kb_entries(expanded_pages)
         kb_entries = (expanded_kb + list(kb_entries or []))[:14]
-    prompt = build_kb_prompt(
-        question, kb_entries, chunks, scope, primary_objects=primary_objects
-    )
+
+    ungrounded_entities = _ungrounded_named_entities(question, kb_entries, chunks)
+    named_entity_ungrounded = bool(ungrounded_entities)
+    if named_entity_ungrounded:
+        logger.info("named entities ungrounded in excerpts: %s", ungrounded_entities)
+
+    def _prompt(revision_notes: str = "") -> str:
+        return build_kb_prompt(
+            question,
+            kb_entries,
+            chunks,
+            scope,
+            primary_objects=primary_objects,
+            revision_notes=revision_notes,
+            ungrounded_named_entities=ungrounded_entities or None,
+        )
+
+    prompt = _prompt()
     t_gen = time.perf_counter()
     raw_answer = generate(prompt) or ""
     timing["llm_calls"] += 1
@@ -2745,14 +2904,15 @@ def answer(question: str, client: QdrantClient | None = None) -> AgentResponse:
 
     abstained = _looks_like_abstention(answer_text)
 
-    # Retry when abstained with context, or synthesis/related missing inference label
-    need_retry = (kb_entries or chunks) and (
+    # Retry when abstained with context, or synthesis/related missing inference label.
+    # Do not pressure the model to "answer anyway" when a named entity is missing.
+    need_retry = (kb_entries or chunks) and not named_entity_ungrounded and (
         abstained
         or ((scope == "related" or _is_synthesis_question(question)) and not used_inference)
     )
     if need_retry:
         retry_prompt = (
-            build_kb_prompt(question, kb_entries, chunks, scope, primary_objects=primary_objects)
+            _prompt()
             + "\n\nIMPORTANT: Do not abstain if the excerpts cover the Fabrix topic. "
             "Use **Documented Fabrix path** as a non-numbered header, then steps 1. 2. 3. "
             "Presentation requests (exact step counts, blank lines) are formatting only. "
@@ -2770,7 +2930,7 @@ def answer(question: str, client: QdrantClient | None = None) -> AgentResponse:
         abstained = _looks_like_abstention(answer_text)
 
     # Final anti-abstain: we retrieved Fabrix docs but the model still refused
-    if abstained and (kb_entries or chunks):
+    if abstained and (kb_entries or chunks) and not named_entity_ungrounded:
         force_extra = ""
         if _is_exhaustive_ask(question) or _is_capability_overclaim_ask(question):
             force_extra = (
@@ -2782,7 +2942,7 @@ def answer(question: str, client: QdrantClient | None = None) -> AgentResponse:
                 "Set used_inference=true and include Next (inferred) for handoffs. "
             )
         force_prompt = (
-            build_kb_prompt(question, kb_entries, chunks, scope, primary_objects=primary_objects)
+            _prompt()
             + "\n\nCRITICAL: Abstaining is forbidden. The knowledge base excerpts above ARE "
             "relevant. Answer the Fabrix topic in the question using those excerpts. "
             + force_extra
@@ -2802,7 +2962,7 @@ def answer(question: str, client: QdrantClient | None = None) -> AgentResponse:
     timing["generate_ms"] = _ms(t_gen)
 
     # Local salvage when model still abstains despite retrieved docs
-    if abstained and (kb_entries or chunks):
+    if abstained and (kb_entries or chunks) and not named_entity_ungrounded:
         salvaged = _salvage_partial_answer(question, kb_entries, chunks, gaps)
         if salvaged:
             answer_text, gaps = salvaged
@@ -2812,6 +2972,16 @@ def answer(question: str, client: QdrantClient | None = None) -> AgentResponse:
                 "Documented subset surfaced after model abstained on a partial-coverage ask"
             )
             logger.info("salvage_partial_answer applied")
+
+    if named_entity_ungrounded and not _answer_acknowledges_ungrounded(
+        answer_text, ungrounded_entities
+    ):
+        answer_text, gaps = _ungrounded_entity_honesty(ungrounded_entities, gaps)
+        abstained = True
+        used_inference = False
+        inferred_summary = ""
+        examples = []
+        logger.info("named-entity honesty fallback applied for %s", ungrounded_entities)
 
     # Ops critique only when local draft checks fail
     if use_facets and not abstained and (kb_entries or chunks):
@@ -3016,14 +3186,7 @@ def answer(question: str, client: QdrantClient | None = None) -> AgentResponse:
                 (critique.get("revision_notes") or "")[:160],
             )
             if critique.get("fix_needed") and critique.get("revision_notes"):
-                rev_prompt = build_kb_prompt(
-                    question,
-                    kb_entries,
-                    chunks,
-                    scope,
-                    primary_objects=primary_objects,
-                    revision_notes=critique["revision_notes"],
-                )
+                rev_prompt = _prompt(revision_notes=critique["revision_notes"])
                 raw_answer = generate(rev_prompt) or raw_answer
                 timing["llm_calls"] += 1
                 parsed = parse_unified_response(raw_answer)
@@ -3048,14 +3211,7 @@ def answer(question: str, client: QdrantClient | None = None) -> AgentResponse:
             "gaps[]."
         )
         logger.info("agentic naming revision")
-        rev_prompt = build_kb_prompt(
-            question,
-            kb_entries,
-            chunks,
-            scope,
-            primary_objects=primary_objects,
-            revision_notes=note,
-        )
+        rev_prompt = _prompt(revision_notes=note)
         t_ag = time.perf_counter()
         raw_answer = generate(rev_prompt) or raw_answer
         timing["llm_calls"] += 1
@@ -3094,14 +3250,7 @@ def answer(question: str, client: QdrantClient | None = None) -> AgentResponse:
             off_bots_final,
             ungrounded_final,
         )
-        rev_prompt = build_kb_prompt(
-            question,
-            kb_entries,
-            chunks,
-            scope,
-            primary_objects=primary_objects,
-            revision_notes=note,
-        )
+        rev_prompt = _prompt(revision_notes=note)
         t_bot = time.perf_counter()
         raw_answer = generate(rev_prompt) or raw_answer
         timing["llm_calls"] += 1
@@ -3130,6 +3279,16 @@ def answer(question: str, client: QdrantClient | None = None) -> AgentResponse:
             "capability overclaim ask"
         )
         logger.info("agentic honesty fallback applied")
+
+    if named_entity_ungrounded and not _answer_acknowledges_ungrounded(
+        answer_text, ungrounded_entities
+    ):
+        answer_text, gaps = _ungrounded_entity_honesty(ungrounded_entities, gaps)
+        abstained = True
+        used_inference = False
+        inferred_summary = ""
+        examples = []
+        logger.info("named-entity honesty fallback (post-revision) for %s", ungrounded_entities)
 
     answer_text = polish_answer_text(answer_text)
     answer_text = _polish_known_product_typos(answer_text)
