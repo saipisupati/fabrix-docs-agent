@@ -238,6 +238,341 @@ def _answer_has_turnkey_script_risk(answer: str) -> bool:
     return False
 
 
+_FABRIX_COMPARE_SELF = frozenset(
+    {
+        "fabrix", "rda", "rdaf", "cloudfabrix", "cfx", "cfxql", "oia", "cfxoia",
+        "edge", "studio", "worker", "pipeline", "pipelines", "dataset", "datasets",
+        "pstream", "pstreams", "bot", "bots", "dashboard", "dashboards", "generic",
+        "etl", "tool", "architecture", "platform", "fabric", "how", "what", "does",
+        "terms", "tooling", "stack", "system", "product", "products",
+    }
+)
+
+
+def _asks_version_specificity(question: str) -> bool:
+    """Question asks for a concrete version number, not just whether a topic exists."""
+    q = (question or "").lower()
+    return bool(
+        re.search(r"\b(?:what|which)\s+version\b", q)
+        or re.search(r"\bversion\s+(?:does|is|of|do)\b", q)
+        or "if so, what version" in q
+        or "what k8s version" in q
+        or "what kubernetes version" in q
+    )
+
+
+def _external_comparison_targets(question: str) -> list[str]:
+    """
+    Named third-party / competitor targets when the user asks to bake off Fabrix/RDA
+    against an external tool. Does NOT fire on Fabrix-internal compares
+    (e.g. Splunk vs Elastic for ingestion, ServiceNow CMDB vs Ticketing, pstream vs dataset).
+    """
+    q = question or ""
+    qlow = q.lower()
+    # Internal product-vs-product framed inside Fabrix — not a rival bake-off.
+    if re.search(
+        r"\bcompare\b.+\b(?:vs\.?|versus)\b.+\b(?:in|for|within|on|with)\s+fabrix\b",
+        qlow,
+    ):
+        return []
+    if re.search(r"\b(?:vs\.?|versus)\b.+\bmodules?\b.+\bfabrix\b", qlow):
+        return []
+    # Must be Fabrix/RDA as the subject of the comparison, or "generic … like X".
+    fabrix_subject = bool(
+        re.search(r"\b(?:fabrix\.?ai|fabrix|rda\s*fabric|rdaf|cloudfabrix)\b", qlow)
+    )
+    generic_like = bool(
+        re.search(
+            r"generic\s+\w+\s+(?:tool|platform|system)\s+like\s+[A-Z]",
+            q,
+        )
+    )
+    # Fabrix only as install/destination context before a separate A-vs-B compare
+    # (e.g. "wire BMC into Fabrix, and also compare bots to ServiceNow") is NOT a rival bake-off.
+    fabrix_as_destination_only = bool(
+        re.search(
+            r"\b(?:into|in|for|with|on)\s+(?:fabrix\.?ai|fabrix|rda\s*fabric|rdaf)\b"
+            r".{0,100}\b(?:compar(?:e|es|ed|ison)|versus|\bvs\.?\b)\b",
+            qlow,
+        )
+    ) and not bool(
+        re.search(
+            r"\b(?:how\s+does|how\s+do)\s+(?:fabrix\.?ai|fabrix|rda\s*fabric|rdaf)\b",
+            qlow,
+        )
+        or re.search(
+            r"\b(?:fabrix\.?ai|fabrix|rda\s*fabric|rdaf)\s+"
+            r"(?:compar(?:e|es|ed|ison)|versus|\bvs\.?\b)\b",
+            qlow,
+        )
+    )
+    if fabrix_as_destination_only and not generic_like:
+        return []
+    compare_to_fabrix = bool(
+        re.search(
+            r"(?:how\s+does|how\s+do)\s+(?:fabrix\.?ai|fabrix|rda\s*fabric|rdaf)\b"
+            r".{0,60}(?:compar(?:e|es|ed|ison)|versus|\bvs\.?\b|differ)",
+            qlow,
+        )
+        or re.search(
+            r"\b(?:fabrix\.?ai|fabrix|rda\s*fabric|rdaf)\s+"
+            r"(?:compar(?:e|es|ed|ison)|versus|\bvs\.?\b)\b.{0,40}"
+            r"(?:to|with|against|like)\b",
+            qlow,
+        )
+        or re.search(
+            r"\b(?:fabrix\.?ai|fabrix|rda\s*fabric|rdaf)\s+(?:vs\.?|versus)\s+",
+            qlow,
+        )
+        or re.search(
+            r"\bcompar(?:e|es|ed|ison)\s+(?:fabrix\.?ai|fabrix|rda\s*fabric|rdaf)\b"
+            r".{0,40}(?:to|with|against|like|vs\.?|versus)\b",
+            qlow,
+        )
+        or re.search(
+            r"\b(?:fabrix\.?ai|fabrix|rda\s*fabric|rdaf)\b.{0,20}"
+            r"(?:better|worse)\s+than\b",
+            qlow,
+        )
+    )
+    if not (generic_like or (fabrix_subject and compare_to_fabrix)):
+        return []
+
+    targets: list[str] = []
+    for m in re.finditer(
+        r"(?:like|to|vs\.?|versus|than|with|against|from)\s+"
+        r"(?:a\s+|an\s+|the\s+)?"
+        r"(?:generic\s+\w+\s+(?:tool|platform|system)\s+like\s+)?"
+        r"([A-Z][A-Za-z0-9+._-]{2,})",
+        q,
+    ):
+        name = m.group(1)
+        if name.lower() in _FABRIX_COMPARE_SELF:
+            continue
+        targets.append(name)
+    seen: set[str] = set()
+    out: list[str] = []
+    for t in targets:
+        k = t.lower()
+        if k not in seen:
+            seen.add(k)
+            out.append(t)
+    return out
+
+
+def _version_detail_in_excerpts(question: str, blob: str) -> bool:
+    """True if excerpts appear to state a concrete version for the asked topic."""
+    if not blob:
+        return False
+    low = blob.lower()
+    q = (question or "").lower()
+    topic_keys: list[str] = []
+    if any(k in q for k in ("kubernetes", "k8s")):
+        topic_keys.extend(["kubernetes", "k8s"])
+    # Generic: noun before "version" / after "version of"
+    for m in re.finditer(r"\bversion\s+of\s+([a-z0-9._-]+)", q):
+        topic_keys.append(m.group(1))
+    for m in re.finditer(r"\b([a-z0-9._-]{3,})\s+version\b", q):
+        topic_keys.append(m.group(1))
+    topic_keys = [k for k in topic_keys if k not in ("what", "which", "the", "a", "an")]
+    if not topic_keys:
+        # Fall back: any explicit "runs on X version N" style claim
+        return bool(
+            re.search(r"\bversion\s*(?:is|=|:)?\s*v?\d+\.\d+", low)
+            and re.search(r"\b(?:runs on|requires|based on)\b.{0,40}\bversion\b", low)
+        )
+    for key in topic_keys:
+        # version near topic, or topic + semver-ish
+        if re.search(
+            rf"\b{re.escape(key)}\b.{{0,60}}\bversion\b.{{0,20}}v?\d+\.\d+",
+            low,
+        ):
+            return True
+        if re.search(
+            rf"\bversion\b.{{0,40}}\b{re.escape(key)}\b.{{0,20}}v?\d+\.\d+",
+            low,
+        ):
+            return True
+        if re.search(rf"\b{re.escape(key)}\s+v?\d+\.\d+", low):
+            return True
+    return False
+
+
+def _specificity_detail_missing(
+    question: str,
+    kb_entries: list[dict] | None,
+    chunks: list[dict] | None,
+) -> dict | None:
+    """
+    Topic may be documented while a requested specific (version / rival comparison)
+    is not. Returns a gap descriptor when that specific is absent from excerpts.
+    """
+    blob = _retrieved_context_blob(kb_entries, chunks)
+    if _asks_version_specificity(question) and not _version_detail_in_excerpts(question, blob):
+        return {"kind": "version", "targets": [], "detail": "specific version number"}
+    targets = _external_comparison_targets(question)
+    if targets:
+        missing = [t for t in targets if not _term_grounded_in_blob(t, blob)]
+        # Even if the name appears once, require the docs to discuss it — a stray
+        # mention without the name is still a missing comparison; if grounded but
+        # question asks compare, still treat as missing unless comparison language exists.
+        if missing:
+            return {
+                "kind": "comparison",
+                "targets": missing,
+                "detail": f"direct comparison to {', '.join(missing)}",
+            }
+        # Name appears in corpus: only treat as missing if no compare language near it
+        low = blob.lower()
+        for t in targets:
+            tl = t.lower()
+            if not re.search(
+                rf"(?:compar|versus|vs\.?|unlike|differ|alternative to).{{0,40}}{re.escape(tl)}"
+                rf"|{re.escape(tl)}.{{0,40}}(?:compar|versus|vs\.?|unlike|differ)",
+                low,
+            ):
+                return {
+                    "kind": "comparison",
+                    "targets": targets,
+                    "detail": f"direct comparison to {', '.join(targets)}",
+                }
+    return None
+
+
+def _answer_acknowledges_specificity_gap(answer: str) -> bool:
+    low = (answer or "").lower()
+    return any(
+        m in low
+        for m in (
+            "not specified",
+            "not stated",
+            "not documented",
+            "doesn't specify",
+            "does not specify",
+            "do not specify",
+            "don't specify",
+            "isn't in the public docs",
+            "is not in the public docs",
+            "aren't in the public docs",
+            "are not in the public docs",
+            "no direct comparison",
+            "direct comparison isn't",
+            "direct comparison is not",
+            "comparison isn't",
+            "comparison is not",
+            "don't compare",
+            "do not compare",
+            "will not invent",
+            "won't invent",
+            "public docs do not",
+            "public docs don't",
+        )
+    )
+
+
+def _answer_invents_specificity(answer: str, gap: dict) -> bool:
+    """Detect invented versions or rival bake-off frameworks for a specificity gap."""
+    low = (answer or "").lower()
+    kind = (gap or {}).get("kind")
+    if kind == "version":
+        if re.search(r"\bkubernetes version (?:is|=)\s*v?\d+", low):
+            return True
+        if re.search(r"\bruns on (?:k8s|kubernetes) version\b", low):
+            return True
+        if re.search(r"\bversion 1\.\d+", low):
+            return True
+        if re.search(r"\b(?:kubernetes|k8s)\s+v?\d+\.\d+", low) and not _answer_acknowledges_specificity_gap(
+            answer
+        ):
+            return True
+        return False
+    if kind == "comparison":
+        for t in gap.get("targets") or []:
+            tl = (t or "").lower()
+            if not tl or tl not in low:
+                continue
+            if any(
+                p in low
+                for p in (
+                    f"unlike {tl}",
+                    f"whereas {tl}",
+                    f"{tl} uses",
+                    f"{tl} primarily",
+                    f"{tl} focuses",
+                    f"while {tl}",
+                    f"compared to {tl}",
+                    f"in contrast to {tl}",
+                    f"in contrast, {tl}",
+                    f"tools like {tl}",
+                    f"tool like {tl}",
+                    f"for {tl}, which",
+                    f"outlined for {tl}",
+                )
+            ):
+                return True
+            if re.search(
+                rf"\b{re.escape(tl)}\b.{{0,90}}\b(?:uses|focuses|primarily|designed|dags?|orchestrat|batch processing|task scheduler)\b",
+                low,
+            ):
+                return True
+            if re.search(
+                rf"(?:unlike|whereas|contrasts?\s+with|compared\s+to|like)\s+.{{0,50}}\b{re.escape(tl)}\b",
+                low,
+            ):
+                return True
+            if re.search(
+                rf"traditional\b.{{0,60}}\blike\s+{re.escape(tl)}\b",
+                low,
+            ):
+                return True
+            if ("in contrast" in low or "key differences" in low or "differ significantly" in low):
+                return True
+            if low.count(tl) >= 2 and re.search(
+                rf"\b{re.escape(tl)}\b.{{0,80}}\b(?:focus|task|dag|batch|schedul|orchestr)\b",
+                low,
+            ):
+                return True
+        return False
+    return False
+
+
+def _specificity_honesty_fallback(
+    question: str,
+    gap: dict,
+    existing_gaps: list[str] | None = None,
+) -> tuple[str, list[str]]:
+    """Topic-documented ≠ detail-documented: state topic, refuse invented specifics."""
+    kind = (gap or {}).get("kind")
+    targets = gap.get("targets") or []
+    if kind == "version":
+        text = (
+            "Fabrix public docs cover related topics (for example Kubernetes integration, "
+            "inventory bots, and/or K8s deployment paths when those pages are retrieved). "
+            "That does **not** mean every specific detail is documented. "
+            "The public docs do **not specify** the exact version number you asked for "
+            "(e.g. which Kubernetes version Fabrix runs on or requires). "
+            "Use the documented integration/deployment material for what *is* stated; "
+            "treat the missing version as unspecified rather than inventing one."
+        )
+        gap_line = "Requested specific version number is not specified in the public docs"
+    else:
+        named = ", ".join(targets) if targets else "that third-party tool"
+        text = (
+            "Public Fabrix docs describe RDA Fabric's own architecture (classic stack: "
+            "bots → CFXQL → pipelines → datasets/pstreams → dashboards/integrations, "
+            "plus Agentic pieces when relevant). "
+            f"They do **not** include a direct architectural comparison to {named}. "
+            "I will describe Fabrix's documented approach only and will **not** invent a "
+            "rival bake-off framework (unlike/whereas claims, DAG vs pipeline tables, etc.). "
+            "A direct comparison isn't in the public docs."
+        )
+        gap_line = f"Direct comparison to {named} is not documented in public Fabrix docs"
+    gaps = list(existing_gaps or [])
+    if gap_line.lower() not in " ".join(g.lower() for g in gaps):
+        gaps = [gap_line] + gaps
+    return text, gaps
+
+
 def _full_script_honesty_fallback(
     question: str,
     existing_gaps: list[str] | None = None,
@@ -1059,7 +1394,9 @@ Return:
 Checklist:
 - Broad automation: should mention bots/pipelines/CFXQL and/or Agentic stacks appropriately — not Agentic-only unless question is AI-agent specific.
 - Dashboard questions: should mention datasets or pstreams, not only Edge Collector.
-- Comparisons (e.g. pstream vs dataset, vCenter vs vROps): cover both sides from docs; inferred wiring under Next (inferred).
+- Comparisons of Fabrix-internal concepts (e.g. pstream vs dataset, vCenter vs vROps): cover both sides from docs; inferred wiring under Next (inferred).
+- Do NOT require or invent comparisons to named third-party/competitor tools (Airflow, generic ETL rivals, etc.) unless the draft's excerpts-backed claim already states that comparison. If the draft correctly says a direct rival comparison or a specific version/limit is not documented, that is correct — set fix_needed=false for that issue; do not ask to "add a clear comparison" to an undocumented rival.
+- Specificity: topic documented ≠ detail documented. Flag overclaim=true if the draft invents a version number, numeric limit, or rival bake-off framework not supported by docs.
 - Multi-intent questions: separate documented facts per intent; put undocumented handoffs under Next (inferred).
 - Product fidelity: named bots (@prefix: / *prefix:) must belong to products named in the question (e.g. ServiceNow+Slack must not cite BMC/Remedy bots). Flag off-product bots as wrong_emphasis + fix_needed.
 - Single-product datasource asks: stay on that product; include credentials/auth + named bots + stream/dataset; flag unrelated integrations as wrong_emphasis; prefer v2 bot family when both v1 and v2 appear.
@@ -1235,13 +1572,19 @@ Fabrix mental model (use when relevant; do not keyword-stuff):
 - Never invent password variables, default credentials, or example secrets in code blocks, even as placeholders like $PASSWORD or admin:changeme.
 """
 
+    specificity_guardrail = """
+- CRITICAL: a topic being documented does not mean every specific detail about it is documented. Before stating a specific number, version, exact comparison, or precise technical claim, verify that exact detail appears in the excerpts -- not just the general topic.
+- If the excerpts discuss a topic broadly (e.g., "integrates with Kubernetes") but do NOT state a specific requested detail (e.g., a version number, a named comparison to another product, an exact limit), say so explicitly: name the topic that IS documented, then clearly state the specific detail is not specified in the docs.
+- Never construct a comparison to a named competitor or third-party tool (e.g., Airflow, Zabbix as a rival, etc.) unless the docs explicitly make that comparison. Describe Fabrix's own documented approach instead, and note that a direct comparison isn't in the public docs.
+"""
+
     if scope == "related":
         infer_guidance = f"""
 - Write ONE coherent best answer that combines documented facts with limited Fabrix
   technical synthesis implied by the docs.
 - Cite documented claims with [1], [2], … Do NOT put [n] on inferred reasoning.
 - Set used_inference=true and fill inferred_summary when you synthesize beyond verbatim docs.
-{objects_line}{full_page_line}{fidelity_line}{ungrounded_line}{path_first}{code_gen_guardrail}
+{objects_line}{full_page_line}{fidelity_line}{ungrounded_line}{path_first}{code_gen_guardrail}{specificity_guardrail}
 """
     else:
         infer_guidance = f"""
@@ -1249,7 +1592,7 @@ Fabrix mental model (use when relevant; do not keyword-stuff):
 - If you add connective technical reasoning beyond a single excerpt, set used_inference=true
   and fill inferred_summary. Otherwise used_inference=false and inferred_summary="".
 - Do NOT put [n] on inferred reasoning.
-{objects_line}{full_page_line}{fidelity_line}{ungrounded_line}{path_first}{code_gen_guardrail}
+{objects_line}{full_page_line}{fidelity_line}{ungrounded_line}{path_first}{code_gen_guardrail}{specificity_guardrail}
 """
 
     revision_block = ""
@@ -1806,6 +2149,8 @@ _KNOWN_DOC_ENTITY_ALLOW = frozenset(
         "oia", "mcp", "kafka", "splunk", "zabbix", "prometheus", "servicenow", "snow",
         "datadog", "pagerduty", "newrelic", "dynatrace", "solarwinds", "nagios",
         "opsgenie", "slack", "kubernetes", "k8s", "docker", "ubuntu", "linux",
+        "centos", "freebsd", "fedora", "alpine", "debian", "rhel", "windows",
+        "macos", "suse", "rocky", "alma",
         "toolset", "persona", "copilot", "fabio", "pipeline", "pstream", "dataset",
         "dashboard", "bot", "bots", "cli", "api", "vm", "vms", "sql", "yaml",
     }
@@ -2952,6 +3297,15 @@ def answer(question: str, client: QdrantClient | None = None) -> AgentResponse:
     if named_entity_ungrounded:
         logger.info("named entities ungrounded in excerpts: %s", ungrounded_entities)
 
+    specificity_gap = _specificity_detail_missing(question, kb_entries, chunks)
+    if specificity_gap:
+        logger.info(
+            "specificity gap kind=%s detail=%s targets=%s",
+            specificity_gap.get("kind"),
+            specificity_gap.get("detail"),
+            specificity_gap.get("targets"),
+        )
+
     def _prompt(revision_notes: str = "") -> str:
         return build_kb_prompt(
             question,
@@ -2983,10 +3337,19 @@ def answer(question: str, client: QdrantClient | None = None) -> AgentResponse:
         or ((scope == "related" or _is_synthesis_question(question)) and not used_inference)
     )
     if need_retry:
+        retry_extra = ""
+        if specificity_gap:
+            retry_extra = (
+                f"The excerpts cover the general topic but NOT {specificity_gap['detail']}. "
+                "Answer what IS documented about the topic, then clearly state that specific "
+                "detail is not specified in the public docs. Do NOT invent versions, limits, "
+                "or third-party comparisons. "
+            )
         retry_prompt = (
             _prompt()
             + "\n\nIMPORTANT: Do not abstain if the excerpts cover the Fabrix topic. "
-            "Use **Documented Fabrix path** as a non-numbered header, then steps 1. 2. 3. "
+            + retry_extra
+            + "Use **Documented Fabrix path** as a non-numbered header, then steps 1. 2. 3. "
             "Presentation requests (exact step counts, blank lines) are formatting only. "
             "Put undocumented handoffs under **Next (inferred):**. "
             "Set used_inference=true with inferred_summary when synthesizing; unknowns in gaps[]."
@@ -3004,7 +3367,14 @@ def answer(question: str, client: QdrantClient | None = None) -> AgentResponse:
     # Final anti-abstain: we retrieved Fabrix docs but the model still refused
     if abstained and (kb_entries or chunks) and not named_entity_ungrounded:
         force_extra = ""
-        if _is_exhaustive_ask(question) or _is_capability_overclaim_ask(question):
+        if specificity_gap:
+            force_extra = (
+                f"The question asks for {specificity_gap['detail']} which is NOT in the "
+                "excerpts. Still answer the documented Fabrix topic that IS present, then "
+                "explicitly say the specific detail is not specified in the public docs. "
+                "Never invent a version number or a comparison to a named third-party tool. "
+            )
+        elif _is_exhaustive_ask(question) or _is_capability_overclaim_ask(question):
             force_extra = (
                 "The question asks for more than the docs fully guarantee. "
                 "Still answer with the documented Fabrix objects/operators/paths from the excerpts. "
@@ -3034,7 +3404,13 @@ def answer(question: str, client: QdrantClient | None = None) -> AgentResponse:
     timing["generate_ms"] = _ms(t_gen)
 
     # Local salvage when model still abstains despite retrieved docs
-    if abstained and (kb_entries or chunks) and not named_entity_ungrounded:
+    # Skip when a specificity gap: salvage dumps topic snippets and looks like overclaim.
+    if (
+        abstained
+        and (kb_entries or chunks)
+        and not named_entity_ungrounded
+        and not specificity_gap
+    ):
         salvaged = _salvage_partial_answer(question, kb_entries, chunks, gaps)
         if salvaged:
             answer_text, gaps = salvaged
@@ -3250,7 +3626,24 @@ def answer(question: str, client: QdrantClient | None = None) -> AgentResponse:
                 critique["revision_notes"] = (
                     (critique.get("revision_notes") or "") + " " + note
                 ).strip()
-            logger.info("critique forced: agentic markers missing from answer")
+            if specificity_gap and (
+                _answer_invents_specificity(answer_text, specificity_gap)
+                or not _answer_acknowledges_specificity_gap(answer_text)
+            ):
+                critique["fix_needed"] = True
+                critique["overclaim"] = True
+                detail = specificity_gap.get("detail") or "the requested specific detail"
+                note = (
+                    f"Topic-documented ≠ detail-documented: {detail} is not in the excerpts. "
+                    "Describe only what Fabrix docs state about the general topic, then clearly "
+                    "say the specific detail is not specified / a direct third-party comparison "
+                    "isn't in the public docs. Do NOT invent version numbers or rival bake-offs."
+                )
+                critique["revision_notes"] = (
+                    (critique.get("revision_notes") or "") + " " + note
+                ).strip()
+            if _question_names_agentic(question) and not _answer_mentions_agentic(answer_text):
+                logger.info("critique forced: agentic markers missing from answer")
             logger.info(
                 "critique fix_needed=%s overclaim=%s notes=%s",
                 critique.get("fix_needed"),
@@ -3361,6 +3754,22 @@ def answer(question: str, client: QdrantClient | None = None) -> AgentResponse:
         inferred_summary = ""
         examples = []
         logger.info("named-entity honesty fallback (post-revision) for %s", ungrounded_entities)
+
+    if specificity_gap and (
+        _answer_invents_specificity(answer_text, specificity_gap)
+        or not _answer_acknowledges_specificity_gap(answer_text)
+        or _looks_like_abstention(answer_text)
+    ):
+        answer_text, gaps = _specificity_honesty_fallback(question, specificity_gap, gaps)
+        abstained = False
+        used_inference = True
+        inferred_summary = inferred_summary or (
+            f"Documented topic separated from undocumented {specificity_gap.get('detail')}"
+        )
+        examples = []
+        logger.info(
+            "specificity honesty fallback applied kind=%s", specificity_gap.get("kind")
+        )
 
     if _is_full_script_automation_ask(question) and (
         _answer_has_turnkey_script_risk(answer_text)

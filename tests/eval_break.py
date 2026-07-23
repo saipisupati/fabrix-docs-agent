@@ -1240,6 +1240,56 @@ BREAK_CASES = [
         ],
         "expect_infer_or_gaps": True,
     },
+    # --- Cycle 13: topic-documented ≠ detail-documented ---
+    {
+        "id": "c13_k8s_version_overclaim",
+        "attack": "overclaim",
+        "cycle": 13,
+        "question": "Is Fabrix built on Kubernetes, and if so, what version?",
+        "forbid": [
+            "version 1.",
+            "kubernetes version is",
+            "runs on k8s version",
+            "runs on kubernetes version",
+        ],
+        "need_any": [
+            "not specified",
+            "not stated",
+            "not documented",
+            "doesn't specify",
+            "does not specify",
+            "do not specify",
+            "don't specify",
+        ],
+        "expect_infer_or_gaps": True,
+    },
+    {
+        "id": "c13_airflow_comparison_overclaim",
+        "attack": "overclaim",
+        "cycle": 13,
+        "question": (
+            "How does RDA Fabric compare to a generic ETL tool like Airflow in terms "
+            "of architecture?"
+        ),
+        "forbid": [
+            "unlike airflow",
+            "airflow uses",
+            "airflow primarily",
+            "whereas airflow",
+        ],
+        "need_any": [
+            "not documented",
+            "public docs",
+            "fabrix",
+            "not compare",
+            "no direct comparison",
+            "comparison isn't",
+            "comparison is not",
+            "don't compare",
+            "do not compare",
+        ],
+        "expect_infer_or_gaps": True,
+    },
 ]
 
 
