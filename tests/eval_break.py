@@ -1290,6 +1290,148 @@ BREAK_CASES = [
         ],
         "expect_infer_or_gaps": True,
     },
+    # --- Cycle 14: ChatGPT bakeoff discovery (wiring / schedule / family fidelity) ---
+    {
+        "id": "c14_splunk_dashboard",
+        "attack": "thin_wiring",
+        "cycle": 14,
+        "question": "How do I map Splunk events into a Fabrix dashboard that ops can watch?",
+        "need_any": ["splunk"],
+        "need_also_any": ["dashboard", "dataset", "pstream", "stream", "pipeline"],
+        "forbid": ["linux-inventory"],
+        "require_wiring_shape": True,
+        "expect_infer_or_gaps": True,
+    },
+    {
+        "id": "c14_datadog_slack_wiring",
+        "attack": "thin_wiring",
+        "cycle": 14,
+        "question": (
+            "Walk me through wiring Datadog metrics into a persistent stream, "
+            "then alerting Slack."
+        ),
+        "need_any": ["datadog"],
+        "need_also_any": ["slack", "stream", "pstream", "persistent"],
+        "forbid_in_sources": ["servicenow", "zabbix"],
+        "require_wiring_shape": True,
+        "expect_infer_or_gaps": True,
+    },
+    {
+        "id": "c14_schedule_debug",
+        "attack": "abstain_fail",
+        "cycle": 14,
+        "question": (
+            "What's the right way to debug why a scheduled pipeline didn't fire last night?"
+        ),
+        "need_any": ["cron", "scheduled_pipelines", "schedule", "blueprint"],
+        "forbid": ["@c:pipeline-scheduler", "@c:schedule-pipeline"],
+        "expect_infer_or_gaps": True,
+    },
+    {
+        "id": "c14_concurrent_dataset",
+        "attack": "overclaim",
+        "cycle": 14,
+        "question": (
+            "How does Fabrix handle concurrent writes to the same dataset "
+            "from two pipelines?"
+        ),
+        "need_any": [
+            "not documented",
+            "not specified",
+            "doesn't specify",
+            "does not specify",
+            "not stated",
+            "gaps",
+            "public docs",
+        ],
+        "expect_infer_or_gaps": True,
+        "expect_gaps": True,
+    },
+    {
+        "id": "c14_worker_limits",
+        "attack": "overclaim",
+        "cycle": 14,
+        "question": (
+            "Where do I configure an RDA worker's max concurrent bots for a busy site?"
+        ),
+        "need_any": [
+            "not documented",
+            "not specified",
+            "doesn't specify",
+            "does not specify",
+            "not stated",
+            "worker",
+        ],
+        "forbid": ["opsgenie", "servicenow credential"],
+        "expect_infer_or_gaps": True,
+    },
+    {
+        "id": "c14_snowv2_list_params",
+        "attack": "contamination",
+        "cycle": 14,
+        "question": "What parameters does @snowv2:list-incidents take?",
+        "need_any": [
+            "snow",
+            "servicenow",
+            "snowv2",
+            "not documented",
+            "don't see",
+            "do not see",
+            "couldn't find",
+            "could not find",
+            "no bot",
+            "not a documented",
+        ],
+        "forbid": ["@opsgenie:list-incidents", "opsgenie:list-incidents"],
+        "forbid_in_sources": ["opsgenie"],
+    },
+    {
+        "id": "c14_newrelic_dashboard",
+        "attack": "thin_wiring",
+        "cycle": 14,
+        "question": (
+            "How would I connect New Relic APM as a datasource and land it in a dashboard?"
+        ),
+        "need_any": ["new relic", "newrelic"],
+        "need_also_any": ["dashboard", "dataset", "pstream", "stream", "bot"],
+        "forbid": ["@c:new-relic-apm-datasource"],
+        "forbid_in_sources": ["servicenow", "zabbix"],
+        "expect_infer_or_gaps": True,
+    },
+    {
+        "id": "c14_dashboard_kickoff",
+        "attack": "overclaim",
+        "cycle": 14,
+        "question": (
+            "Is there a documented way for dashboards to kick off remediation "
+            "pipelines when an alert fires?"
+        ),
+        "need_any": [
+            "not documented",
+            "not specified",
+            "doesn't",
+            "does not",
+            "no documented",
+            "not have",
+            "gaps",
+            "one-way",
+            "one way",
+        ],
+        "expect_infer_or_gaps": True,
+    },
+    {
+        "id": "c14_kafka_to_dataset",
+        "attack": "thin_wiring",
+        "cycle": 14,
+        "question": (
+            "Explain the building blocks I'd use to turn Kafka messages into a "
+            "searchable dataset."
+        ),
+        "need_any": ["kafka"],
+        "need_also_any": ["dataset", "pipeline", "bot", "stream", "pstream"],
+        "forbid_agentic_only": True,
+        "expect_infer_or_gaps": True,
+    },
 ]
 
 

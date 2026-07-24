@@ -369,6 +369,50 @@ PRODUCTION_CASES = [
         ],
         "expect_abstain": True,
     },
+    # Cycle 14 bakeoff promotions
+    {
+        "id": "c14_schedule_debug",
+        "question": (
+            "What's the right way to debug why a scheduled pipeline didn't fire last night?"
+        ),
+        "need_any": ["cron", "scheduled_pipelines", "schedule", "blueprint"],
+        "forbid": ["@c:pipeline-scheduler", "@c:schedule-pipeline"],
+        "expect_infer": True,
+    },
+    {
+        "id": "c14_snowv2_list_params",
+        "question": "What parameters does @snowv2:list-incidents take?",
+        "need_any": [
+            "snow",
+            "servicenow",
+            "snowv2",
+            "not documented",
+            "don't see",
+            "do not see",
+            "couldn't find",
+            "could not find",
+            "no bot",
+        ],
+        "forbid": ["@opsgenie:list-incidents", "opsgenie:list-incidents"],
+    },
+    {
+        "id": "c14_dashboard_kickoff",
+        "question": (
+            "Is there a documented way for dashboards to kick off remediation "
+            "pipelines when an alert fires?"
+        ),
+        "need_any": [
+            "not documented",
+            "not specified",
+            "doesn't",
+            "does not",
+            "no documented",
+            "gaps",
+            "one-way",
+            "one way",
+        ],
+        "expect_infer": True,
+    },
 ]
 
 

@@ -78,6 +78,21 @@ def test_format_param_answer_includes_bot_name():
     rows = [{"name": "interval", "required": True, "type": "Text", "default": "", "description": "Seconds"}]
     ans = format_param_answer("@c:timed-loop", rows)
     assert "timed-loop" in ans
+
+
+def test_explicit_token_ops_are_not_families():
+    from bot_lookup import explicit_bot_tokens, lookup_bot_params_from_kb
+
+    q = "What parameters does @snowv2:list-incidents take?"
+    assert ("snowv2", "list-incidents") in explicit_bot_tokens(q)
+    fams = bot_family_hints(q)
+    assert "list-incidents" not in fams
+    assert "snowv2" in fams
+    # Must not return Opsgenie (same op, different family) when exact snowv2 bot is missing
+    hit = lookup_bot_params_from_kb(fams, bot_operation_hints(q), question=q)
+    if hit:
+        assert "opsgenie" not in hit[0].lower()
+        assert "snow" in hit[0].lower() or "servicenow" in (hit[2] or "").lower()
     assert "interval" in ans
 
 

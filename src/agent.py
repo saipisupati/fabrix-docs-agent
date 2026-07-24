@@ -1016,6 +1016,7 @@ Facet rules:
     UNANSWERABLE_SPECIFIC_KEYWORDS = [
         "maximum number", "max number", "how many workers",
         "worker limit", "maximum workers",
+        "max concurrent", "maximum concurrent", "concurrent bots",
     ]
     q_lower = question.lower()
     if any(kw in q_lower for kw in UNANSWERABLE_SPECIFIC_KEYWORDS):
@@ -1123,12 +1124,131 @@ def _answer_claims_missing_from_excerpts(answer: str) -> bool:
     )
 
 
+def _is_concurrent_dataset_ask(question: str) -> bool:
+    q = (question or "").lower()
+    return "concurrent" in q and "dataset" in q and any(
+        w in q for w in ("write", "writes", "writing", "pipeline")
+    )
+
+
+def _concurrent_dataset_honesty(
+    existing_gaps: list[str] | None = None,
+) -> tuple[str, list[str]]:
+    text = (
+        "Public Fabrix docs describe datasets / pstreams and pipelines as building blocks "
+        "for landing and transforming data. They do **not** specify a locking mechanism, "
+        "merge policy, or guaranteed behavior for concurrent writes to the same dataset "
+        "from two pipelines. Treat that concurrency detail as **not documented**; use "
+        "separate datasets/streams or operational controls unless a cited excerpt says "
+        "otherwise."
+    )
+    gaps = list(existing_gaps or [])
+    gap = (
+        "Concurrent writes / dataset locking behavior is not specified in the public docs"
+    )
+    if gap.lower() not in " ".join(g.lower() for g in gaps):
+        gaps.insert(0, gap)
+    return text, gaps[:8]
+
+
+def _schedule_debug_honesty(
+    existing_gaps: list[str] | None = None,
+) -> tuple[str, list[str]]:
+    text = (
+        "**Documented Fabrix path**\n"
+        "Scheduled pipelines are configured in a service blueprint under "
+        "`scheduled_pipelines` with a `cron_expression` (see "
+        "beginners_guide/scheduled_pipelines). To debug a pipeline that did not fire: "
+        "1) confirm the blueprint lists the pipeline under `scheduled_pipelines`, "
+        "2) verify the `cron_expression`, 3) check that workers/site services are up, "
+        "4) review pipeline run history/logs. Do not invent a dedicated pipeline "
+        "scheduler bot.\n\n"
+        "**Next (inferred):** Exact UI clicks and log paths can vary by site."
+    )
+    gaps = list(existing_gaps or [])
+    gap = (
+        "Public docs cover scheduled_pipelines + cron_expression; "
+        "site-specific miss diagnosis steps may be incomplete"
+    )
+    if gap.lower() not in " ".join(g.lower() for g in gaps):
+        gaps.insert(0, gap)
+    return text, gaps[:8]
+
+
+def _is_dashboard_pipeline_kickoff_ask(question: str) -> bool:
+    """Asks whether dashboards can automatically start/remediate via pipelines."""
+    q = (question or "").lower()
+    if "dashboard" not in q:
+        return False
+    if not any(w in q for w in ("pipeline", "remediat", "alert")):
+        return False
+    return any(
+        w in q
+        for w in (
+            "kick off", "kickoff", "trigger", "invoke", "when an alert",
+            "automatically", "auto-", "fire",
+        )
+    )
+
+
+def _dashboard_kickoff_honesty(
+    existing_gaps: list[str] | None = None,
+) -> tuple[str, list[str]]:
+    text = (
+        "Public Fabrix docs describe dashboards (analytics on datasets / pstreams) and "
+        "pipelines / alerts as related but separate building blocks. They do **not** "
+        "document a turnkey path where a dashboard automatically kicks off remediation "
+        "pipelines when an alert fires. Do not invent undocumented bots for that handoff. "
+        "Describe documented alert/dashboard pieces you do see; treat "
+        "dashboard→pipeline kickoff as **not documented**."
+    )
+    gaps = list(existing_gaps or [])
+    gap = (
+        "Dashboard-triggered remediation pipelines are not documented in public Fabrix docs"
+    )
+    if gap.lower() not in " ".join(g.lower() for g in gaps):
+        gaps.insert(0, gap)
+    return text, gaps[:8]
+
+
+def _strip_ungrounded_bot_mentions(answer: str, tokens: list[str]) -> str:
+    """Deterministically remove invented bot tokens that survived LLM revision."""
+    text = answer or ""
+    for tok in tokens:
+        raw = (tok or "").lstrip("@")
+        if not raw:
+            continue
+        text = re.sub(
+            rf"`?@?{re.escape(raw)}`?",
+            "a documented bot from the retrieved catalog",
+            text,
+            flags=re.IGNORECASE,
+        )
+    return text
+
+
 def _is_pipeline_schedule_ask(question: str) -> bool:
     q = (question or "").lower()
-    return (
-        ("schedule" in q or "cron" in q)
-        and ("pipeline" in q or "rda" in q or "fabric" in q)
-    )
+    if ("schedule" in q or "cron" in q) and (
+        "pipeline" in q or "rda" in q or "fabric" in q
+    ):
+        return True
+    # Debug / miss language for scheduled pipelines (day-2 ops)
+    if "pipeline" in q and any(
+        w in q
+        for w in (
+            "didn't fire",
+            "did not fire",
+            "not firing",
+            "failed to run",
+            "didn't run",
+            "did not run",
+            "last night",
+            "missed schedule",
+        )
+    ):
+        return True
+    return False
 
 
 _INVENTED_SCHEDULE_BOTS = (
@@ -2666,13 +2786,16 @@ def _salvage_partial_answer(
 def _lookup_fast_path(question: str, client: QdrantClient) -> AgentResponse | None:
     if not is_bot_param_lookup(question):
         return None
+    from bot_lookup import explicit_bot_tokens
+
     families = bot_family_hints(question)
-    if not families:
+    tokens = explicit_bot_tokens(question)
+    if not families and not tokens:
         return None
     operation_hints = bot_operation_hints(question)
 
     # Phase 3: structured params from KB (ingest-time tables) — preferred
-    kb_hit = lookup_bot_params_from_kb(families, operation_hints)
+    kb_hit = lookup_bot_params_from_kb(families, operation_hints, question=question)
     if kb_hit:
         bot_name, rows, source = kb_hit
         return AgentResponse(
@@ -2681,6 +2804,49 @@ def _lookup_fast_path(question: str, client: QdrantClient) -> AgentResponse | No
             sufficient=True,
             examples=[],
             gaps=[],
+            scope="in_scope",
+            used_inference=False,
+        )
+
+    # Explicit @family:op: never fall through to a different product family
+    # (e.g. @snowv2:list-incidents must not become @opsgenie:list-incidents).
+    if tokens:
+        for fam, op in tokens:
+            for fam_variant in (
+                fam,
+                fam.replace("-", "_"),
+                fam.replace("_", "-"),
+                f"{fam}_v2" if not fam.endswith("v2") else fam,
+                f"{fam}-v2" if not fam.endswith("v2") else fam,
+            ):
+                catalog_hit = lookup_bot_params_from_catalog(fam_variant, [op])
+                if not catalog_hit:
+                    continue
+                bot_name, rows, rel_path = catalog_hit
+                if op.lower() in (bot_name or "").lower():
+                    return AgentResponse(
+                        answer=format_param_answer(bot_name, rows),
+                        sources=[catalog_source_dict(rel_path, bot_name)],
+                        sufficient=True,
+                        examples=[],
+                        gaps=[],
+                        scope="in_scope",
+                        used_inference=False,
+                    )
+        named = ", ".join(f"@{f}:{o}" for f, o in tokens)
+        fams = ", ".join(sorted({f for f, _ in tokens}))
+        text = (
+            f"I don't see {named} as a documented bot in the Fabrix catalog. "
+            f"I will not substitute a different product family's bot that happens to share "
+            f"a similar operation name. Check the {fams} bot catalog for the nearest "
+            f"documented operation, or ask about a bot that appears in the docs."
+        )
+        return AgentResponse(
+            answer=text,
+            sources=[],
+            sufficient=False,
+            examples=[],
+            gaps=[f"{named} is not a documented bot name in the public catalog"],
             scope="in_scope",
             used_inference=False,
         )
@@ -3175,6 +3341,9 @@ def answer(question: str, client: QdrantClient | None = None) -> AgentResponse:
         ):
             seeds.append("RDA workers site scale capacity")
             seeds.append("RDA Fabric workers administration")
+        if _is_pipeline_schedule_ask(question):
+            seeds.append("scheduled_pipelines cron_expression service blueprint")
+            seeds.append("Schedule Pipelines within Service Blueprints")
         if any(m in qlow for m in AGENTIC_MARKERS):
             seeds.append("Fabio Copilot AI Fabric")
         if _is_platform_install_ask(question):
@@ -3728,6 +3897,26 @@ def answer(question: str, client: QdrantClient | None = None) -> AgentResponse:
         inferred_summary = parsed["inferred_summary"] or inferred_summary
         abstained = _looks_like_abstention(answer_text)
 
+    # If LLM revision still invents ungrounded bots, strip them deterministically
+    still_ungrounded = (
+        _ungrounded_bot_tokens(answer_text, kb_entries, chunks)
+        if not abstained and (kb_entries or chunks)
+        else []
+    )
+    if still_ungrounded:
+        answer_text = _strip_ungrounded_bot_mentions(answer_text, still_ungrounded)
+        examples = [
+            _strip_ungrounded_bot_mentions(ex, still_ungrounded) for ex in (examples or [])
+        ]
+        gap = (
+            "Invented bot names were removed because they do not appear in retrieved excerpts: "
+            + ", ".join(still_ungrounded)
+        )
+        if gap not in (gaps or []):
+            gaps = [gap] + list(gaps or [])
+        used_inference = True
+        logger.info("stripped ungrounded bots after revision: %s", still_ungrounded)
+
     # Critique/revision can re-abstain on Fabio capability asks — deterministic honesty
     if (
         abstained
@@ -3770,6 +3959,77 @@ def answer(question: str, client: QdrantClient | None = None) -> AgentResponse:
         logger.info(
             "specificity honesty fallback applied kind=%s", specificity_gap.get("kind")
         )
+
+    if _is_dashboard_pipeline_kickoff_ask(question):
+        low_kick = (answer_text or "").lower()
+        hedged = any(
+            x in low_kick
+            for x in (
+                "not documented",
+                "no documented",
+                "isn't documented",
+                "is not documented",
+                "aren't documented",
+                "are not documented",
+                "one-way",
+                "one way",
+                "do not document",
+                "don't document",
+            )
+        )
+        if (not hedged) or ("dashboard-trigger" in low_kick) or _looks_like_abstention(
+            answer_text
+        ):
+            answer_text, gaps = _dashboard_kickoff_honesty(gaps)
+            abstained = False
+            used_inference = True
+            inferred_summary = inferred_summary or (
+                "Dashboard→pipeline remediation kickoff is not documented"
+            )
+            examples = []
+            logger.info("dashboard kickoff honesty fallback applied")
+
+    if _is_pipeline_schedule_ask(question) and (
+        _looks_like_abstention(answer_text)
+        or _schedule_answer_missing_cron(answer_text)
+    ):
+        answer_text, gaps = _schedule_debug_honesty(gaps)
+        abstained = False
+        used_inference = True
+        inferred_summary = inferred_summary or (
+            "Documented scheduled_pipelines + cron_expression path for schedule debug"
+        )
+        examples = []
+        logger.info("schedule debug honesty fallback applied")
+
+    if _is_concurrent_dataset_ask(question):
+        low_c = (answer_text or "").lower()
+        invents_lock = any(
+            w in low_c
+            for w in (
+                "locking", "lock mechanism", "dataset-locking", "mutex",
+                "exclusive write", "write lock",
+            )
+        )
+        hedged = any(
+            x in low_c
+            for x in (
+                "not documented",
+                "not specified",
+                "doesn't specify",
+                "does not specify",
+                "not stated",
+            )
+        )
+        if invents_lock or not hedged or _looks_like_abstention(answer_text):
+            answer_text, gaps = _concurrent_dataset_honesty(gaps)
+            abstained = False
+            used_inference = True
+            inferred_summary = inferred_summary or (
+                "Concurrent dataset write behavior is not documented"
+            )
+            examples = []
+            logger.info("concurrent dataset honesty fallback applied")
 
     if _is_full_script_automation_ask(question) and (
         _answer_has_turnkey_script_risk(answer_text)

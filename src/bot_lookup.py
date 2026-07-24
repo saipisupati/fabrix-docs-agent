@@ -61,17 +61,46 @@ def clear_kb_bot_cache() -> None:
     _kb_bot_cache = None
 
 
+def explicit_bot_tokens(question: str) -> list[tuple[str, str]]:
+    """Return (family, operation) pairs from explicit @family:op tokens in the question."""
+    return [
+        (m.group(1).lower(), m.group(2).lower())
+        for m in BOT_TOKEN_RE.finditer(question or "")
+    ]
+
+
+def _bot_matches_families(bot: dict, families: list[str]) -> bool:
+    if not families:
+        return False
+    name = (bot.get("name") or "").lower()
+    source = (bot.get("source") or "").lower().removesuffix(".md")
+    extension = (bot.get("extension") or "").lower()
+    blob = f"{name} {source} {extension}"
+    for fam in families:
+        fl = fam.lower()
+        variants = {fl, fl.replace("-", "_"), fl.replace("_", "-")}
+        if any(v and v in blob for v in variants):
+            return True
+    return False
+
+
 def _score_kb_bot(bot: dict, families: list[str], operation_hints: list[str]) -> float:
     name = (bot.get("name") or "").lower()
     source = (bot.get("source") or "").lower().removesuffix(".md")
     extension = (bot.get("extension") or "").lower()
     score = 0.0
+    family_hit = False
     for fam in families:
         fl = fam.lower()
         if fl in name or fl in source or fl in extension:
             score += 40.0
+            family_hit = True
         if fl.replace("-", "_") in name or fl.replace("_", "-") in name:
             score += 40.0
+            family_hit = True
+    # Never let a same-op bot from another product family win.
+    if families and not family_hit:
+        return 0.0
     for op in operation_hints:
         ol = op.lower()
         if ol in name:
@@ -84,16 +113,76 @@ def _score_kb_bot(bot: dict, families: list[str], operation_hints: list[str]) ->
 def lookup_bot_params_from_kb(
     families: list[str],
     operation_hints: list[str] | None = None,
+    question: str | None = None,
 ) -> tuple[str, list[dict], str] | None:
     """
     Look up structured params from KB entities (Phase 3 ingest).
     Returns (bot_name, rows, source_filename) or None.
+
+    When the question names an explicit @family:op token, prefer an exact name match
+    and never return a bot from a different family.
     """
-    if not families:
+    if not families and not explicit_bot_tokens(question or ""):
         return None
     ops = operation_hints or []
     bots = _load_kb_bot_entities()
     if not bots:
+        return None
+
+    tokens = explicit_bot_tokens(question or "")
+    if tokens:
+        # Exact @family:op match first
+        for fam, op in tokens:
+            want = f"@{fam}:{op}".lower()
+            for bot in bots:
+                name = (bot.get("name") or "").lower()
+                if name == want or name.lstrip("@#*") == want.lstrip("@"):
+                    rows = bot.get("parameters") or []
+                    if not rows:
+                        continue
+                    source = bot.get("source") or ""
+                    logger.info(
+                        "bot_lookup: kb exact token bot=%s rows=%s",
+                        bot.get("name"),
+                        len(rows),
+                    )
+                    return bot.get("name") or "", rows, source
+        # Constrain candidates to the token's family (no Opsgenie-for-snowv2)
+        token_fams = list(dict.fromkeys(f for f, _ in tokens))
+        bots = [b for b in bots if _bot_matches_families(b, token_fams)]
+        if not bots:
+            logger.info("bot_lookup: no KB bots for explicit families=%s", token_fams)
+            return None
+        families = token_fams
+        # Require operation overlap when an explicit op was named; otherwise abstain
+        # to the LLM rather than returning a random same-family sibling.
+        ranked = sorted(bots, key=lambda b: _score_kb_bot(b, families, ops), reverse=True)
+        best = ranked[0]
+        best_score = _score_kb_bot(best, families, ops)
+        best_name = (best.get("name") or "").lower()
+        op_hit = any(op.lower() in best_name for op in ops if op)
+        if best_score < 40 or (ops and not op_hit):
+            logger.info(
+                "bot_lookup: explicit token without same-family op match "
+                "families=%s ops=%s best=%s score=%s",
+                families,
+                ops,
+                best.get("name"),
+                best_score,
+            )
+            return None
+        rows = best.get("parameters") or []
+        if not rows:
+            return None
+        logger.info(
+            "bot_lookup: kb family=%s bot=%s rows=%s (token-constrained)",
+            families[0],
+            best.get("name"),
+            len(rows),
+        )
+        return best.get("name") or "", rows, best.get("source") or ""
+
+    if not families:
         return None
     ranked = sorted(bots, key=lambda b: _score_kb_bot(b, families, ops), reverse=True)
     best = ranked[0]
@@ -184,9 +273,17 @@ def is_bot_param_lookup(question: str) -> bool:
 
 def bot_family_hints(question: str) -> list[str]:
     """Extension / bot family slugs from question text and explicit bot tokens."""
-    hints: list[str] = list(bot_name_hints(question))
+    hints: list[str] = []
     q = question or ""
     qlow = q.lower()
+
+    token_ops = {op for _, op in explicit_bot_tokens(q)}
+    # Hyphenated slugs from NL — but never treat an explicit @family:op suffix as a family
+    # (that caused @snowv2:list-incidents → @opsgenie:list-incidents).
+    for h in bot_name_hints(question):
+        if h.lower() in token_ops:
+            continue
+        hints.append(h)
 
     for match in BOT_TOKEN_RE.finditer(q):
         family = match.group(1).lower()
@@ -208,6 +305,7 @@ def bot_family_hints(question: str) -> list[str]:
                 or "sn ticketing" in qlow
                 or re.search(r"\bsn\b", qlow)
                 or re.search(r"\bsnow\b", qlow)
+                or "snowv2" in qlow
             ):
                 if canonical not in hints:
                     hints.append(canonical)
