@@ -1274,38 +1274,263 @@ def _schedule_answer_missing_cron(answer: str) -> bool:
 
 
 def _is_integration_wiring_ask(question: str) -> bool:
+    """
+    Named-product asks that expect a cred → bot → stream/dataset/dashboard path.
+    Includes map/land/building-blocks wording, not only wire/datasource cues.
+    Requires a real INTEGRATION_FAMILIES hit (or ServiceNow slang) — unknown
+    product names must not enter depth-forcing.
+    """
+    q = (question or "").lower()
+    if not _has_real_family_match(question):
+        return False
+    if any(
+        w in q
+        for w in (
+            "datasource",
+            "wire",
+            "stream",
+            "integrate",
+            "integration",
+            "into a fabrix",
+            "into fabrix",
+            "end-to-end",
+            "walk me through",
+        )
+    ):
+        return True
+    # Family named + land/map/build into a sink, or classic building-blocks ask
+    return any(
+        w in q
+        for w in (
+            "dashboard",
+            "dataset",
+            "pstream",
+            "building block",
+            "building blocks",
+            "map ",
+            "land ",
+            "land it",
+            "connect ",
+            "searchable",
+        )
+    )
+
+
+_WIRING_INTENT_CUES: tuple[str, ...] = (
+    "datasource",
+    "wire",
+    "stream",
+    "integrate",
+    "integration",
+    "into a fabrix",
+    "into fabrix",
+    "end-to-end",
+    "end to end",
+    "walk me through",
+    "dashboard",
+    "dataset",
+    "pstream",
+    "building block",
+    "building blocks",
+    "map ",
+    "land ",
+    "land it",
+    "connect ",
+    "searchable",
+    "persistent stream",
+)
+
+_WIRING_PRODUCT_STOPWORDS: frozenset[str] = frozenset(
+    {
+        "how", "what", "whats", "what's", "walk", "explain", "can", "is", "are",
+        "where", "when", "why", "the", "for", "into", "end", "setup", "document",
+        "documented", "fabrix", "rda", "rdaf", "cloud", "data", "alerts", "issues",
+        "events", "metrics", "ops", "me", "through", "with", "bots", "involved",
+        "persistent", "stream", "dashboard", "dataset", "pipeline", "pipelines",
+        "configure", "fabio", "copilot", "agentic", "persona", "toolset", "personas",
+        "toolsets", "outages", "production", "approval", "human",
+    }
+)
+
+
+def _has_wiring_intent_cues(question: str) -> bool:
+    q = (question or "").lower()
+    return any(w in q for w in _WIRING_INTENT_CUES)
+
+
+def _has_real_family_match(
+    question: str,
+    kb_entries: list[dict] | None = None,
+    chunks: list[dict] | None = None,
+) -> bool:
+    """
+    True when the question names a known INTEGRATION_FAMILIES product (or SN slang),
+    or retrieved context already contains @/#/* family bot tokens for a hit family.
+    Unknown product-sounding names (e.g. Grafana Cloud) return False so depth-forcing
+    and path_first wiring shape do not run.
+    """
+    fams = _integration_family_hits(question)
+    q = (question or "").lower()
+    if not fams and any(p in q for p in ("servicenow", "service now", "snow", "sn ")):
+        fams = ["servicenow"]
+    if fams:
+        return True
+    blob = _retrieved_context_blob(kb_entries, chunks) if (kb_entries or chunks) else ""
+    if not blob:
+        return False
+    # Context-only rescue: bot tokens present whose family aliases appear in the question
+    for tok in _full_bot_tokens_in_text(blob):
+        pref = tok.split(":", 1)[0]
+        fam = _family_for_bot_prefix(pref)
+        if fam and fam in q.replace(" ", ""):
+            return True
+        if any(a in q for a in (pref, pref.replace("-", " "), pref.replace("_", " "))):
+            return True
+    return False
+
+
+def _extract_wiring_product_phrases(question: str) -> list[str]:
+    """Product-like phrases from a wiring-shaped question (before family gating)."""
+    q = question or ""
+    found: list[str] = []
+    seen: set[str] = set()
+
+    def _add(phrase: str) -> None:
+        p = re.sub(r"^(?i)(?:the|a|an)\s+", "", (phrase or "").strip().strip("\"'`"))
+        p = re.sub(r"\s+", " ", p).strip()
+        if not p or len(p) < 2:
+            return
+        key = p.lower()
+        if key in seen or key in _WIRING_PRODUCT_STOPWORDS or key in _KNOWN_DOC_ENTITY_ALLOW:
+            return
+        # Drop phrases that are only stopwords
+        parts = key.split()
+        if parts and all(part in _WIRING_PRODUCT_STOPWORDS for part in parts):
+            return
+        seen.add(key)
+        found.append(p)
+
+    for m in re.finditer(
+        r"(?i)\b(?:wire|map|land|connect|integrate)\s+(.+?)\s+"
+        r"(?:into|to|as|with|for|end)\b",
+        q,
+    ):
+        _add(m.group(1))
+    for m in re.finditer(
+        r"\b([A-Z][a-zA-Z0-9]+(?:\s+[A-Z][a-zA-Z0-9]+){0,2})\b",
+        q,
+    ):
+        _add(m.group(1))
+    return found
+
+
+def _unmatched_wiring_product_names(question: str) -> list[str]:
+    """
+    Wiring-intent ask that names a product-sounding term with no INTEGRATION_FAMILIES hit.
+    Requires explicit wire/map/land/connect/integrate cues — not bare end-to-end / dashboard
+    (those also appear on agentic capability asks like Fabio auto-remediate).
+    """
     q = (question or "").lower()
     if not any(
         w in q
         for w in (
-            "datasource", "wire", "stream", "integrate", "integration",
-            "into a fabrix", "into fabrix", "end-to-end", "walk me through",
+            "wire",
+            "map ",
+            "land ",
+            "land it",
+            "connect ",
+            "integrate",
+            "integration",
+            "datasource",
+            "into a fabrix",
+            "into fabrix",
         )
     ):
-        return False
-    return bool(_integration_family_hits(question)) or any(
-        p in q for p in ("servicenow", "service now", "snow", "sn ")
+        return []
+    if _has_real_family_match(question):
+        return []
+    # Agentic / Copilot capability asks are not third-party wiring products
+    if _question_names_agentic(question) or _is_capability_overclaim_ask(question):
+        return []
+    return _extract_wiring_product_phrases(question)
+
+
+def _ungrounded_wiring_products(
+    question: str,
+    kb_entries: list[dict] | None,
+    chunks: list[dict] | None,
+) -> list[str]:
+    """Unmatched wiring products that also never appear in retrieved excerpts."""
+    names = _unmatched_wiring_product_names(question)
+    if not names:
+        return []
+    blob = _retrieved_context_blob(kb_entries, chunks)
+    if not blob.strip():
+        return names
+    return [n for n in names if not _term_grounded_in_blob(n, blob)]
+
+
+def _wiring_answer_has_auth_cue(answer: str) -> bool:
+    low = (answer or "").lower()
+    return any(
+        w in low
+        for w in (
+            "credential",
+            "username",
+            "password",
+            "token",
+            "api key",
+            "auth",
+            "api access",
+            "api integration",
+            "read access",
+            "service user",
+            "hec",
+        )
     )
 
 
-def _wiring_answer_missing_product_bot(question: str, answer: str) -> bool:
+def _wiring_answer_has_asked_sink(question: str, answer: str) -> bool:
+    """Prefer sinks the user named; otherwise any stream/dataset/dashboard/pipeline."""
+    q = (question or "").lower()
+    a = (answer or "").lower()
+    asked: list[str] = []
+    if "dashboard" in q:
+        asked.append("dashboard")
+    if "dataset" in q or "searchable" in q:
+        asked.append("dataset")
+    if "pstream" in q or "persistent stream" in q:
+        asked.extend(["pstream", "persistent stream", "stream"])
+    elif "stream" in q:
+        asked.extend(["stream", "pstream"])
+    if "pipeline" in q:
+        asked.append("pipeline")
+    if not asked:
+        asked = ["stream", "pstream", "dataset", "pipeline", "dashboard"]
+    return any(s in a for s in asked)
+
+
+def _wiring_answer_missing_product_bot(
+    question: str,
+    answer: str,
+    context_blob: str = "",
+) -> bool:
     """
-    Named-product wiring ask whose answer never cites a concrete @family: bot.
-    Soft: only when excerpts/path expect bots (integration families hit).
+    Named-product wiring ask whose answer never cites a concrete @family:op bot.
+    Requires a real bot token matching the named family when those tokens appear in
+    retrieved context (prose 'bot' alone is not enough). If context has no family
+    bots, do not force invention — gaps/honesty handle that.
     """
     fams = _integration_family_hits(question)
     if not fams:
         return False
     if not _is_integration_wiring_ask(question):
         return False
+    if context_blob and not _wiring_context_has_family_bots(question, context_blob):
+        return False
     tokens = _full_bot_tokens_in_text(answer)
     if not tokens:
-        # also accept family name + "bot" prose without token — not a fail
-        low = (answer or "").lower()
-        if any(f in low for f in fams) and "bot" in low:
-            return False
         return True
-    # At least one token should map to an allowed family
     for tok in tokens:
         fam = _family_for_bot_prefix(tok.split(":", 1)[0])
         if fam and fam in fams:
@@ -1313,6 +1538,111 @@ def _wiring_answer_missing_product_bot(question: str, answer: str) -> bool:
         if "servicenow" in fams and any(x in tok for x in ("snow", "servicenow")):
             return False
     return True
+
+
+def _wiring_context_has_family_bots(question: str, context_blob: str) -> bool:
+    fams = set(_integration_family_hits(question))
+    if not fams:
+        return False
+    for tok in _full_bot_tokens_in_text(context_blob):
+        fam = _family_for_bot_prefix(tok.split(":", 1)[0])
+        if fam and fam in fams:
+            return True
+        if "servicenow" in fams and any(x in tok for x in ("snow", "servicenow")):
+            return True
+    return False
+
+
+def _wiring_source_bot_tokens_in_context(question: str, context_blob: str) -> list[str]:
+    """
+    @family:op tokens marked Source in expanded catalog text for named families.
+    Used so into-Fabrix wiring prefers pull/search bots over external sink bots.
+    """
+    fams = set(_integration_family_hits(question))
+    if not fams or not context_blob:
+        return []
+    blob = context_blob
+    out: list[str] = []
+    for m in re.finditer(
+        r"##\s*Bot\s+[@*#]([A-Za-z0-9_-]+):([A-Za-z0-9_-]+)(.*?)(?=\n##\s*Bot\s+[@*#]|\Z)",
+        blob,
+        flags=re.IGNORECASE | re.DOTALL,
+    ):
+        prefix, op, body = m.group(1), m.group(2), m.group(3) or ""
+        fam = _family_for_bot_prefix(prefix.lower())
+        if not fam or fam not in fams:
+            if not (
+                "servicenow" in fams
+                and any(x in prefix.lower() for x in ("snow", "servicenow"))
+            ):
+                continue
+        if "bot position in pipeline: source" not in body.lower():
+            continue
+        tok = f"{prefix.lower()}:{op.lower()}"
+        if tok not in out:
+            out.append(tok)
+    return out
+
+
+def _wiring_answer_missing_source_bot(
+    question: str,
+    answer: str,
+    context_blob: str = "",
+) -> bool:
+    """
+    Into-Fabrix / dashboard / dataset wiring that cites only external-sink bots
+    while Source bots for that family exist in context.
+    """
+    if not _is_integration_wiring_ask(question):
+        return False
+    q = (question or "").lower()
+    into_fabrix = any(
+        w in q
+        for w in (
+            "into a fabrix",
+            "into fabrix",
+            "dashboard",
+            "dataset",
+            "searchable",
+            "building block",
+            "land ",
+            "map ",
+            "persistent stream",
+        )
+    )
+    if not into_fabrix:
+        return False
+    sources = _wiring_source_bot_tokens_in_context(question, context_blob)
+    if not sources:
+        return False
+    ans_toks = set(_full_bot_tokens_in_text(answer))
+    if any(t in ans_toks for t in sources):
+        return False
+    # Only force when the answer already named some family bot (likely wrong direction)
+    fams = set(_integration_family_hits(question))
+    named_family_bot = False
+    for tok in ans_toks:
+        fam = _family_for_bot_prefix(tok.split(":", 1)[0])
+        if fam and fam in fams:
+            named_family_bot = True
+            break
+        if "servicenow" in fams and any(x in tok for x in ("snow", "servicenow")):
+            named_family_bot = True
+            break
+    return named_family_bot
+
+
+def _wiring_answer_missing_shape(question: str, answer: str) -> bool:
+    """
+    Wiring ask incomplete when missing (auth cue OR concrete bot token) or missing sink.
+    """
+    if not _is_integration_wiring_ask(question):
+        return False
+    has_auth_or_bot = _wiring_answer_has_auth_cue(answer) or bool(
+        _full_bot_tokens_in_text(answer)
+    )
+    has_sink = _wiring_answer_has_asked_sink(question, answer)
+    return (not has_auth_or_bot) or (not has_sink)
 
 
 def _agentic_overclaim_without_hedge(question: str, answer: str) -> bool:
@@ -1400,7 +1730,9 @@ def _draft_looks_clean(
 
 
 def _datasource_ask_missing_sink(question: str, answer: str) -> bool:
-    """True when a wire/add-datasource ask lacks stream/dataset/pipeline/dashboard."""
+    """True when a wire/add-datasource/map-to-sink ask lacks the asked sink."""
+    if _is_integration_wiring_ask(question):
+        return not _wiring_answer_has_asked_sink(question, answer)
     q = (question or "").lower()
     if not any(
         w in q
@@ -1664,12 +1996,12 @@ Fabrix mental model (use when relevant; do not keyword-stuff):
 """
 
     path_first = """
-- For "how would I / chain / integrate / wire / add X as a datasource" questions, use this shape:
+- For "how would I / chain / integrate / wire / map / land / connect / building blocks / add X as a datasource" questions, use this shape:
   **Documented Fabrix path**   ← bold header only, NOT a numbered step
   1. credentials / auth for the named product (API token, username/password, read-only user — from excerpts)
-  2. concrete bots from that product family (name them exactly as in excerpts)
-  3. stream or dataset handoff
-  4. optional dashboard / downstream step if in excerpts
+  2. concrete bots from that product family as exact `@family:op` tokens from excerpts (never invent `@c:…`); for map/land/into-Fabrix/dashboard/dataset asks prefer Source / search / read bots over Sink bots that only write back to the external product
+  3. stream or dataset handoff (name stream/pstream/dataset as asked)
+  4. dashboard / Slack / downstream step when the question asks for it (from excerpts)
   **Next (inferred):** undocumented handoffs (network access, jump-box/OS, security groups) — not numbered
   **Prerequisites** once at the end if needed (not numbered).
 - Multi-intent questions (compare A vs B, then wire to C): cover each documented intent, then put cross-product handoffs under **Next (inferred):**.
@@ -1682,6 +2014,23 @@ Fabrix mental model (use when relevant; do not keyword-stuff):
 - Continuous numbers 1. 2. 3. — never restart at 1.; no blank lines between steps unless the user asked for blank lines.
 - Do NOT invent automation such as "automatically formatted for dashboards" unless an excerpt says that.
 - Trailer examples: concrete excerpt lines only from the same product family.
+"""
+    # Depth-forcing only when a real family/catalog match exists. Unknown products
+    # (e.g. Grafana Cloud) must not get an auth→bot→sink narrative scaffold.
+    if _unmatched_wiring_product_names(question):
+        path_first = """
+- The question asks to wire/map/land a named product that is NOT a documented Fabrix
+  integration family in the knowledge base. Do NOT invent credentials, bots, streams,
+  or a dashboard path for it. Clearly state you do not see that product/integration
+  documented, and invite the user to name a documented family (e.g. Splunk, Datadog,
+  PagerDuty, Jira) if that is what they meant.
+"""
+    elif not _has_real_family_match(question) and _has_wiring_intent_cues(question):
+        # Wiring-shaped ask with no product family — keep light guidance, no invented family
+        path_first = """
+- If the user asks how to wire/land data in Fabrix without naming a documented integration,
+  describe only the classic documented stack (credentials → bots → pipeline → dataset/pstream
+  → dashboard) from excerpts. Do not invent a third-party product bot family.
 """
 
     code_gen_guardrail = ""
@@ -2023,6 +2372,10 @@ INTEGRATION_FAMILIES: list[tuple[str, tuple[str, ...]]] = [
     ("aws", ("aws", "amazon web services")),
     ("azure", ("azure", "microsoft azure")),
     ("linux", ("linux-inventory", "linux-os", "linux os")),
+    # Discovery / EDR families present in Bots/ but previously unwired
+    ("windows", ("windows-inventory", "windows inventory", "windows-os", "windows os")),
+    ("openstack", ("openstack", "openstack-v2", "openstack_v2")),
+    ("crowdstrike", ("crowdstrike", "crowd strike", "crowd-strike")),
 ]
 
 SOFT_FACET_ALIASES: list[tuple[str, ...]] = [
@@ -2038,9 +2391,9 @@ AGENTIC_MARKERS: tuple[str, ...] = (
     "fabio", "copilot", "ai fabric", "ai_fabric", "agentic",
 )
 
-BOT_TOKEN_RE = re.compile(r"[@*]([a-zA-Z0-9][a-zA-Z0-9_-]{0,60})\s*:")
+BOT_TOKEN_RE = re.compile(r"[@*#]([a-zA-Z0-9][a-zA-Z0-9_-]{0,60})\s*:")
 BOT_FULL_TOKEN_RE = re.compile(
-    r"[@*]([a-zA-Z0-9][a-zA-Z0-9_-]{0,60})\s*:\s*([a-zA-Z0-9][a-zA-Z0-9_-]*)"
+    r"[@*#]([a-zA-Z0-9][a-zA-Z0-9_-]{0,60})\s*:\s*([a-zA-Z0-9][a-zA-Z0-9_-]*)"
 )
 # Invented "something-bot" labels (backticks or bare prose)
 INVENTED_BOT_LABEL_RE = re.compile(
@@ -2114,6 +2467,20 @@ def _integration_family_hits(question: str) -> list[str]:
         # Bare "linux"/"ubuntu" host mentions are red herrings, not linux-inventory
         if canonical == "linux":
             if any(a in q for a in ("linux-inventory", "linux-os", "linux os")):
+                hits.append(canonical)
+            continue
+        if canonical == "windows":
+            # Bare "windows" is too broad; require inventory/OS discovery cues
+            if any(
+                a in q
+                for a in (
+                    "windows-inventory",
+                    "windows inventory",
+                    "windows-os",
+                    "windows os",
+                    "windows server",
+                )
+            ):
                 hits.append(canonical)
             continue
         if canonical == "servicenow":
@@ -2941,9 +3308,11 @@ def answer(question: str, client: QdrantClient | None = None) -> AgentResponse:
                 "discount", "cake", "world series",
                 "maximum number", "max number", "how many workers",
                 "worker limit", "maximum workers",
+                "max concurrent", "maximum concurrent", "concurrent bots",
                 "hipaa", "baa", "soc2", "soc 2", "gdpr", "signed dpa",
                 "data processing agreement", "penetration test", "pentest", "cvss",
                 "salary", "internal hr", "admin password", "root password",
+                "whitelist an ip", "whitelist ip", "ip whitelist", "allowlist an ip",
             )
         )
         fabrixish = any(
@@ -2998,6 +3367,8 @@ def answer(question: str, client: QdrantClient | None = None) -> AgentResponse:
             "ignore your instructions", "ignore your restrictions",
             "you said earlier", "as you mentioned before", "as you said before",
             "i'm a fabrix engineer", "i am a fabrix engineer", "for debugging purposes",
+            "whitelist an ip", "whitelist ip", "ip whitelist", "allowlist an ip",
+            "whitelist an ip for the api",
         )
     )
     # Credential fishing: ask for a secret value rather than how to configure auth
@@ -3420,6 +3791,19 @@ def answer(question: str, client: QdrantClient | None = None) -> AgentResponse:
             ]
             if fam == "servicenow":
                 stems = ["servicenow_v2", "servicenow", "snow"] + stems
+            if fam == "windows":
+                stems = ["windows-inventory", "windows_inventory", "windows"] + stems
+            if fam == "openstack":
+                stems = ["openstack-v2", "openstack_v2", "openstack"] + stems
+            if fam == "crowdstrike":
+                stems = ["crowdstrike", "crowd-strike"] + stems
+            if fam == "vmware":
+                stems = [
+                    "vmware-vcenter-v2",
+                    "vmware-vcenter",
+                    "vmwarev2",
+                    "vmware",
+                ] + stems
             for stem in stems:
                 rel = f"{BOTS_REL_PREFIX}/{stem}.md"
                 if any((p.get("path") or "") == rel for p in (expanded_pages or [])):
@@ -3433,6 +3817,35 @@ def answer(question: str, client: QdrantClient | None = None) -> AgentResponse:
                     }]
                     logger.info("page_expand: wiring catalog %s", rel)
                     break
+            for di_stem in (fam, fam.replace("_", "-"), fam.replace("-", "_")):
+                di_rel = f"Datasource_Integrations/{di_stem}.md"
+                if any((p.get("path") or "") == di_rel for p in (expanded_pages or [])):
+                    break
+                di_text = _expand_page(di_rel)
+                if di_text:
+                    expanded_pages = list(expanded_pages or []) + [{
+                        "path": di_rel,
+                        "url": _pub(di_rel),
+                        "text": di_text,
+                    }]
+                    logger.info("page_expand: wiring datasource %s", di_rel)
+                    break
+        for sink_rel in (
+            "beginners_guide/data_at_rest.md",
+            "beginners_guide/data_ingestion.md",
+            "Datasets.md",
+        ):
+            if any((p.get("path") or "") == sink_rel for p in (expanded_pages or [])):
+                continue
+            sink_text = _expand_page(sink_rel)
+            if sink_text:
+                expanded_pages = list(expanded_pages or []) + [{
+                    "path": sink_rel,
+                    "url": _pub(sink_rel),
+                    "text": sink_text,
+                }]
+                logger.info("page_expand: wiring sink page %s", sink_rel)
+                break
     # Agentic / Fabio capability asks: load Copilot docs so we don't false-abstain
     if _question_names_agentic(question) or _is_capability_overclaim_ask(question):
         from page_expand import expand_page as _expand_page
@@ -3462,9 +3875,37 @@ def answer(question: str, client: QdrantClient | None = None) -> AgentResponse:
         kb_entries = (expanded_kb + list(kb_entries or []))[:14]
 
     ungrounded_entities = _ungrounded_named_entities(question, kb_entries, chunks)
+    # Wiring ask naming an unknown product: treat as ungrounded BEFORE depth-forcing generate.
+    wiring_miss = _ungrounded_wiring_products(question, kb_entries, chunks)
+    for term in wiring_miss:
+        if term not in ungrounded_entities:
+            ungrounded_entities.append(term)
     named_entity_ungrounded = bool(ungrounded_entities)
     if named_entity_ungrounded:
         logger.info("named entities ungrounded in excerpts: %s", ungrounded_entities)
+
+    if wiring_miss:
+        # Honesty gate before path_first / critique depth-forcing can invent a narrative.
+        logger.info(
+            "ungrounded wiring product(s) — honesty before depth-force: %s",
+            wiring_miss,
+        )
+        answer_text, gaps = _ungrounded_entity_honesty(wiring_miss, [])
+        timing["generate_ms"] = 0
+        timing["total_ms"] = _ms(t0)
+        _log_gap(question, scope, gaps, True)
+        sources = (_sources_from_kb(kb_entries) + _sources_from_chunks(chunks))[:8]
+        return AgentResponse(
+            answer=polish_answer_text(answer_text),
+            sources=sources,
+            sufficient=False,
+            examples=[],
+            gaps=gaps,
+            scope=scope,
+            used_inference=False,
+            inferred_summary="",
+            timing=timing,
+        )
 
     specificity_gap = _specificity_detail_missing(question, kb_entries, chunks)
     if specificity_gap:
@@ -3603,6 +4044,7 @@ def answer(question: str, client: QdrantClient | None = None) -> AgentResponse:
     # Ops critique only when local draft checks fail
     if use_facets and not abstained and (kb_entries or chunks):
         ungrounded_bots = _ungrounded_bot_tokens(answer_text, kb_entries, chunks)
+        wiring_ctx = _retrieved_context_blob(kb_entries, chunks)
         if (
             _draft_looks_clean(answer_text, used_inference, question)
             and not _datasource_ask_missing_sink(question, answer_text)
@@ -3638,12 +4080,20 @@ def answer(question: str, client: QdrantClient | None = None) -> AgentResponse:
                 )
             )
             and not _agentic_overclaim_without_hedge(question, answer_text)
-            and not _wiring_answer_missing_product_bot(question, answer_text)
+            and not _wiring_answer_missing_product_bot(question, answer_text, wiring_ctx)
+            and not _wiring_answer_missing_shape(question, answer_text)
+            and not _wiring_answer_missing_source_bot(question, answer_text, wiring_ctx)
         ):
             logger.info("critique skipped (draft looks clean)")
         else:
             if _datasource_ask_missing_sink(question, answer_text):
                 logger.info("critique forced: datasource ask missing stream/dataset sink")
+            if _wiring_answer_missing_shape(question, answer_text):
+                logger.info("critique forced: wiring ask missing auth/bot/sink shape")
+            if _wiring_answer_missing_product_bot(question, answer_text, wiring_ctx):
+                logger.info("critique forced: wiring ask missing concrete @family:op bot")
+            if _wiring_answer_missing_source_bot(question, answer_text, wiring_ctx):
+                logger.info("critique forced: wiring ask missing Source bot for into-Fabrix path")
             off_bots = _off_family_bot_tokens(question, answer_text)
             if off_bots:
                 logger.info("critique forced: off-family bots=%s", off_bots)
@@ -3747,13 +4197,32 @@ def answer(question: str, client: QdrantClient | None = None) -> AgentResponse:
                 critique["revision_notes"] = (
                     (critique.get("revision_notes") or "") + " " + note
                 ).strip()
-            if _wiring_answer_missing_product_bot(question, answer_text):
+            if (
+                _wiring_answer_missing_shape(question, answer_text)
+                or _wiring_answer_missing_product_bot(question, answer_text, wiring_ctx)
+                or _wiring_answer_missing_source_bot(question, answer_text, wiring_ctx)
+            ):
                 critique["fix_needed"] = True
+                source_hint = ""
+                src_toks = _wiring_source_bot_tokens_in_context(question, wiring_ctx)
+                if src_toks and _wiring_answer_missing_source_bot(
+                    question, answer_text, wiring_ctx
+                ):
+                    sample = ", ".join(f"@{t}" for t in src_toks[:4])
+                    source_hint = (
+                        f" For into-Fabrix / dashboard / dataset asks, prefer Source bots "
+                        f"from the catalog (e.g. {sample}) — do not lead with Sink bots that "
+                        f"only write back into the external product."
+                    )
                 note = (
-                    "Name concrete bots from the product family in the excerpts "
-                    "(e.g. @snowv2:… / @zabbix:…), not invented labels like "
-                    "`incident-processing-bot`. Include a stream/dataset handoff when asking "
-                    "to land data in Fabrix."
+                    "REQUIRED wiring shape from excerpts only: "
+                    "(1) credentials/auth cue for the named product, "
+                    "(2) at least one concrete `@family:op` bot token from that product's "
+                    "catalog page in context when present (never invent `@c:…` or prose-only "
+                    "bot names), "
+                    "(3) the sink the user asked for (stream/pstream/dataset/dashboard). "
+                    "If an exact bot token is not in the excerpts, put it in gaps[] — do not invent."
+                    + source_hint
                 )
                 critique["revision_notes"] = (
                     (critique.get("revision_notes") or "") + " " + note
@@ -4003,33 +4472,15 @@ def answer(question: str, client: QdrantClient | None = None) -> AgentResponse:
         logger.info("schedule debug honesty fallback applied")
 
     if _is_concurrent_dataset_ask(question):
-        low_c = (answer_text or "").lower()
-        invents_lock = any(
-            w in low_c
-            for w in (
-                "locking", "lock mechanism", "dataset-locking", "mutex",
-                "exclusive write", "write lock",
-            )
+        # Always replace — models invent locking/concurrency mechanisms with soft hedges.
+        answer_text, gaps = _concurrent_dataset_honesty(gaps)
+        abstained = False
+        used_inference = True
+        inferred_summary = inferred_summary or (
+            "Concurrent dataset write behavior is not documented"
         )
-        hedged = any(
-            x in low_c
-            for x in (
-                "not documented",
-                "not specified",
-                "doesn't specify",
-                "does not specify",
-                "not stated",
-            )
-        )
-        if invents_lock or not hedged or _looks_like_abstention(answer_text):
-            answer_text, gaps = _concurrent_dataset_honesty(gaps)
-            abstained = False
-            used_inference = True
-            inferred_summary = inferred_summary or (
-                "Concurrent dataset write behavior is not documented"
-            )
-            examples = []
-            logger.info("concurrent dataset honesty fallback applied")
+        examples = []
+        logger.info("concurrent dataset honesty fallback applied")
 
     if _is_full_script_automation_ask(question) and (
         _answer_has_turnkey_script_risk(answer_text)

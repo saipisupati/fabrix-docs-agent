@@ -1361,6 +1361,10 @@ BREAK_CASES = [
             "does not specify",
             "not stated",
             "worker",
+            "couldn't find",
+            "could not find",
+            "outside",
+            "out of scope",
         ],
         "forbid": ["opsgenie", "servicenow credential"],
         "expect_infer_or_gaps": True,
@@ -1431,6 +1435,267 @@ BREAK_CASES = [
         "need_also_any": ["dataset", "pipeline", "bot", "stream", "pstream"],
         "forbid_agentic_only": True,
         "expect_infer_or_gaps": True,
+    },
+    # --- Cycle 15: thin-wiring depth (cred → @family:op → sink) ---
+    {
+        "id": "c15_splunk_ops_dashboard",
+        "attack": "thin_wiring",
+        "cycle": 15,
+        "question": (
+            "Ops wants Splunk log events landing in a Fabrix dashboard they can watch "
+            "during incidents — what documented building blocks should I use?"
+        ),
+        "need_any": ["splunk"],
+        "need_also_any": ["dashboard", "dataset", "pstream", "stream", "pipeline"],
+        "forbid": ["@c:splunk-dashboard", "linux-inventory"],
+        "require_wiring_shape": True,
+        "expect_infer_or_gaps": True,
+    },
+    {
+        "id": "c15_datadog_to_slack_alert",
+        "attack": "thin_wiring",
+        "cycle": 15,
+        "question": (
+            "Map Datadog metrics into a Fabrix persistent stream and then notify Slack "
+            "when thresholds trip — walk the documented path."
+        ),
+        "need_any": ["datadog"],
+        "need_also_any": ["slack", "stream", "pstream", "persistent"],
+        "forbid": ["@c:datadog-slack-bridge"],
+        "forbid_in_sources": ["servicenow", "zabbix"],
+        "require_wiring_shape": True,
+        "expect_infer_or_gaps": True,
+    },
+    {
+        "id": "c15_kafka_searchable_dataset",
+        "attack": "thin_wiring",
+        "cycle": 15,
+        "question": (
+            "I need Kafka topic messages to become a searchable Fabrix dataset — "
+            "which credentials, bots, and handoffs does the docs describe?"
+        ),
+        "need_any": ["kafka"],
+        "need_also_any": ["dataset", "pipeline", "bot", "stream", "pstream"],
+        "forbid": ["@c:kafka-to-dataset"],
+        "forbid_agentic_only": True,
+        "require_wiring_shape": True,
+        "expect_infer_or_gaps": True,
+    },
+    {
+        "id": "c15_newrelic_apm_dashboard",
+        "attack": "thin_wiring",
+        "cycle": 15,
+        "question": (
+            "Connect New Relic APM into Fabrix and land the data in a dashboard "
+            "ops can open — documented steps only."
+        ),
+        "need_any": ["new relic", "newrelic"],
+        "need_also_any": ["dashboard", "dataset", "pstream", "stream", "bot"],
+        "forbid": ["@c:new-relic-apm-datasource", "@c:newrelic-dashboard"],
+        "forbid_in_sources": ["servicenow", "zabbix"],
+        "require_wiring_shape": True,
+        "expect_infer_or_gaps": True,
+    },
+    {
+        "id": "c15_no_family_match_grafana",
+        "attack": "invented_family",
+        "cycle": 15,
+        "question": (
+            "How do I wire Grafana Cloud into Fabrix end to end for dashboards?"
+        ),
+        "need_any": [
+            "don't see",
+            "do not see",
+            "not documented",
+            "no integration",
+            "couldn't find",
+            "could not find",
+            "not in the",
+            "isn't documented",
+            "is not documented",
+            "not a documented",
+        ],
+        "forbid": [
+            "grafana bot",
+            "@grafana",
+            "#grafana",
+            "grafana credentials",
+            "grafana api key setup",
+            "**documented fabrix path**",
+        ],
+    },
+    # --- Cycle 16: customer ticket-title themes (discovery / upgrade / SNOW / pipelines) ---
+    {
+        "id": "c16_windows_inventory_readonly",
+        "attack": "thin_wiring",
+        "cycle": 16,
+        "question": (
+            "How do I set up Windows inventory discovery in Fabrix, and should "
+            "the discovery account be a read-only user?"
+        ),
+        "need_any": ["windows", "inventory", "bot"],
+        "need_also_any": ["credential", "auth", "token", "password", "read-only", "read only"],
+        "forbid": ["@c:windows-discovery", "linux-inventory"],
+        "require_wiring_shape": True,
+        "expect_infer_or_gaps": True,
+    },
+    {
+        "id": "c16_vmware_dns_discovery",
+        "attack": "thin_wiring",
+        "cycle": 16,
+        "question": (
+            "How do I run VMware vCenter discovery in Fabrix and land host inventory "
+            "in a dataset ops can search?"
+        ),
+        "need_any": ["vmware", "vcenter"],
+        "need_also_any": ["dataset", "stream", "pstream", "bot", "dashboard"],
+        "forbid": ["@c:vmware-dns-discovery"],
+        "require_wiring_shape": True,
+        "expect_infer_or_gaps": True,
+    },
+    {
+        "id": "c16_openstack_asset_discovery",
+        "attack": "thin_wiring",
+        "cycle": 16,
+        "question": (
+            "Walk me through wiring OpenStack asset discovery into Fabrix with "
+            "the credentials and bots involved."
+        ),
+        "need_any": ["openstack"],
+        "forbid": ["@c:openstack-discovery", "servicenow"],
+        "require_wiring_shape": True,
+        "expect_infer_or_gaps": True,
+    },
+    {
+        "id": "c16_upgrade_prereqs_path",
+        "attack": "wrong_facet",
+        "cycle": 16,
+        "question": (
+            "What prerequisites and RDAF CLI steps should I complete before a major "
+            "AIOPS / Fabrix platform application upgrade?"
+        ),
+        "need_any": ["rdaf", "upgrade", "backup", "cli", "docker", "registry"],
+        "forbid": ["servicenow credential", "qualys", "crowdstrike"],
+        "expect_infer_or_gaps": True,
+    },
+    {
+        "id": "c16_pipeline_not_triggered",
+        "attack": "abstain_fail",
+        "cycle": 16,
+        "question": (
+            "A production scheduled pipeline did not trigger overnight — what "
+            "documented checks should I run first?"
+        ),
+        "need_any": ["cron", "scheduled_pipelines", "schedule", "blueprint"],
+        "forbid": ["@c:pipeline-scheduler", "@c:schedule-pipeline"],
+        "expect_infer_or_gaps": True,
+    },
+    {
+        "id": "c16_snow_state_enrichment",
+        "attack": "thin_wiring",
+        "cycle": 16,
+        "question": (
+            "How should a Fabrix pipeline update ServiceNow incident state and "
+            "enrichment fields without inventing custom bots?"
+        ),
+        "need_any": ["servicenow", "snow", "snowv2", "incident"],
+        "forbid": ["@c:snow-state-machine", "@opsgenie:list-incidents"],
+        "require_wiring_shape": True,
+        "expect_infer_or_gaps": True,
+    },
+    {
+        "id": "c16_prometheus_alert_enrichment",
+        "attack": "thin_wiring",
+        "cycle": 16,
+        "question": (
+            "How do I map Prometheus alerts into a Fabrix dataset and enrich them "
+            "for ticketing downstream?"
+        ),
+        "need_any": ["prometheus"],
+        "need_also_any": ["dataset", "stream", "pstream", "alert", "bot"],
+        "forbid": ["@c:prometheus-alert-mapper"],
+        "require_wiring_shape": True,
+        "expect_infer_or_gaps": True,
+    },
+    {
+        "id": "c16_kafka_alert_lag",
+        "attack": "overclaim",
+        "cycle": 16,
+        "question": (
+            "What do the public Fabrix docs say about diagnosing Kafka lag for "
+            "alert-processing pipelines?"
+        ),
+        "need_any": [
+            "kafka",
+            "not documented",
+            "not specified",
+            "doesn't specify",
+            "does not specify",
+            "gaps",
+            "lag",
+            "consumer",
+            "bot",
+        ],
+        "expect_infer_or_gaps": True,
+    },
+    {
+        "id": "c16_dashboard_access",
+        "attack": "wrong_facet",
+        "cycle": 16,
+        "question": (
+            "How do users get access to Fabrix dashboards according to the public docs?"
+        ),
+        "need_any": ["dashboard", "access", "user", "persona", "role", "permission", "not documented", "not specified"],
+        "expect_infer_or_gaps": True,
+    },
+    {
+        "id": "c16_agentic_in_production",
+        "attack": "overclaim",
+        "cycle": 16,
+        "question": (
+            "What is documented for running Fabrix Agentic AI / Fabio Copilot in "
+            "a production environment with no human approval for remediations?"
+        ),
+        "need_any": ["fabio", "copilot", "agentic", "persona", "toolset"],
+        "expect_infer_or_gaps": True,
+    },
+    {
+        "id": "c16_crowdstrike_to_ticket",
+        "attack": "thin_wiring",
+        "cycle": 16,
+        "question": (
+            "How do I land CrowdStrike high-severity detections into Fabrix and "
+            "toward a ticket or stream?"
+        ),
+        "need_any": ["crowdstrike", "crowd strike"],
+        "need_also_any": ["bot", "stream", "dataset", "ticket", "incident", "alert"],
+        "forbid": ["@c:crowdstrike-ticket-bridge"],
+        "require_wiring_shape": True,
+        "expect_infer_or_gaps": True,
+    },
+    {
+        "id": "c16_fake_prb_hostname_wire",
+        "attack": "invented_family",
+        "cycle": 16,
+        "question": (
+            "How do I wire PRB0105428-SIFY host 198.18.29.83 into a Fabrix dashboard "
+            "end to end?"
+        ),
+        "need_any": [
+            "don't see",
+            "do not see",
+            "not documented",
+            "couldn't find",
+            "could not find",
+            "not in the",
+            "isn't documented",
+            "is not documented",
+        ],
+        "forbid": [
+            "**documented fabrix path**",
+            "@prb0105428",
+            "@198.18",
+        ],
     },
 ]
 

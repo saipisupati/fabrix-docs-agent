@@ -1,0 +1,694 @@
+{
+  "source": "customer_support_ticket_titles",
+  "generated_for": "cycle_16",
+  "topics": [
+    {
+      "raw_title": "Windows Inventory Discovery - AIOPS",
+      "bucket": "in_scope_howto",
+      "theme": "discovery",
+      "agent_question": "How do I set up Windows inventory discovery in Fabrix, and should the discovery account be read-only?",
+      "attack": "thin_wiring",
+      "notes": "windows-inventory bots"
+    },
+    {
+      "raw_title": "AIOPS UAT major upgrade from 3.8.0/7.8.2 to 8.1.0.1",
+      "bucket": "in_scope_howto",
+      "theme": "upgrade",
+      "agent_question": "What are the documented prerequisites and steps for a major RDAF / AIOPS platform upgrade?",
+      "attack": "wrong_facet",
+      "notes": "version numbers are customer-specific; ask for path not tags"
+    },
+    {
+      "raw_title": "AIOPS Discovery based on IP segment discussion",
+      "bucket": "in_scope_howto",
+      "theme": "discovery",
+      "agent_question": "How does Fabrix document discovery scoped to an IP segment or network range?",
+      "attack": "thin_wiring",
+      "notes": null
+    },
+    {
+      "raw_title": "Vmware Discovery - DNS name attribute discovery",
+      "bucket": "in_scope_howto",
+      "theme": "discovery",
+      "agent_question": "How do I run VMware vCenter discovery in Fabrix and capture DNS name attributes?",
+      "attack": "thin_wiring",
+      "notes": null
+    },
+    {
+      "raw_title": "Need to check user connecting instead of read-only user for discovery",
+      "bucket": "in_scope_howto",
+      "theme": "auth",
+      "agent_question": "For Fabrix discovery integrations, when do the docs call for a read-only API user versus a connecting/service user?",
+      "attack": "wrong_facet",
+      "notes": null
+    },
+    {
+      "raw_title": "Response SLA warning",
+      "bucket": "trap_oos",
+      "theme": "trap",
+      "agent_question": "What is Fabrix's contractual P1 response SLA?",
+      "attack": "trap_abstain",
+      "notes": "commercial/SLA"
+    },
+    {
+      "raw_title": "OPEN State Alerts",
+      "bucket": "debug_path",
+      "theme": "pipeline",
+      "agent_question": "How do open-state alerts flow through Fabrix pipelines toward ticketing?",
+      "attack": "thin_wiring",
+      "notes": null
+    },
+    {
+      "raw_title": "/opensearch file system space utilization exceeds above 80%",
+      "bucket": "incident_only",
+      "theme": "ops",
+      "agent_question": null,
+      "attack": null,
+      "notes": "host/filesystem incident \u2014 not docs howto"
+    },
+    {
+      "raw_title": "Compatibility Confirmation Request \u2013 CloudFabrix with VMware vCenter Upgrade",
+      "bucket": "in_scope_howto",
+      "theme": "upgrade",
+      "agent_question": "Do the public Fabrix docs state which VMware vCenter versions are compatible?",
+      "attack": "overclaim",
+      "notes": "specificity \u2014 may abstain on exact versions"
+    },
+    {
+      "raw_title": "Open Vulnerabilities",
+      "bucket": "trap_oos",
+      "theme": "trap",
+      "agent_question": "Where do I download Fabrix penetration-test / CVSS vulnerability reports?",
+      "attack": "trap_abstain",
+      "notes": null
+    },
+    {
+      "raw_title": "AIOPS PROD Application Major Upgrade pre requisite completion",
+      "bucket": "in_scope_howto",
+      "theme": "upgrade",
+      "agent_question": "What prerequisites should I complete before a major AIOPS / RDAF application upgrade?",
+      "attack": "wrong_facet",
+      "notes": null
+    },
+    {
+      "raw_title": "AIOPS PROD Application Major Upgrade - Application Upgrade",
+      "bucket": "in_scope_howto",
+      "theme": "upgrade",
+      "agent_question": "Walk me through the documented RDAF CLI path to upgrade the Fabrix platform application.",
+      "attack": "wrong_facet",
+      "notes": null
+    },
+    {
+      "raw_title": "Change in Alert Payload for DDOS Peral",
+      "bucket": "incident_only",
+      "theme": "ops",
+      "agent_question": null,
+      "attack": null,
+      "notes": "customer payload change"
+    },
+    {
+      "raw_title": "Incident ID is not moving to Resolved state",
+      "bucket": "in_scope_howto",
+      "theme": "servicenow",
+      "agent_question": "How do Fabrix ServiceNow bots update an incident to Resolved, and what state transitions are documented?",
+      "attack": "thin_wiring",
+      "notes": null
+    },
+    {
+      "raw_title": "CFX AIOps alert processing Kafka lag issue",
+      "bucket": "in_scope_howto",
+      "theme": "kafka",
+      "agent_question": "What do the Fabrix docs say about diagnosing Kafka lag for alert-processing pipelines?",
+      "attack": "overclaim",
+      "notes": "honesty if lag limits undocumented"
+    },
+    {
+      "raw_title": "Out of Memory issue",
+      "bucket": "incident_only",
+      "theme": "ops",
+      "agent_question": null,
+      "attack": null,
+      "notes": "runtime incident"
+    },
+    {
+      "raw_title": "198.18.29.83 Problem tac",
+      "bucket": "incident_only",
+      "theme": "ops",
+      "agent_question": null,
+      "attack": null,
+      "notes": "hostname/IP"
+    },
+    {
+      "raw_title": "LNX-THRESHOLD VIOLATION - LOAD",
+      "bucket": "incident_only",
+      "theme": "ops",
+      "agent_question": null,
+      "attack": null,
+      "notes": "alert name"
+    },
+    {
+      "raw_title": "ID pending with customer - LNX-THRESHOLD VIOLATION - CPU",
+      "bucket": "incident_only",
+      "theme": "ops",
+      "agent_question": null,
+      "attack": null,
+      "notes": "alert + customer status"
+    },
+    {
+      "raw_title": "Prometheus Alert Mapper Dataset enrichment issues in PROD",
+      "bucket": "in_scope_howto",
+      "theme": "prometheus",
+      "agent_question": "How do I map Prometheus alerts into a Fabrix dataset and enrich them for downstream use?",
+      "attack": "thin_wiring",
+      "notes": null
+    },
+    {
+      "raw_title": "ID open - LNX-THRESHOLD VIOLATION - CPU",
+      "bucket": "incident_only",
+      "theme": "ops",
+      "agent_question": null,
+      "attack": null,
+      "notes": "alert name"
+    },
+    {
+      "raw_title": "PRB0105428 SIFY CORE INFRASTRUCTURE",
+      "bucket": "incident_only",
+      "theme": "ops",
+      "agent_question": null,
+      "attack": null,
+      "notes": "PRB id"
+    },
+    {
+      "raw_title": "Ovirt Asset Discovery",
+      "bucket": "in_scope_howto",
+      "theme": "discovery",
+      "agent_question": "What does Fabrix document for oVirt / OLVM asset discovery?",
+      "attack": "thin_wiring",
+      "notes": "olvm bots may exist"
+    },
+    {
+      "raw_title": "Request for Feasibility of Enabling MFA",
+      "bucket": "trap_oos",
+      "theme": "trap",
+      "agent_question": "Can you enable MFA for our Fabrix tenant and confirm it's feasible for our org?",
+      "attack": "trap_abstain",
+      "notes": null
+    },
+    {
+      "raw_title": "Enhancement Request: DDOS-Pearl SOAR Integration - New Topic for Mitigation ID Mapping",
+      "bucket": "trap_oos",
+      "theme": "trap",
+      "agent_question": null,
+      "attack": null,
+      "notes": "enhancement request / custom product"
+    },
+    {
+      "raw_title": "Alert Not Suppressed for DELGCCCPCBVM5",
+      "bucket": "incident_only",
+      "theme": "ops",
+      "agent_question": null,
+      "attack": null,
+      "notes": "hostname"
+    },
+    {
+      "raw_title": "Pipeline Not Triggered - Production Environment",
+      "bucket": "debug_path",
+      "theme": "pipeline",
+      "agent_question": "A production pipeline did not trigger \u2014 what documented steps should I use to debug why it didn't run?",
+      "attack": "abstain_fail",
+      "notes": null
+    },
+    {
+      "raw_title": "Asset Discovery New UseCase - OpenStack",
+      "bucket": "in_scope_howto",
+      "theme": "discovery",
+      "agent_question": "How do I wire OpenStack asset discovery into Fabrix with credentials and bots?",
+      "attack": "thin_wiring",
+      "notes": null
+    },
+    {
+      "raw_title": "AIOPS Non K8s VM OS patching",
+      "bucket": "in_scope_howto",
+      "theme": "upgrade",
+      "agent_question": "What do the docs say about OS patching for non-Kubernetes AIOPS / RDA VMs?",
+      "attack": "overclaim",
+      "notes": "may be thin in public docs"
+    },
+    {
+      "raw_title": "AIOPS Unable to provide access to the dashboards",
+      "bucket": "in_scope_howto",
+      "theme": "dashboard",
+      "agent_question": "How do users get access to Fabrix dashboards according to the public docs?",
+      "attack": "wrong_facet",
+      "notes": null
+    },
+    {
+      "raw_title": "Support Required for Discovery Failures - Storage Fabric & APIC Network Devices",
+      "bucket": "in_scope_howto",
+      "theme": "discovery",
+      "agent_question": "How do I set up Cisco ACI / APIC network discovery in Fabrix and what should I check when discovery fails?",
+      "attack": "thin_wiring",
+      "notes": null
+    },
+    {
+      "raw_title": "PROBLEM: server restarted",
+      "bucket": "incident_only",
+      "theme": "ops",
+      "agent_question": null,
+      "attack": null,
+      "notes": "incident"
+    },
+    {
+      "raw_title": "Alert Payload for DDOS Peral change",
+      "bucket": "incident_only",
+      "theme": "ops",
+      "agent_question": null,
+      "attack": null,
+      "notes": "customer payload"
+    },
+    {
+      "raw_title": "LNX-THRESHOLD VIOLATION - CPU",
+      "bucket": "incident_only",
+      "theme": "ops",
+      "agent_question": null,
+      "attack": null,
+      "notes": "alert name"
+    },
+    {
+      "raw_title": "SNOW Ticket State Transition Skipping WIP",
+      "bucket": "in_scope_howto",
+      "theme": "servicenow",
+      "agent_question": "How should a Fabrix pipeline update ServiceNow ticket states so we don't skip WIP incorrectly?",
+      "attack": "thin_wiring",
+      "notes": null
+    },
+    {
+      "raw_title": "CrowdStrike Detection - High Severity",
+      "bucket": "in_scope_howto",
+      "theme": "discovery",
+      "agent_question": "How do I land CrowdStrike high-severity detections into Fabrix and toward a ticket?",
+      "attack": "thin_wiring",
+      "notes": "crowdstrike bots in catalog"
+    },
+    {
+      "raw_title": "Q1 - OS Patching for AIOPS servers",
+      "bucket": "in_scope_howto",
+      "theme": "upgrade",
+      "agent_question": "What guidance do Fabrix docs give for OS patching of AIOPS servers?",
+      "attack": "overclaim",
+      "notes": null
+    },
+    {
+      "raw_title": "Issue in Duplicate Avoidance Business Rule",
+      "bucket": "incident_only",
+      "theme": "ops",
+      "agent_question": null,
+      "attack": null,
+      "notes": "customer BR"
+    },
+    {
+      "raw_title": "AIOPS DR Major Upgrade",
+      "bucket": "in_scope_howto",
+      "theme": "upgrade",
+      "agent_question": "What is the documented approach for a major AIOPS DR environment upgrade?",
+      "attack": "wrong_facet",
+      "notes": null
+    },
+    {
+      "raw_title": "Network Discovery Pipeline Configuration walkthrough",
+      "bucket": "in_scope_howto",
+      "theme": "discovery",
+      "agent_question": "Walk me through configuring a network discovery pipeline in Fabrix.",
+      "attack": "thin_wiring",
+      "notes": null
+    },
+    {
+      "raw_title": "AIOPS UAT issue",
+      "bucket": "incident_only",
+      "theme": "ops",
+      "agent_question": null,
+      "attack": null,
+      "notes": "vague env issue"
+    },
+    {
+      "raw_title": "/var/lib/containerd file system space utilization exceeds above 80%",
+      "bucket": "incident_only",
+      "theme": "ops",
+      "agent_question": null,
+      "attack": null,
+      "notes": "filesystem alert"
+    },
+    {
+      "raw_title": "Tatacommunications scheduled pipeline failed",
+      "bucket": "debug_path",
+      "theme": "pipeline",
+      "agent_question": "A scheduled pipeline failed \u2014 what documented cron / scheduled_pipelines checks should I run?",
+      "attack": "abstain_fail",
+      "notes": "strip customer name in eval wording"
+    },
+    {
+      "raw_title": "Authentication failure of User",
+      "bucket": "in_scope_howto",
+      "theme": "auth",
+      "agent_question": "What do Fabrix docs say about troubleshooting user authentication failures?",
+      "attack": "wrong_facet",
+      "notes": null
+    },
+    {
+      "raw_title": "Watchdog alert - Prometheus",
+      "bucket": "in_scope_howto",
+      "theme": "prometheus",
+      "agent_question": "How are Prometheus watchdog-style alerts handled in Fabrix according to the docs?",
+      "attack": "thin_wiring",
+      "notes": null
+    },
+    {
+      "raw_title": "Blank Incident Details in SNOW",
+      "bucket": "in_scope_howto",
+      "theme": "servicenow",
+      "agent_question": "When ServiceNow incidents created from Fabrix have blank details, what documented fields and bots should I verify?",
+      "attack": "thin_wiring",
+      "notes": null
+    },
+    {
+      "raw_title": "File System Space is Utilizing above 80%",
+      "bucket": "incident_only",
+      "theme": "ops",
+      "agent_question": null,
+      "attack": null,
+      "notes": "filesystem alert"
+    },
+    {
+      "raw_title": "LNX-THRESHOLD VIOLATION - DISK",
+      "bucket": "incident_only",
+      "theme": "ops",
+      "agent_question": null,
+      "attack": null,
+      "notes": "alert name"
+    },
+    {
+      "raw_title": "IT#0054607366 | IT#0054607371 | IT#0054607379",
+      "bucket": "incident_only",
+      "theme": "ops",
+      "agent_question": null,
+      "attack": null,
+      "notes": "IT ticket ids"
+    },
+    {
+      "raw_title": "No data Available for ML Insights",
+      "bucket": "in_scope_howto",
+      "theme": "agentic",
+      "agent_question": "What do public Fabrix docs say about ML Insights when no data is available?",
+      "attack": "overclaim",
+      "notes": "may abstain"
+    },
+    {
+      "raw_title": "AIOPS PROD Major Upgrade from 8.1.0.x to 8.2.0 and 8.2.0.1",
+      "bucket": "in_scope_howto",
+      "theme": "upgrade",
+      "agent_question": "What is the documented RDAF upgrade path when moving between AIOPS platform minor versions?",
+      "attack": "wrong_facet",
+      "notes": null
+    },
+    {
+      "raw_title": "AIOPS - API access",
+      "bucket": "in_scope_howto",
+      "theme": "auth",
+      "agent_question": "How do I set up API access / API tokens for Fabrix according to the docs?",
+      "attack": "wrong_facet",
+      "notes": null
+    },
+    {
+      "raw_title": "pipeline failed in UAT",
+      "bucket": "debug_path",
+      "theme": "pipeline",
+      "agent_question": "How do I debug a Fabrix pipeline that failed in a non-prod environment?",
+      "attack": "abstain_fail",
+      "notes": null
+    },
+    {
+      "raw_title": "Cisco APIC and Network Discovery Failure Report for last 24 Hours",
+      "bucket": "in_scope_howto",
+      "theme": "discovery",
+      "agent_question": "What documented steps help investigate Cisco APIC / network discovery failures in Fabrix?",
+      "attack": "thin_wiring",
+      "notes": null
+    },
+    {
+      "raw_title": "High CPU utilization",
+      "bucket": "incident_only",
+      "theme": "ops",
+      "agent_question": null,
+      "attack": null,
+      "notes": "infra alert"
+    },
+    {
+      "raw_title": "AIOPS Pipeline not running",
+      "bucket": "debug_path",
+      "theme": "pipeline",
+      "agent_question": "My AIOPS pipeline is not running \u2014 what documented checks cover workers, schedules, and pipeline status?",
+      "attack": "abstain_fail",
+      "notes": null
+    },
+    {
+      "raw_title": "PRB0106564",
+      "bucket": "incident_only",
+      "theme": "ops",
+      "agent_question": null,
+      "attack": null,
+      "notes": "PRB id"
+    },
+    {
+      "raw_title": "PRB0112610",
+      "bucket": "incident_only",
+      "theme": "ops",
+      "agent_question": null,
+      "attack": null,
+      "notes": "PRB id"
+    },
+    {
+      "raw_title": "CFX server Python Version",
+      "bucket": "in_scope_howto",
+      "theme": "upgrade",
+      "agent_question": "Which Python versions do Fabrix / RDA installation docs require?",
+      "attack": "wrong_facet",
+      "notes": null
+    },
+    {
+      "raw_title": "Issue with API Token Auto Refresh in Production CFX",
+      "bucket": "in_scope_howto",
+      "theme": "auth",
+      "agent_question": "Is API token auto-refresh documented for Fabrix production, and how should tokens be rotated?",
+      "attack": "overclaim",
+      "notes": null
+    },
+    {
+      "raw_title": "Multiple Logon Failures",
+      "bucket": "incident_only",
+      "theme": "ops",
+      "agent_question": null,
+      "attack": null,
+      "notes": "security event"
+    },
+    {
+      "raw_title": "AIOPS PROD Application Upgrade",
+      "bucket": "in_scope_howto",
+      "theme": "upgrade",
+      "agent_question": "How do I perform an AIOPS / RDAF application upgrade using the documented CLI?",
+      "attack": "wrong_facet",
+      "notes": null
+    },
+    {
+      "raw_title": "AIOPS Details in enrichmentinfo getting truncated while creating SNOW tickets",
+      "bucket": "in_scope_howto",
+      "theme": "servicenow",
+      "agent_question": "When Fabrix creates ServiceNow tickets, how should enrichment fields be passed so details are not truncated?",
+      "attack": "thin_wiring",
+      "notes": "may need honesty on truncation limits"
+    },
+    {
+      "raw_title": "Enrichment info is not updating completely in Snow UAT",
+      "bucket": "in_scope_howto",
+      "theme": "servicenow",
+      "agent_question": "How do Fabrix ServiceNow bots update enrichment / additional fields on existing incidents?",
+      "attack": "thin_wiring",
+      "notes": null
+    },
+    {
+      "raw_title": "Request for Dashboard to Manage AIOPS Discovery Host Updates",
+      "bucket": "in_scope_howto",
+      "theme": "dashboard",
+      "agent_question": "Is there a documented dashboard for managing AIOPS discovery host updates, or how would I build one from datasets?",
+      "attack": "thin_wiring",
+      "notes": null
+    },
+    {
+      "raw_title": "Multiple Privileged Logon Failures",
+      "bucket": "incident_only",
+      "theme": "ops",
+      "agent_question": null,
+      "attack": null,
+      "notes": "security event"
+    },
+    {
+      "raw_title": "Cloud Fabrix IP",
+      "bucket": "trap_oos",
+      "theme": "trap",
+      "agent_question": "What is the public IP range / allowlist for Cloud Fabrix SaaS?",
+      "attack": "trap_abstain",
+      "notes": "may be OOS"
+    },
+    {
+      "raw_title": "Agentic AI in Production Environment",
+      "bucket": "in_scope_howto",
+      "theme": "agentic",
+      "agent_question": "What is documented for running Fabrix Agentic AI / Fabio Copilot in a production environment?",
+      "attack": "overclaim",
+      "notes": null
+    },
+    {
+      "raw_title": "DDN Alerts are not creating tickets",
+      "bucket": "debug_path",
+      "theme": "pipeline",
+      "agent_question": "Alerts are not creating tickets \u2014 what documented pipeline / integration path should I verify?",
+      "attack": "thin_wiring",
+      "notes": null
+    },
+    {
+      "raw_title": "Error in Development Pipeline",
+      "bucket": "debug_path",
+      "theme": "pipeline",
+      "agent_question": "How do I troubleshoot errors in a Fabrix development pipeline using documented tools?",
+      "attack": "abstain_fail",
+      "notes": null
+    },
+    {
+      "raw_title": "ITSM Pipeline Failed",
+      "bucket": "debug_path",
+      "theme": "pipeline",
+      "agent_question": "An ITSM-related Fabrix pipeline failed \u2014 what documented bots and checks apply?",
+      "attack": "thin_wiring",
+      "notes": null
+    },
+    {
+      "raw_title": "AIOPS DR Agentic AI Pack Error",
+      "bucket": "in_scope_howto",
+      "theme": "agentic",
+      "agent_question": "What do the docs say about deploying or troubleshooting Agentic AI packs in an AIOPS DR environment?",
+      "attack": "overclaim",
+      "notes": null
+    },
+    {
+      "raw_title": "Need Urgent support for DB Pods not starting in aiops prod setup",
+      "bucket": "incident_only",
+      "theme": "ops",
+      "agent_question": null,
+      "attack": null,
+      "notes": "k8s/runtime incident"
+    },
+    {
+      "raw_title": "Read-Only API User in CloudFabrix",
+      "bucket": "in_scope_howto",
+      "theme": "auth",
+      "agent_question": "How do I configure a read-only API user in Fabrix for integrations and discovery?",
+      "attack": "wrong_facet",
+      "notes": null
+    },
+    {
+      "raw_title": "Production Pipeline Missed Processing an Email",
+      "bucket": "debug_path",
+      "theme": "pipeline",
+      "agent_question": "A production pipeline missed processing an email \u2014 what documented email bots and pipeline checks should I review?",
+      "attack": "thin_wiring",
+      "notes": null
+    },
+    {
+      "raw_title": "threadspan_agent user creation issue from CFX",
+      "bucket": "incident_only",
+      "theme": "ops",
+      "agent_question": null,
+      "attack": null,
+      "notes": "customer username"
+    },
+    {
+      "raw_title": "AIOPS discovery issue",
+      "bucket": "in_scope_howto",
+      "theme": "discovery",
+      "agent_question": "What general documented steps should I follow when AIOPS / Fabrix discovery is failing?",
+      "attack": "thin_wiring",
+      "notes": null
+    },
+    {
+      "raw_title": "Request for SNMP Details of Network Devices",
+      "bucket": "in_scope_howto",
+      "theme": "discovery",
+      "agent_question": "How does Fabrix document SNMP credentials and bots for network device discovery?",
+      "attack": "thin_wiring",
+      "notes": null
+    },
+    {
+      "raw_title": "Alert Dump export limit issue",
+      "bucket": "in_scope_howto",
+      "theme": "prometheus",
+      "agent_question": "Is there a documented limit for alert dump / export size in Fabrix?",
+      "attack": "overclaim",
+      "notes": "specificity"
+    },
+    {
+      "raw_title": "UAT is down due to mariadb crash",
+      "bucket": "incident_only",
+      "theme": "ops",
+      "agent_question": null,
+      "attack": null,
+      "notes": "outage"
+    },
+    {
+      "raw_title": "AIOPS: Error while executing the pipeline",
+      "bucket": "debug_path",
+      "theme": "pipeline",
+      "agent_question": "I'm getting an error while executing an AIOPS pipeline \u2014 what documented debugging steps apply?",
+      "attack": "abstain_fail",
+      "notes": null
+    },
+    {
+      "raw_title": "Assistance Required for Discovery Failure Report Timeout Errors",
+      "bucket": "in_scope_howto",
+      "theme": "discovery",
+      "agent_question": "Discovery failure reports are timing out \u2014 what documented limits or retry guidance exist?",
+      "attack": "overclaim",
+      "notes": null
+    },
+    {
+      "raw_title": "AIOPS: Ojas tickets generation issue",
+      "bucket": "incident_only",
+      "theme": "ops",
+      "agent_question": null,
+      "attack": null,
+      "notes": "customer-specific product"
+    },
+    {
+      "raw_title": "AIOPS UAT Event page no data issue",
+      "bucket": "debug_path",
+      "theme": "dashboard",
+      "agent_question": "The events page shows no data in a non-prod environment \u2014 what documented data-path checks (streams/datasets) should I verify?",
+      "attack": "wrong_facet",
+      "notes": null
+    },
+    {
+      "raw_title": "Guidance Required for Qdrant DB Replication Configuration",
+      "bucket": "trap_oos",
+      "theme": "trap",
+      "agent_question": "How do I configure Qdrant DB replication for Fabrix?",
+      "attack": "trap_abstain",
+      "notes": "infra may be OOS / not in product docs"
+    },
+    {
+      "raw_title": "Feasibility Check for Updating ServiceNow TAC ID in Zabbix Problem Description",
+      "bucket": "in_scope_howto",
+      "theme": "servicenow",
+      "agent_question": "Can Fabrix pipelines update a Zabbix problem description with a ServiceNow TAC ID, and what bots are involved?",
+      "attack": "thin_wiring",
+      "notes": "multi-product handoff"
+    }
+  ]
+}

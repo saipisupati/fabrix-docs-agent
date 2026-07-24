@@ -413,6 +413,76 @@ PRODUCTION_CASES = [
         ],
         "expect_infer": True,
     },
+    # Cycle 15 thin-wiring promotions
+    {
+        "id": "c15_splunk_ops_dashboard",
+        "question": (
+            "Ops wants Splunk log events landing in a Fabrix dashboard they can watch "
+            "during incidents — what documented building blocks should I use?"
+        ),
+        "need_any": ["splunk"],
+        "forbid": ["@c:splunk-dashboard", "linux-inventory"],
+        "expect_infer": True,
+    },
+    {
+        "id": "c15_datadog_to_slack_alert",
+        "question": (
+            "Map Datadog metrics into a Fabrix persistent stream and then notify Slack "
+            "when thresholds trip — walk the documented path."
+        ),
+        "need_any": ["datadog"],
+        "forbid": ["@c:datadog-slack-bridge", "servicenow"],
+        "expect_infer": True,
+    },
+    {
+        "id": "c15_kafka_searchable_dataset",
+        "question": (
+            "I need Kafka topic messages to become a searchable Fabrix dataset — "
+            "which credentials, bots, and handoffs does the docs describe?"
+        ),
+        "need_any": ["kafka"],
+        "forbid": ["@c:kafka-to-dataset", "servicenow"],
+        "expect_infer": True,
+    },
+    # Cycle 16 customer ticket-theme promotions
+    {
+        "id": "c16_windows_inventory_readonly",
+        "question": (
+            "How do I set up Windows inventory discovery in Fabrix, and should "
+            "the discovery account be a read-only user?"
+        ),
+        "need_any": ["windows", "inventory", "bot"],
+        "forbid": ["@c:windows-discovery"],
+        "expect_infer": True,
+    },
+    {
+        "id": "c16_pipeline_not_triggered",
+        "question": (
+            "A production scheduled pipeline did not trigger overnight — what "
+            "documented checks should I run first?"
+        ),
+        "need_any": ["cron", "scheduled_pipelines", "schedule", "blueprint"],
+        "forbid": ["@c:pipeline-scheduler", "@c:schedule-pipeline"],
+        "expect_infer": True,
+    },
+    {
+        "id": "c16_fake_prb_hostname_wire",
+        "question": (
+            "How do I wire PRB0105428-SIFY host 198.18.29.83 into a Fabrix dashboard "
+            "end to end?"
+        ),
+        "need_any": [
+            "don't see",
+            "do not see",
+            "not documented",
+            "couldn't find",
+            "could not find",
+            "not in the",
+            "isn't documented",
+            "is not documented",
+        ],
+        "forbid": ["**documented fabrix path**", "@prb0105428"],
+    },
 ]
 
 

@@ -1,0 +1,135 @@
+{
+  "results": [
+    {
+      "id": "unseen_pagerduty_dashboard",
+      "kind": "real",
+      "q": "How do I wire PagerDuty into a Fabrix dashboard end to end?",
+      "scope": "related",
+      "answer": "**Documented Fabrix path**  \n1. To integrate PagerDuty with Fabrix, you'll first need to set up an API token for your PagerDuty account to authorize the connection. This token serves as the authentication method to allow bots to access your PagerDuty resources.\n2. Utilize the following PagerDuty bots to collect data:\n   - `#pagerduty:list-incidents` to list existing incidents.\n   - `#pagerduty:list-services` to obtain existing services.\n   - `#pagerduty:list-users` to retrieve details about users in your PagerDuty account.\n\n3. After setting up your bots, you can create a pipeline to process the data from these bots. The output from these bots can be stored in a dataset or a persistent stream (pstream) for further analysis and visualization. For example, you might store the incident list in a dataset for dashboard visualization.\n4. Finally, you can construct a dashboard that connects to the dataset or pstream created from the PagerDuty data, allowing you to visualize incident trends, user engagement, and service performance in real-time.\n\n**Next (inferred):** Undocumented handoffs may include ensuring network access to PagerDuty and configuring necessary permissions for the bots to interact with the dashboard components.\n\n**Prerequisites** You need an API token from PagerDuty to authenticate the bots and systems.\n\n*Includes inferred Fabrix guidance not stated verbatim in the docs.*",
+      "gaps": [
+        "Specific dataset or pstream configuration details are not provided.",
+        "No information on handling data visualization settings."
+      ],
+      "score": {
+        "has_auth": true,
+        "has_family_bot": true,
+        "family_bots": [
+          "pagerduty:list-incidents",
+          "pagerduty:list-services",
+          "pagerduty:list-users"
+        ],
+        "has_sink": true,
+        "sibling_bots": [],
+        "all_bots": [
+          "pagerduty:list-incidents",
+          "pagerduty:list-services",
+          "pagerduty:list-users"
+        ],
+        "pass": true
+      },
+      "verdict": "PASS",
+      "latency_s": 14.9
+    },
+    {
+      "id": "unseen_dynatrace_stream",
+      "kind": "real",
+      "q": "What's the setup to land Dynatrace data into a persistent stream?",
+      "scope": "related",
+      "answer": "**Documented Fabrix path**  \n1. First, ensure you have the prerequisites: a Dynatrace SaaS account, an API key (generated through the Dynatrace SaaS portal), and at least one host or application being monitored in Dynatrace [1].\n2. Use the `@dynatrace:dynatrace-applications` bot to retrieve the list of applications from Dynatrace, or the `@dynatrace:dynatrace-metric-data` bot to collect specific metric data from a chosen entity [2].\n3. Stream the data obtained from these bots into a persistent stream by creating a configuration that leverages the `@dm:create-persistent-stream` bot to automatically persist the data into Opensearch or Elasticsearch [9].\n4. Monitor or analyze the persisted stream by querying it or utilizing it in dashboards as needed.\n\n**Next (inferred):** Ensure network access to Dynatrace and necessary configurations in your environment for connectivity. \n\n**Prerequisites** A Dynatrace SaaS account, an API key with appropriate permissions, and specific monitored entities in Dynatrace need to be set up before beginning this integration.\n\n*Includes inferred Fabrix guidance not stated verbatim in the docs.*",
+      "gaps": [
+        "Details on specific configuration settings for persistent streams in relation to Dynatrace data flows are not explicitly covered."
+      ],
+      "score": {
+        "has_auth": true,
+        "has_family_bot": true,
+        "family_bots": [
+          "dynatrace:dynatrace-applications",
+          "dynatrace:dynatrace-metric-data"
+        ],
+        "has_sink": true,
+        "sibling_bots": [],
+        "all_bots": [
+          "dynatrace:dynatrace-applications",
+          "dynatrace:dynatrace-metric-data",
+          "dm:create-persistent-stream"
+        ],
+        "pass": true
+      },
+      "verdict": "PASS",
+      "latency_s": 8.5
+    },
+    {
+      "id": "unseen_jira_dashboard",
+      "kind": "real",
+      "q": "Walk me through mapping Jira issues into a Fabrix dashboard ops can watch.",
+      "scope": "related",
+      "answer": "**Documented Fabrix path**  \n1. Start by ensuring you have the necessary credentials for Jira, specifically your API token or username/password.\n2. Use the source bot `@jira:issues` to query Jira issues. This bot expects a Full CFXQL query to retrieve the relevant issue data.\n3. Output the results into a dataset or a persistent stream, depending on your requirements for later data handling and querying.\n4. Finally, you can create a dashboard that utilizes this dataset or stream to visualize the Jira issues for operational monitoring.\n\n**Next (inferred):** You may want to configure alerts or notifications based on specific issue status changes or other metrics derived from your dashboard. Additional integration with Slack or other tools for real-time updates may be required for a comprehensive solution.  \n**Prerequisites** Ensure you have set up your Jira API access and have the necessary permissions to read issues.\n\n*Includes inferred Fabrix guidance not stated verbatim in the docs.*",
+      "gaps": [
+        "The specific steps to create the dashboard itself are not detailed in the excerpts."
+      ],
+      "score": {
+        "has_auth": true,
+        "has_family_bot": true,
+        "family_bots": [
+          "jira:issues"
+        ],
+        "has_sink": true,
+        "sibling_bots": [],
+        "all_bots": [
+          "jira:issues"
+        ],
+        "pass": true
+      },
+      "verdict": "PASS",
+      "latency_s": 10.6
+    },
+    {
+      "id": "unseen_nagios_stream",
+      "kind": "real",
+      "q": "How do I land Nagios alerts into a Fabrix persistent stream with the bots involved?",
+      "scope": "related",
+      "answer": "**Documented Fabrix path**  \n1. First, ensure you have the necessary credentials for Nagios XI, which requires read-only access permissions and an API key. This can be created in the Nagios XI interface by adding a new user with the appropriate permissions [1].  \n2. Use the following bot from the Nagios family to fetch alerts: `@nagios:nagios-alerts`. This bot will tag to list all alerts in Nagios and requires parameters such as timestamp to specify the duration for which data is required [2].  \n3. After retrieving the alerts with the `@nagios:nagios-alerts` bot, you can pass the data into a persistent stream for automated persistence and querying using the `@dm:create-persistent-stream` bot [9]. Specify your unique keys and parameters for the stream as needed.  \n4. You can then use the persistent stream for analysis, which allows querying of the alert data over time for various purposes, including integrating with dashboards or further processing workflows [3].  \n\n**Next (inferred):** Ensure that network access and any necessary security group configurations that allow the Fabrix platform to connect to Nagios XI are in place.\n\n**Prerequisites** Ensure that you have admin access to the Nagios XI system to set up the user and API token.\n\n*Includes inferred Fabrix guidance not stated verbatim in the docs.*",
+      "gaps": [
+        "Specific parameters for creating a persistent stream with alert data are not detailed"
+      ],
+      "score": {
+        "has_auth": true,
+        "has_family_bot": true,
+        "family_bots": [
+          "nagios:nagios-alerts",
+          "nagios:nagios-alerts"
+        ],
+        "has_sink": true,
+        "sibling_bots": [],
+        "all_bots": [
+          "nagios:nagios-alerts",
+          "nagios:nagios-alerts",
+          "dm:create-persistent-stream"
+        ],
+        "pass": true
+      },
+      "verdict": "PASS",
+      "latency_s": 12.7
+    },
+    {
+      "id": "corrupt_grafana_cloud",
+      "kind": "corruption",
+      "q": "How do I wire Grafana Cloud into a Fabrix dashboard end to end?",
+      "scope": "related",
+      "answer": "**Documented Fabrix path**  \n1. Create an API key in Grafana Cloud with the necessary permissions to access the data you wish to visualize. You'll need to use this API key for authentication.\n2. Use the corresponding Grafana bot for data retrieval. The bot token for Grafana is a documented bot from the retrieved catalog, which can be used to query data from Grafana Cloud.\n3. Ensure that the data retrieved from Grafana is processed into a dataset or pstream that can be handed off for reporting or visualization. This may include using a data-visualization-pipeline to structure your data appropriately.\n4. Finally, integrate the processed dataset or pstream into a fabrix-dashboard for visualization, allowing you to create a dynamic view of your data sourced from Grafana.\n\n**Next (inferred):** Additional setup may be required for network access to Grafana Cloud and ensuring that your API key is secured and used correctly in the Fabrix environment. \n\n**Prerequisites** Make sure you have access to a Grafana Cloud account and are familiar with managing API keys.\n\n*Includes inferred Fabrix guidance not stated verbatim in the docs.*",
+      "gaps": [
+        "Invented bot names were removed because they do not appear in retrieved excerpts: @grafana:query",
+        "No specific details on handling errors during integration or formatting requirements for the Grafana bot are mentioned."
+      ],
+      "score": {
+        "invented_grafana_bots": [],
+        "all_bots": [],
+        "hedges": false,
+        "pass": false,
+        "invents": false
+      },
+      "verdict": "FAIL",
+      "latency_s": 21.7
+    }
+  ]
+}

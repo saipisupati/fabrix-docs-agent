@@ -1,0 +1,696 @@
+{
+  "generated_at": "2026-07-24T05:44:43Z",
+  "method": "agent=local answer() ; chatgpt_proxy=gpt-4o-mini+live docs browse ; judge=gpt-4o-mini",
+  "disclaimer": "ChatGPT column is an automated browse proxy (same model family + live docs pages), not chat.openai.com UI.",
+  "questions": [
+    {
+      "id": "c14_splunk_dashboard",
+      "theme": "day2_ops / vague product",
+      "question": "How do I map Splunk events into a Fabrix dashboard that ops can watch?",
+      "agent": {
+        "answer": "**Documented Fabrix path**  \n1. **Credentials / Auth for Splunk**: Create a read-only service user account in Splunk, then gather the necessary details such as the hostname, username, password, and HEC token for API interactions [2].\n2. **Concrete bots from the product family**: Use the following Splunk bots in your pipeline:\n   - `@splunkv2:add-to-index`: This bot adds log event records to a specific index in Splunk for visualization in dashboards.\n   - Other relevant bots like `@splunkv2:search-index`, which allows you to query and filter log records [3].\n3. **Stream or dataset handoff**: The output from these bots typically feeds into a dataset or persistent stream (pstream), which serves as the data source for your dashboards.\n4. **Dashboard / Downstream step**: Once the data is ingested into Splunk and indexed, you can visualize it using various dashboards provided by the CloudFabrix Asset Analytics App, which are built to showcase insights on asset management, utilization, and performance [1][2].\n\n**Next (inferred):** You may need to ensure network access and firewall configurations allow communication between Fabrix and Splunk, as well as confirm that your HEC token has the required permissions.\n\n**Prerequisites**: Ensure that your Splunk installation is properly set up and meets the version requirements (e.g., Splunk Enterprise v9.x or v8.x) [1].\n\n*Includes inferred Fabrix guidance not stated verbatim in the docs.*",
+        "scope": "related",
+        "sources": [
+          "https://docs.fabrix.ai/installation_guides/splunk/",
+          "https://docs.fabrix.ai/Datasource_Integrations/splunk_api/",
+          "https://docs.fabrix.ai/Bots/splunk_v2/",
+          "https://docs.fabrix.ai/Datasource_Integrations/splunk/",
+          "https://docs.fabrix.ai/beginners_guide/assigning_dashboards/"
+        ],
+        "gaps": [
+          "The documentation does not specify the exact data format required for Splunk events prior to ingestion."
+        ],
+        "latency_s": 20.5,
+        "used_inference": true
+      },
+      "chatgpt_proxy": {
+        "answer": "To map Splunk events into a Fabrix dashboard for operational monitoring, you will need to follow these steps based on the available documentation:\n\n1. **Integrate Splunk with Cisco FSO Platform**: While the specific integration steps for Splunk are not detailed in the provided documentation, you will typically need to set up a data source integration that allows Splunk to send events to the Cisco FSO Platform. This may involve using APIs or webhooks.\n\n2. **Utilize the Asset Intelligence Module**: If you are using the CloudFabrix Asset Intelligence module, ensure that it is subscribed to in the Cisco FSO Platform. You can do this via the following steps:\n   - Log in to the Observe portal: `https://your-tenant.observe.appdynamics.com`\n   - Click on the last icon for **FSO Platform Exchange**.\n   - Subscribe to the **Asset Intelligence module** and confirm the subscription.\n\n3. **Set Up Service Principal**: You will need a Service Principal to authenticate and connect to the Cisco FSO Platform. Follow these steps:\n   - Log in to the Cisco FSO Platform Accounts Portal: `https://accounts.appdynamics.com/`\n   - Navigate to **Access Management > Service Principals**.\n   - Create a new Service Principal and download the JSON file containing your credentials.\n\n4. **Configure Alert Notifications**: If you want to receive alerts from Splunk, you may need to set up a webhook or similar notification mechanism. This is similar to how AWS Cloudwatch alerts are configured:\n   - Create a webhook URL in the CloudFabrix OIA application.\n   - Configure Splunk to send alerts to this webhook URL.\n\n5. **Visualize in Fabrix Dashboard**: Once the events are ingested into the Cisco FSO Platform, you can create dashboards to visualize these events. The specifics of creating dashboards are not covered in the provided documentation, but typically you would use the dashboard creation tools available in the Cisco FSO Platform.\n\n6. **Monitor and Adjust**: After setting up the integration and dashboard, continuously monitor the performance and adjust the configurations as necessary to ensure that the events are accurately represented and actionable.\n\nIf you require specific commands or paramete",
+        "sources": [
+          "https://docs.fabrix.ai/installation_guides/fso_asset_intelligence/",
+          "https://docs.fabrix.ai/installation_guides/rda_edge_for_fso/",
+          "https://docs.fabrix.ai/Datasource_Integrations/AWS_Cloudwatch/"
+        ],
+        "latency_s": 5.4,
+        "note": "GPT-4o-mini + live docs.fabrix.ai pages (browse proxy), not ChatGPT web UI"
+      },
+      "grade": {
+        "agent": {
+          "accuracy": "mixed",
+          "docs_grounded": true,
+          "issues": [
+            "short"
+          ],
+          "strengths": [
+            "provides a clear step-by-step process",
+            "includes relevant bots for integration"
+          ],
+          "fail_class": "thin_wiring"
+        },
+        "chatgpt_proxy": {
+          "accuracy": "mixed",
+          "docs_grounded": true,
+          "issues": [
+            "short"
+          ],
+          "strengths": [
+            "covers integration steps",
+            "mentions necessary prerequisites"
+          ],
+          "fail_class": "thin_wiring"
+        },
+        "winner": "tie",
+        "reason": "Both responses provide useful but incomplete guidance on integrating Splunk with Fabrix dashboards.",
+        "agent_miss_for_cycle": true
+      }
+    },
+    {
+      "id": "c14_datadog_slack_wiring",
+      "theme": "multi_product wiring",
+      "question": "Walk me through wiring Datadog metrics into a persistent stream, then alerting Slack.",
+      "agent": {
+        "answer": "**Documented Fabrix path**  \n1. For integrating Datadog metrics, you will first need to set up authentication. This typically involves using an API token to authenticate your access to Datadog's services.\n2. Use the following relevant bots to collect metrics data from Datadog:\n   - `@datadog:metrics` \u2014 to query metric data from DataDog.\n   - `@datadog:metric-list` \u2014 to list all active metrics that you can query.\n3. After collecting the metrics using these bots, you will create a persistent stream to store the data. You would add a persistent stream in the UI like this:\n   ```\n   {\n     \"source_dataset\": \"<give the name of the dataset>\"\n   }\n   ```\n   This step associates the dataset with the persistent stream where the metrics will be stored.\n4. Once the Datadog metrics are ingested into the persistent stream, you can set up alerts by using the Slack bot:\n   - `@slack:post-message-to-channel` \u2014 use this bot to send alert messages to a specified Slack channel.\n   - This bot allows you to specify the channel and the message column that contains alert information.\n\n**Next (inferred):** You may need to ensure that network access between Fabrix and both Datadog and Slack is properly configured. Additionally, check that the permissions for the Datadog API token and Slack integration are correctly set for the intended operations.\n\n**Prerequisites** Ensure that you have the necessary API tokens for Datadog and any required credentials for Slack to successfully post messages.\n\n*Includes inferred Fabrix guidance not stated verbatim in the docs.*",
+        "scope": "related",
+        "sources": [
+          "https://docs.fabrix.ai/beginners_guide/ps_ui/",
+          "https://docs.fabrix.ai/Bots/datadog/",
+          "https://docs.fabrix.ai/Bots/slack/",
+          "https://docs.fabrix.ai/Extensions/extensions_D_E/",
+          "https://docs.fabrix.ai/Pipelines/ebonding-stream-to-slack/"
+        ],
+        "gaps": [
+          "Specific steps detailing the exact configuration for API tokens and permissions for both Datadog and Slack integrations are not provided in the documentation."
+        ],
+        "latency_s": 11.5,
+        "used_inference": true
+      },
+      "chatgpt_proxy": {
+        "answer": "To wire Datadog metrics into a persistent stream and set up alerts to Slack using RDA Fabric, follow these structured steps:\n\n### Step 1: Ingest Datadog Metrics\n\n1. **Set Up RDA Event Gateway**: Configure the RDA Event Gateway to ingest metrics from Datadog. You can use the HTTP endpoint type for this purpose. Here\u2019s an example configuration snippet for your `main.yml` file:\n\n   ```yaml\n   endpoints:\n     - name: datadog_metrics\n       enabled: true\n       type: http\n       secure: true\n       content_type: auto\n       port: 516\n       stream: datadog-metrics-stream\n       attrs:\n         site_code: your_site_code\n   ```\n\n   - **stream**: This is the name of the RDA Stream where the data will be published.\n\n2. **Enable Archival (Optional)**: If you want to archive the ingested metrics, enable the archival feature in your Event Gateway configuration:\n\n   ```yaml\n   archival:\n     enabled: true\n     local_dir: /tmp/log_archive/\n     name: datadog_archive\n     destination_repository: your_logarchive_repo\n   ```\n\n### Step 2: Create a Persistent Stream\n\n1. **Define a Persistent Stream**: Use the `Persistent Stream` feature to store the ingested metrics. This can be done through the RDA Portal or CLI. For example, you can create a persistent stream using the following command:\n\n   ```bash\n   @dm:create-persistent-stream --name datadog-metrics-stream --description \"Stream for Datadog metrics\"\n   ```\n\n### Step 3: Set Up Alerts to Slack\n\n1. **Create an Alerting Pipeline**: You will need to create a pipeline that processes the metrics and triggers alerts based on specific conditions. Use the `RunPipeline` tool to execute this pipeline. Here\u2019s a basic example:\n\n   ```yaml\n   tools:\n     - name: alert_slack\n       type: RunPipeline\n       custom_config:\n         pipeline_name: your_alert_pipeline_name\n         save_to_cache: yes\n   ```\n\n2. **Configure Slack Notifications**: Within your alert pipeline, you can use a bot or webhook to send notifications to Slack. Ensure you have the Slack integration set up and configured to receive messages from your pipeline.\n\n### Step 4: Test the Setup\n\n1. **Send Test Metrics**: Send some test metrics to the configured HTTP endpoint to ens",
+        "sources": [
+          "https://docs.fabrix.ai/ai_fabric/agentic_building_guide/tool_handlers_guide/",
+          "https://docs.fabrix.ai/beginners_guide/data_at_rest/",
+          "https://docs.fabrix.ai/beginners_guide/data_ingestion/"
+        ],
+        "latency_s": 6.2,
+        "note": "GPT-4o-mini + live docs.fabrix.ai pages (browse proxy), not ChatGPT web UI"
+      },
+      "grade": {
+        "agent": {
+          "accuracy": "mixed",
+          "docs_grounded": true,
+          "issues": [
+            "short"
+          ],
+          "strengths": [
+            "correct product family",
+            "includes relevant bots"
+          ],
+          "fail_class": "thin_wiring"
+        },
+        "chatgpt_proxy": {
+          "accuracy": "strong",
+          "docs_grounded": true,
+          "issues": [],
+          "strengths": [
+            "detailed steps",
+            "correct parameters",
+            "honest gaps"
+          ],
+          "fail_class": "none"
+        },
+        "winner": "chatgpt_proxy",
+        "reason": "The chatgpt_proxy provided a more comprehensive and structured response with clear steps and configurations.",
+        "agent_miss_for_cycle": true
+      }
+    },
+    {
+      "id": "c14_schedule_debug",
+      "theme": "day2_ops",
+      "question": "What's the right way to debug why a scheduled pipeline didn't fire last night?",
+      "agent": {
+        "answer": "**Documented Fabrix path**\nScheduled pipelines are configured in a service blueprint under `scheduled_pipelines` with a `cron_expression` (see beginners_guide/scheduled_pipelines). To debug a pipeline that did not fire: 1) confirm the blueprint lists the pipeline under `scheduled_pipelines`, 2) verify the `cron_expression`, 3) check that workers/site services are up, 4) review pipeline run history/logs. Do not invent a dedicated pipeline scheduler bot.\n\n**Next (inferred):** Exact UI clicks and log paths can vary by site.\n\n*Includes inferred Fabrix guidance not stated verbatim in the docs.*",
+        "scope": "related",
+        "sources": [
+          "https://docs.fabrix.ai/beginners_guide/scheduled_pipelines/",
+          "https://docs.fabrix.ai/Bots/exec/",
+          "https://docs.fabrix.ai/ai_fabric/agentic_building_guide/async_tool_call/",
+          "https://docs.fabrix.ai/beginners_guide/",
+          "https://docs.fabrix.ai/ai_fabric/agentic_building_guide/tool_handlers_guide/",
+          "https://docs.fabrix.ai/Pipelines/aws-dependency-mapper/"
+        ],
+        "gaps": [
+          "Public docs cover scheduled_pipelines + cron_expression; site-specific miss diagnosis steps may be incomplete",
+          "'s the right way to debug why a scheduled pipeline didn' is not present in the retrieved public docs",
+          "Specific debugging tools or commands for checking scheduled pipeline status are not documented."
+        ],
+        "latency_s": 11.6,
+        "used_inference": true
+      },
+      "chatgpt_proxy": {
+        "answer": "To debug why a scheduled pipeline didn't fire last night, you can follow these steps:\n\n1. **Check Scheduled Jobs**: Verify if the pipeline was scheduled correctly. You can do this by accessing the scheduling interface in the RDA Portal or RDA Studio to confirm the pipeline's schedule.\n\n2. **Review Logs**: Look at the logs for the scheduled job. Logs can provide insights into whether the job was triggered and if there were any errors during execution. Check for any error messages or warnings that might indicate why the pipeline did not run.\n\n3. **Inspect Pipeline Configuration**: Ensure that the pipeline is configured correctly. Check for any changes made to the pipeline that might have affected its execution. This includes verifying the bots used in the pipeline and their configurations.\n\n4. **Examine Spend Limits**: If you have AI Spend Limits configured, check if the spend limit for the user, project, or model associated with the pipeline was reached. If the limit was reached and set to \"Block,\" the pipeline would not execute. You can review the spend rules in the AI Administration section:\n   - Go to **AI Administration \u2192 AI Spend Rules**.\n   - Look for the relevant rule and check the **Current Spend ($)** against the **Spend Limit ($)**.\n\n5. **Check for External Dependencies**: If the pipeline relies on external data sources or services, ensure that those services were available and functioning at the time the pipeline was scheduled to run.\n\n6. **Use the Inspect Feature**: If you have access to the RDA Studio, use the Inspect feature to analyze the pipeline's execution history and see if there were any issues during previous runs.\n\nIf none of these steps reveal the issue, you may need to consult with your system administrator or support team for further assistance, as the documentation does not cover every potential cause for a pipeline not firing.",
+        "sources": [
+          "https://docs.fabrix.ai/ai_fabric/ai_administration/ai_spend_limits/",
+          "https://docs.fabrix.ai/beginners_guide/",
+          "https://docs.fabrix.ai/beginners_guide/data_in_motion/"
+        ],
+        "latency_s": 4.1,
+        "note": "GPT-4o-mini + live docs.fabrix.ai pages (browse proxy), not ChatGPT web UI"
+      },
+      "grade": {
+        "agent": {
+          "accuracy": "strong",
+          "docs_grounded": true,
+          "issues": [],
+          "strengths": [
+            "clear step-by-step debugging process",
+            "directly references relevant documentation"
+          ],
+          "fail_class": "none"
+        },
+        "chatgpt_proxy": {
+          "accuracy": "mixed",
+          "docs_grounded": true,
+          "issues": [
+            "some steps inferred rather than directly from docs"
+          ],
+          "strengths": [
+            "comprehensive debugging steps",
+            "covers multiple potential issues"
+          ],
+          "fail_class": "thin_wiring"
+        },
+        "winner": "agent",
+        "reason": "The agent provided a more concise and directly grounded answer based on the documentation.",
+        "agent_miss_for_cycle": false
+      }
+    },
+    {
+      "id": "c14_concurrent_dataset",
+      "theme": "day2_ops / overclaim risk",
+      "question": "How does Fabrix handle concurrent writes to the same dataset from two pipelines?",
+      "agent": {
+        "answer": "Fabrix handles concurrent writes to datasets and persistent streams (pstreams) by ensuring data consistency and integrity. When multiple pipelines attempt to write to the same dataset or pstream concurrently, Fabrix implements mechanisms that help manage these writes effectively. For example, the system may use specific handlers to address concurrent write operations, thereby preventing data corruption or loss.\n\nIn addition, the use of pipelines in conjunction with datasets or pstreams allows for a structured approach to manage how data is written and potentially avoids conflicts that could occur when simultaneous writes happen from different sources. While the exact functioning of any specific handlers for managing concurrent writes is not detailed in the documentation, the focus on maintaining data consistency during concurrent operations is a critical aspect of the architecture.\n\n**Documented claims on concurrent writes:**\n- Fabrix emphasizes the importance of data consistency and integrity when handling concurrent writes to datasets and pstreams, which indicates that robust mechanisms are in place to manage such situations effectively. This is crucial for applications relying on accurate and reliable data.\n\n*Includes inferred Fabrix guidance not stated verbatim in the docs.*",
+        "scope": "related",
+        "sources": [
+          "https://docs.fabrix.ai/Bots/exec/",
+          "https://docs.fabrix.ai/installation_guides/copy_policies_from_db_to_pstream/",
+          "https://docs.fabrix.ai/ai_fabric/agentic_building_guide/tool_handlers_guide/",
+          "https://docs.fabrix.ai/Datasource_Integrations/splunk_api/",
+          "https://docs.fabrix.ai/Pipelines/ebonding-stream-to-pagerduty/",
+          "https://docs.fabrix.ai/ai_fabric/agentic_building_guide/toolsets/"
+        ],
+        "gaps": [
+          "Specific details on the mechanisms or handlers used for managing concurrent writes are not provided."
+        ],
+        "latency_s": 14.5,
+        "used_inference": true
+      },
+      "chatgpt_proxy": {
+        "answer": "Fabrix handles concurrent writes to the same dataset from two pipelines using the `append` parameter in the `@dm:save` bot. When you want to append data to an existing dataset, you can set the `append` parameter to `\"yes\"`.\n\nHere\u2019s how you can structure your pipeline to handle concurrent writes:\n\n1. **Pipeline Structure**: Use the `@dm:save` bot to save your data to a dataset. For example:\n   ```plaintext\n   @files : loadfile filename = 'https://docs.fabrix.ai/data/datasets/synthetic_syslogs_dataset.csv' --> @dm : sample n = 0.01 --> @dm : save name = \"my-generated-logs\" append = \"yes\"\n   ```\n\n2. **Concurrent Writes**: If two pipelines are writing to the same dataset, ensure both pipelines include the `append = \"yes\"` parameter. This allows both pipelines to add data to the dataset without overwriting existing entries.\n\n3. **In-Memory Datasets**: If you want to avoid conflicts or manage temporary data, consider using in-memory datasets by prefixing the dataset name with `temp-`. This way, the dataset will only exist during the pipeline execution.\n\nBy using the `append` parameter effectively, Fabrix allows for concurrent writes to the same dataset, enabling multiple pipelines to operate without data loss or conflicts.",
+        "sources": [
+          "https://docs.fabrix.ai/beginners_guide/",
+          "https://docs.fabrix.ai/Bots/cisco-dnac/",
+          "https://docs.fabrix.ai/ai_fabric/agentic_building_guide/tool_handlers_guide/"
+        ],
+        "latency_s": 3.4,
+        "note": "GPT-4o-mini + live docs.fabrix.ai pages (browse proxy), not ChatGPT web UI"
+      },
+      "grade": {
+        "agent": {
+          "accuracy": "mixed",
+          "docs_grounded": true,
+          "issues": [
+            "short"
+          ],
+          "strengths": [
+            "addresses data consistency and integrity"
+          ],
+          "fail_class": "thin_wiring"
+        },
+        "chatgpt_proxy": {
+          "accuracy": "strong",
+          "docs_grounded": true,
+          "issues": [],
+          "strengths": [
+            "provides specific example with append parameter",
+            "clear explanation of concurrent writes"
+          ],
+          "fail_class": "none"
+        },
+        "winner": "chatgpt_proxy",
+        "reason": "The chatgpt_proxy provided a more detailed and actionable answer with specific examples from the documentation.",
+        "agent_miss_for_cycle": true
+      }
+    },
+    {
+      "id": "c14_worker_limits",
+      "theme": "day2_ops / specificity",
+      "question": "Where do I configure an RDA worker's max concurrent bots for a busy site?",
+      "agent": {
+        "answer": "**Documented Fabrix path**\n\n1. # Guide to navigate administrative operations in RDA Fabric platform's UI Portal Note The username/password has not been provided in this documentation. If you need access credentials, please reach out to the Support Team at (**support@fabrix.ai**) # Guide to navigate administrat\n\n**Next (inferred):** Public docs may not fully satisfy an exhaustive or end-to-end ask; use the documented subset above and fill gaps operationally.\n\n*Includes inferred Fabrix guidance not stated verbatim in the docs.*",
+        "scope": "related",
+        "sources": [
+          "https://docs.fabrix.ai/installation_guides/rdaf_portal/",
+          "https://docs.fabrix.ai/beginners_guide/data_control/",
+          "https://docs.fabrix.ai/beginners_guide/Rda_Fabric_Pstream/",
+          "https://docs.fabrix.ai/Datasource_Integrations/rda_datasource_integrations/",
+          "https://docs.fabrix.ai/ai_fabric/",
+          "https://docs.fabrix.ai/beginners_guide/"
+        ],
+        "gaps": [
+          "The documentation does not specify where to configure an RDA worker's max concurrent bots."
+        ],
+        "latency_s": 9.2,
+        "used_inference": true
+      },
+      "chatgpt_proxy": {
+        "answer": "To configure an RDA worker's maximum concurrent bots for a busy site, you will need to adjust the settings in your RDA configuration. However, the specific documentation provided does not detail the exact command or parameter for setting the maximum concurrent bots directly.\n\nTypically, this configuration might be found in the RDA Network configuration file or through specific commands related to worker settings, but the provided documentation does not include that information.\n\nIf you need to check the current settings or configurations, you can list the active microservices (pods) using the following command:\n\n```bash\npython3 rdac.py pods\n```\n\nThis command will help you identify the current state of your RDA workers, but for setting the maximum concurrent bots, you may need to refer to additional documentation or support resources specific to your RDA setup.",
+        "sources": [
+          "https://docs.fabrix.ai/beginners_guide/rdac/",
+          "https://docs.fabrix.ai/beginners_guide/rdac_new/",
+          "https://docs.fabrix.ai/installation_guides/rdac/"
+        ],
+        "latency_s": 2.4,
+        "note": "GPT-4o-mini + live docs.fabrix.ai pages (browse proxy), not ChatGPT web UI"
+      },
+      "grade": {
+        "agent": {
+          "accuracy": "wrong",
+          "docs_grounded": false,
+          "issues": [
+            "short"
+          ],
+          "strengths": [],
+          "fail_class": "wrong_facet"
+        },
+        "chatgpt_proxy": {
+          "accuracy": "mixed",
+          "docs_grounded": true,
+          "issues": [
+            "short"
+          ],
+          "strengths": [
+            "acknowledges lack of specific command",
+            "provides related command"
+          ],
+          "fail_class": "none"
+        },
+        "winner": "chatgpt_proxy",
+        "reason": "The chatgpt_proxy provided a more accurate response by acknowledging the lack of specific documentation while offering a related command.",
+        "agent_miss_for_cycle": true
+      }
+    },
+    {
+      "id": "c14_snow_change_schedule",
+      "theme": "integration wiring + schedule",
+      "question": "What's the easiest path to pull ServiceNow change tickets into Fabrix on a recurring schedule?",
+      "agent": {
+        "answer": "**Documented Fabrix path**  \n1. To pull ServiceNow change tickets into Fabrix, first, you'll need to configure your credentials. This typically requires providing a **Host**, **Port**, **Client ID**, and **Secret Value** for authentication with the ServiceNow API. Specifics for these parameters can be found in the documentation details regarding the ServiceNow integration [5][6]. \n2. Use the **@snowv2:query-table** bot to retrieve data from the ServiceNow change ticket table. This bot allows you to specify the table name and apply any necessary filtering using CFXQL.\n3. Next, hand off the data to a persistent stream or dataset. You can use the **@dm:save** bot to save the retrieved change tickets into a dataset, making them available for further processing or analytics in Fabrix.\n4. Optionally, configure a pipeline that implements a scheduled job to run this entire process at regular intervals, creating a recurring schedule for fetching change tickets from ServiceNow.\n\n**Next (inferred):** You may need to set up a cron job or utilize an existing scheduling feature in your Fabrix pipeline to automate the scheduled runs, but this specific mechanism is not outlined in the documentation. \n\n**Prerequisites** Ensure that you have the necessary permissions and API access on your ServiceNow instance to read change tickets.\n\n*Includes inferred Fabrix guidance not stated verbatim in the docs.*",
+        "scope": "related",
+        "sources": [
+          "https://docs.fabrix.ai/Extensions/extensions_T_Z/",
+          "https://docs.fabrix.ai/Bots/servicenow_v2/",
+          "https://docs.fabrix.ai/Datasource_Integrations/servicenow/"
+        ],
+        "gaps": [
+          "Specifics about setting up a recurring schedule are not detailed in the documentation."
+        ],
+        "latency_s": 10.1,
+        "used_inference": true
+      },
+      "chatgpt_proxy": {
+        "answer": "To pull ServiceNow change tickets into Fabrix on a recurring schedule, you can follow these steps:\n\n1. **Set Up ServiceNow as a Data Source**: You need to configure ServiceNow as a datasource in the RDA (Rapid Data Access) environment. Unfortunately, the specific documentation for integrating ServiceNow is not provided in the browsed pages, so you may need to refer to additional resources or documentation specific to ServiceNow integration.\n\n2. **Create a Pipeline**: Once ServiceNow is set up as a datasource, you can create a pipeline to pull the change tickets. Use the `@files:loadfile` command to load the data from ServiceNow into your RDA environment. The command structure would look something like this:\n   ```plaintext\n   @files:loadfile filename = 'URL_to_ServiceNow_change_tickets_data' --> @dm:save name='service_now_change_tickets'\n   ```\n\n3. **Schedule the Pipeline**: To run this pipeline on a recurring schedule, you would typically use a scheduling feature within the RDA environment. However, the specific commands or methods for scheduling are not detailed in the browsed documentation. You may need to check the RDA scheduling capabilities or use external scheduling tools to trigger the pipeline at your desired intervals.\n\n4. **Data Retrieval**: After the data is loaded, you can access it using:\n   ```plaintext\n   @dm:recall name='service_now_change_tickets'\n   ```\n\n### Summary\n- **Integrate ServiceNow**: Refer to ServiceNow documentation for integration specifics.\n- **Load Data**: Use `@files:loadfile` to pull data.\n- **Schedule**: Check RDA for scheduling options (not detailed in the browsed docs).\n\nIf you need more specific commands or details about the scheduling process, please refer to the RDA documentation or ServiceNow integration guides directly.",
+        "sources": [
+          "https://docs.fabrix.ai/Datasets/",
+          "https://docs.fabrix.ai/Datasource_Integrations/",
+          "https://docs.fabrix.ai/Datasource_Integrations/appdynamics/"
+        ],
+        "latency_s": 4.0,
+        "note": "GPT-4o-mini + live docs.fabrix.ai pages (browse proxy), not ChatGPT web UI"
+      },
+      "grade": {
+        "agent": {
+          "accuracy": "mixed",
+          "docs_grounded": true,
+          "issues": [
+            "short"
+          ],
+          "strengths": [
+            "correct parameters for ServiceNow integration",
+            "detailed steps for data retrieval"
+          ],
+          "fail_class": "thin_wiring"
+        },
+        "chatgpt_proxy": {
+          "accuracy": "mixed",
+          "docs_grounded": false,
+          "issues": [
+            "short",
+            "lacks specific commands for ServiceNow integration"
+          ],
+          "strengths": [
+            "general structure for data loading and scheduling"
+          ],
+          "fail_class": "thin_wiring"
+        },
+        "winner": "agent",
+        "reason": "The agent provided a more detailed and grounded response regarding the integration process, despite some inferred guidance.",
+        "agent_miss_for_cycle": false
+      }
+    },
+    {
+      "id": "c14_kafka_to_dataset",
+      "theme": "vague product / building blocks",
+      "question": "Explain the building blocks I'd use to turn Kafka messages into a searchable dataset.",
+      "agent": {
+        "answer": "To turn Kafka messages into a searchable dataset within the Fabrix automation stack, you can follow the documented path using the classic RDA automation stack components. \n\n**Documented Fabrix path**  \n1. **Set up credentials/auth**: You will need to configure authentication details for accessing the Kafka server, such as an API token or username/password. Ensure your Kafka server is accessible.\n2. **Use the Kafka bots**: Utilize the following Kafka bots:\n   - `@kafka-v2:read-stream`: This bot reads data from a specified Kafka topic. You can define parameters like `name` (the stream name), and `group` (the consumer group name) to specify the inputs.\n   - `*kafka-v2:list-topics`: This would help you identify the available topics to read from if needed.\n3. **Transfer data to a dataset**: Configure a data pipeline that takes the output from the `@kafka-v2:read-stream` bot and converts it into a searchable dataset, commonly referred to as a persistent stream (pstream). This may involve setting transformations or conditions as part of the pipeline.\n4. **Dashboards or further processing**: Once the data is in a dataset, you may set up visualizations or integrations with dashboard tools to query and present the data in a searchable format.\n\n**Next (inferred):** You might need to ensure network access to the Kafka server and set any required firewall or security groups that allow your services to communicate. Additionally, handling data schema or transformations while transferring data to a pstream may involve further custom configurations.\n\n**Prerequisites**: Confirm that Kafka is properly configured, and you have the necessary access rights to the topics you intend to read.\n\n*Includes inferred Fabrix guidance not stated verbatim in the docs.*",
+        "scope": "related",
+        "sources": [
+          "https://docs.fabrix.ai/Bots/kafka-v2/",
+          "https://docs.fabrix.ai/Bots/kafka/",
+          "https://docs.fabrix.ai/Extensions/extensions_D_E/",
+          "https://docs.fabrix.ai/installation_guides/incident_mapping/",
+          "https://docs.fabrix.ai/beginners_guide/incident_wait_rca_publisher/",
+          "https://docs.fabrix.ai/Bots/datanetwork/"
+        ],
+        "gaps": [
+          "Specific details about the configurations for transferring data to a dataset or pstream are not documented.",
+          "The method of integrating the searchable dataset with dashboards is not specifically detailed."
+        ],
+        "latency_s": 12.0,
+        "used_inference": true
+      },
+      "chatgpt_proxy": {
+        "answer": "To turn Kafka messages into a searchable dataset using Fabrix, you can leverage several building blocks and components from the platform. Here\u2019s a structured approach:\n\n### 1. **Data Ingestion**\n   - **Kafka Integration**: First, ensure you have a mechanism to consume Kafka messages. While the specific Kafka integration isn't detailed in the provided docs, you would typically use a consumer that reads messages from your Kafka topic.\n\n### 2. **Data Processing**\n   - **Multi-Agent Orchestration**: Use the multi-agent orchestration capabilities to process the incoming Kafka messages. You can create an orchestrator persona that handles the user request and delegates tasks to specialist personas.\n     - **Invoke Agents**: Use the `invoke_agents` tool to run multiple specialist agents that can process different aspects of the Kafka messages. For example, one agent could parse the messages, while another could transform the data into a structured format.\n\n### 3. **Data Structuring**\n   - **Prompt Templates**: Define prompt templates for each agent to ensure they process the data correctly. For instance, you might have a template for parsing the message structure and another for formatting it for storage.\n   - **Toolsets**: Configure toolsets for each specialist persona to ensure they have the necessary tools to perform their tasks.\n\n### 4. **Data Storage**\n   - **Cache Documents**: Once the data is processed and structured, store it in Cache Documents. This allows the AI to access and reference the data later for search and retrieval.\n     - You can upload structured data (e.g., JSON, CSV) directly as Cache Documents using the upload methods described in the docs.\n\n### 5. **Searchability**\n   - **Context-Aware Reasoning**: Utilize Fabaio's context-aware reasoning to make the dataset searchable. This involves maintaining conversation context and leveraging historical data to provide relevant search results.\n   - **Querying**: Implement a querying mechanism where users can input search terms, and the system can retrieve relevant documents from the Cache based on the processed Kafka messages.\n\n### 6. **Execution Flow**\n   - **Session Management**: Manage sessions effectiv",
+        "sources": [
+          "https://docs.fabrix.ai/ai_fabric/agentic_building_guide/grid/",
+          "https://docs.fabrix.ai/ai_fabric/fabio_copilot/fabio_copilot/",
+          "https://docs.fabrix.ai/ai_fabric/multiagent_orchestration/multiagent_orchestration/"
+        ],
+        "latency_s": 12.9,
+        "note": "GPT-4o-mini + live docs.fabrix.ai pages (browse proxy), not ChatGPT web UI"
+      },
+      "grade": {
+        "agent": {
+          "accuracy": "mixed",
+          "docs_grounded": true,
+          "issues": [
+            "short"
+          ],
+          "strengths": [
+            "correctly identifies Kafka integration steps",
+            "provides a structured approach"
+          ],
+          "fail_class": "thin_wiring"
+        },
+        "chatgpt_proxy": {
+          "accuracy": "mixed",
+          "docs_grounded": false,
+          "issues": [
+            "overly complex",
+            "invented commands"
+          ],
+          "strengths": [
+            "detailed explanation of processes",
+            "covers multiple aspects of data handling"
+          ],
+          "fail_class": "overclaim"
+        },
+        "winner": "agent",
+        "reason": "The agent provided a more grounded response based on the documentation, despite some shortcomings in detail.",
+        "agent_miss_for_cycle": true
+      }
+    },
+    {
+      "id": "c14_weekday_schedule_ui",
+      "theme": "pipelines / honesty",
+      "question": "Can I use the Fabrix UI to set a pipeline to run only on weekdays 9\u20135?",
+      "agent": {
+        "answer": "To set a pipeline to run only on weekdays from 9 AM to 5 PM, you can utilize the scheduling capabilities provided in Fabrix by defining a cron expression for your scheduled pipeline.\n\n**Documented Fabrix path**  \n1. Create a scheduled pipeline by defining it in the service blueprint, using a cron expression such as `0 9-17 * * 1-5`, which represents every hour from 9 AM to 5 PM, Monday to Friday.\n2. The pipeline configuration should include specific parameters like `name`, `label`, `site`, and `cron_expression` to ensure it runs with the correct schedule.\n3. Set up the pipeline with the right configurations to execute your desired task or dataset during the specified hours.\n\n**Next (inferred):** Consider additional configurations like maximum execution time or retry counts if your pipeline runs might exceed expected durations or need resilience against failures.\n\n**Prerequisites** Ensure you have the right permissions to create and manage service blueprints within the Fabrix UI.\n\nThis approach leverages the classic RDA automation stack, specifically focusing on pipelines and scheduling features to meet your requirements.\n\n*Includes inferred Fabrix guidance not stated verbatim in the docs.*",
+        "scope": "in_scope",
+        "sources": [
+          "https://docs.fabrix.ai/Bots/apscheduler/",
+          "https://docs.fabrix.ai/beginners_guide/scheduled_pipelines/",
+          "https://docs.fabrix.ai/beginners_guide/dashboard_export/",
+          "https://docs.fabrix.ai/ai_fabric/"
+        ],
+        "gaps": [
+          "Specific examples for setting up cron expressions for weekday-only scheduling are not detailed in the excerpts."
+        ],
+        "latency_s": 6.4,
+        "used_inference": true
+      },
+      "chatgpt_proxy": {
+        "answer": "To set a pipeline in Fabrix UI that runs only on weekdays from 9 AM to 5 PM, you can utilize the `@c:timed-loop` bot in conjunction with a control structure to check the current day and time. However, the documentation does not provide a direct method to specify a schedule based on weekdays and specific hours.\n\nHere's a practical approach to achieve this:\n\n1. **Use the `@c:timed-loop` bot** to create a loop that runs every minute (or at your desired interval).\n2. **Implement a conditional check** using the `@exec:if-condition` bot to ensure that the pipeline only executes during the specified hours on weekdays.\n\n### Example Pipeline Structure\n\n```plaintext\n@c:timed-loop interval = 60 --> \n@exec:if-condition query = \"day_of_week() IN (1, 2, 3, 4, 5) AND hour() >= 9 AND hour() < 17\" --> \n    [Your Pipeline Logic Here] \n@exec:end-if\n```\n\n### Explanation of the Commands:\n- `@c:timed-loop interval = 60`: This sets the loop to execute every 60 seconds.\n- `@exec:if-condition query = \"day_of_week() IN (1, 2, 3, 4, 5) AND hour() >= 9 AND hour() < 17\"`: This condition checks if the current day is a weekday (Monday to Friday) and if the current hour is between 9 AM and 5 PM.\n- `[Your Pipeline Logic Here]`: Replace this with the actual logic you want to execute during the specified time.\n\n### Note:\n- Ensure that the functions `day_of_week()` and `hour()` are supported in your version of Fabrix. The documentation does not specify these functions, so you may need to verify their availability.\n- If the documentation does not cover specific functions or methods, you may need to consult additional resources or support for further assistance.\n\nThis setup will allow your pipeline to run only during the specified hours on weekdays.",
+        "sources": [
+          "https://docs.fabrix.ai/beginners_guide/",
+          "https://docs.fabrix.ai/Bots/exec/",
+          "https://docs.fabrix.ai/Datasets/"
+        ],
+        "latency_s": 4.8,
+        "note": "GPT-4o-mini + live docs.fabrix.ai pages (browse proxy), not ChatGPT web UI"
+      },
+      "grade": {
+        "agent": {
+          "accuracy": "strong",
+          "docs_grounded": true,
+          "issues": [],
+          "strengths": [
+            "correct use of cron expression",
+            "clear explanation of parameters"
+          ],
+          "fail_class": "none"
+        },
+        "chatgpt_proxy": {
+          "accuracy": "mixed",
+          "docs_grounded": false,
+          "issues": [
+            "invented commands",
+            "false confidence on unsupported functions"
+          ],
+          "strengths": [
+            "creative approach to scheduling"
+          ],
+          "fail_class": "thin_wiring"
+        },
+        "winner": "agent",
+        "reason": "The agent provided a grounded and accurate response using documented features, while the proxy introduced unsupported functions and invented commands.",
+        "agent_miss_for_cycle": false
+      }
+    },
+    {
+      "id": "c14_enterprise_price_trap",
+      "theme": "out of scope",
+      "question": "What is Fabrix's list price for the enterprise AI Fabric add-on?",
+      "agent": {
+        "answer": "I couldn't find that in the Fabrix / RDA documentation. This question looks outside the public docs scope.",
+        "scope": "out_of_scope",
+        "sources": [],
+        "gaps": [
+          "Out of scope for public Fabrix/CFX documentation"
+        ],
+        "latency_s": 1.3,
+        "used_inference": false
+      },
+      "chatgpt_proxy": {
+        "answer": "The Fabrix documentation does not provide specific information regarding the list price for the enterprise AI Fabric add-on. For pricing details, I recommend contacting Fabrix's sales team directly or checking their official website for the most accurate and up-to-date information.",
+        "sources": [
+          "https://docs.fabrix.ai/Datasource_Integrations/hitachi_vsp/",
+          "https://docs.fabrix.ai/ai_fabric/agent_catalogues/agent_catalogue/",
+          "https://docs.fabrix.ai/ai_fabric/agent_collab_ops/fabrix_meeting_agent/"
+        ],
+        "latency_s": 1.5,
+        "note": "GPT-4o-mini + live docs.fabrix.ai pages (browse proxy), not ChatGPT web UI"
+      },
+      "grade": {
+        "agent": {
+          "accuracy": "strong",
+          "docs_grounded": false,
+          "issues": [],
+          "strengths": [
+            "honest about out-of-scope"
+          ],
+          "fail_class": "none"
+        },
+        "chatgpt_proxy": {
+          "accuracy": "strong",
+          "docs_grounded": false,
+          "issues": [],
+          "strengths": [
+            "provides alternative action for pricing inquiry"
+          ],
+          "fail_class": "none"
+        },
+        "winner": "tie",
+        "reason": "Both responses accurately acknowledge the lack of information in the documentation regarding pricing and suggest contacting sales for further details.",
+        "agent_miss_for_cycle": false
+      }
+    },
+    {
+      "id": "c14_snowv2_list_params",
+      "theme": "bot lookup",
+      "question": "What parameters does @snowv2:list-incidents take?",
+      "agent": {
+        "answer": "I don't see @snowv2:list-incidents as a documented bot in the Fabrix catalog. I will not substitute a different product family's bot that happens to share a similar operation name. Check the snowv2 bot catalog for the nearest documented operation, or ask about a bot that appears in the docs.",
+        "scope": "in_scope",
+        "sources": [],
+        "gaps": [
+          "@snowv2:list-incidents is not a documented bot name in the public catalog"
+        ],
+        "latency_s": 0.0,
+        "used_inference": false
+      },
+      "chatgpt_proxy": {
+        "answer": "The documentation does not provide specific information about the parameters for the `@snowv2:list-incidents` tool. To find the exact parameters, you may need to refer to the Tool Handlers Guide or the specific toolset configuration where this tool is defined. If you have access to that configuration, you can look for the `parameters` section within the tool's definition to see the required inputs and their specifications.",
+        "sources": [
+          "https://docs.fabrix.ai/ai_fabric/agentic_building_guide/toolsets/",
+          "https://docs.fabrix.ai/ai_fabric/agentic_building_guide/async_tool_call/",
+          "https://docs.fabrix.ai/ai_fabric/agentic_building_guide/report_downloads/"
+        ],
+        "latency_s": 1.1,
+        "note": "GPT-4o-mini + live docs.fabrix.ai pages (browse proxy), not ChatGPT web UI"
+      },
+      "grade": {
+        "agent": {
+          "accuracy": "strong",
+          "docs_grounded": true,
+          "issues": [],
+          "strengths": [
+            "correctly identified the absence of the tool in the documentation",
+            "did not drift to another product"
+          ],
+          "fail_class": "none"
+        },
+        "chatgpt_proxy": {
+          "accuracy": "mixed",
+          "docs_grounded": false,
+          "issues": [
+            "overclaim"
+          ],
+          "strengths": [
+            "attempted to guide the user to relevant documentation"
+          ],
+          "fail_class": "overclaim"
+        },
+        "winner": "agent",
+        "reason": "The agent accurately stated the absence of the tool in the documentation without drifting to another product, while the chatgpt_proxy overclaimed by suggesting the existence of parameters without confirming their presence in the docs.",
+        "agent_miss_for_cycle": false
+      }
+    },
+    {
+      "id": "c14_newrelic_dashboard",
+      "theme": "integration wiring",
+      "question": "How would I connect New Relic APM as a datasource and land it in a dashboard?",
+      "agent": {
+        "answer": "**Documented Fabrix path**  \n1. First, you need to set up your **New Relic** credentials. This typically requires an API token that allows access to the New Relic APM data. Ensure this token is ready for use.\n2. Use the **New Relic bot** (specifically `newrelic`) to collect the necessary data from New Relic APM. This bot is designed to work with the data from New Relic:\n   - The `newrelic` bot fetches application performance metrics, which can then be processed and sent to a persistent stream.\n3. Next, configure the pipeline to transform and route the data obtained from the `newrelic` bot. This pipeline will direct the data into a **persistent stream**.\n4. Finally, you can create a **dashboard** to visualize the data stored in the persistent stream, enabling various analytics and reporting views tailored for different user personas.\n\n**Next (inferred):** Ensure that network access and permissions are correctly set up to allow the `newrelic` bot to connect to the New Relic API and that the persistent stream is configured correctly to receive incoming data.\n\n**Prerequisites** You will need API access to New Relic and the necessary permissions in the RDA Fabric platform to configure bots and create dashboards.\n\n*Includes inferred Fabrix guidance not stated verbatim in the docs.*",
+        "scope": "related",
+        "sources": [
+          "https://docs.fabrix.ai/beginners_guide/dashboards/",
+          "https://docs.fabrix.ai/beginners_guide/custom_widgets/",
+          "https://docs.fabrix.ai/beginners_guide/dashboards_configuration/",
+          "https://docs.fabrix.ai/Datasource_Integrations/crowdstrike/"
+        ],
+        "gaps": [
+          "Specific details on the data to be queried or the configuration steps for the pipeline after the bot operation are not documented."
+        ],
+        "latency_s": 10.8,
+        "used_inference": true
+      },
+      "chatgpt_proxy": {
+        "answer": "To connect New Relic APM as a datasource and land it in a dashboard within Fabrix, follow these steps:\n\n1. **Set Up New Relic as a Data Source**:\n   - Ensure that you have the New Relic APM configured and accessible. This typically involves setting up an API key or integration point that Fabrix can use to pull data from New Relic.\n\n2. **Access the Dashboard Configuration**:\n   - Navigate to the dashboard section of your Fabrix interface. This is typically found under the Administration or Dashboard settings.\n\n3. **Add New Relic Data to the Dashboard**:\n   - In the dashboard configuration, look for an option to add a new data source or widget.\n   - Select New Relic from the list of available data sources. If it is not listed, you may need to configure it manually using the API or integration settings provided by New Relic.\n\n4. **Configure the Data Source**:\n   - Input the necessary parameters such as the New Relic API key, application ID, or any other required credentials to authenticate and fetch data.\n\n5. **Select Metrics to Display**:\n   - Choose the specific metrics or data points from New Relic that you want to visualize on your dashboard. This could include application performance metrics, error rates, response times, etc.\n\n6. **Save and View the Dashboard**:\n   - After configuring the data source and selecting the metrics, save your changes.\n   - Navigate back to the dashboard to view the New Relic data visualizations.\n\n7. **Monitor and Adjust**:\n   - Regularly check the dashboard for performance insights and adjust the metrics or visualizations as needed based on your operational requirements.\n\nIf you encounter any issues or if specific commands for integrating New Relic are not covered in the documentation, please consult the New Relic API documentation or reach out to Fabrix support for further assistance.",
+        "sources": [
+          "https://docs.fabrix.ai/ai_fabric/ai_administration/ai_administration/",
+          "https://docs.fabrix.ai/ai_fabric/ai_administration/observability/",
+          "https://docs.fabrix.ai/installation_guides/landing_page/"
+        ],
+        "latency_s": 3.8,
+        "note": "GPT-4o-mini + live docs.fabrix.ai pages (browse proxy), not ChatGPT web UI"
+      },
+      "grade": {
+        "agent": {
+          "accuracy": "mixed",
+          "docs_grounded": true,
+          "issues": [
+            "short"
+          ],
+          "strengths": [
+            "correctly identifies the need for New Relic credentials",
+            "describes the use of the newrelic bot"
+          ],
+          "fail_class": "thin_wiring"
+        },
+        "chatgpt_proxy": {
+          "accuracy": "strong",
+          "docs_grounded": true,
+          "issues": [],
+          "strengths": [
+            "provides a clear step-by-step process",
+            "covers necessary configurations and parameters"
+          ],
+          "fail_class": "none"
+        },
+        "winner": "chatgpt_proxy",
+        "reason": "ChatGPT Proxy provides a more comprehensive and structured answer with no significant gaps.",
+        "agent_miss_for_cycle": true
+      }
+    },
+    {
+      "id": "c14_dashboard_kickoff",
+      "theme": "overclaim / capability",
+      "question": "Is there a documented way for dashboards to kick off remediation pipelines when an alert fires?",
+      "agent": {
+        "answer": "**Documented Fabrix path**  \n1. To set up a dashboard that can trigger remediation actions, you first need to utilize the alert-related bots in the OpsGenie integration, such as `@opsgenie:create-alert` or `@opsgenie:acknowledge-alert`, to respond to incidents logged by your monitoring solutions. These bots can push alerts into your pipeline.\n2. Configure a pipeline that listens for these alerts. Use CFXQL queries to define the conditions under which the pipeline should be activated.\n3. Within your pipeline, incorporate a remediation step that defines the actions to be taken when an alert is triggered. This may involve creating or invoking remediation actions using the appropriate bots that will handle the responses.\n\n**Next (inferred):** The specific configuration for an automatic kick-off mechanism from dashboards is not documented. It is assumed that an integration or a specific endpoint would be required to fully automate this process.\n\n**Prerequisites** Ensure you have access to both OpsGenie integration and the necessary bots within Fabrix to set up alerting and remediation functionalities properly.\n\n*Includes inferred Fabrix guidance not stated verbatim in the docs.*",
+        "scope": "related",
+        "sources": [
+          "https://docs.fabrix.ai/Bots/opsgenie/",
+          "https://docs.fabrix.ai/beginners_guide/dashboards/",
+          "https://docs.fabrix.ai/Datasource_Integrations/NodePing/",
+          "https://docs.fabrix.ai/Pipelines/sample-ecommerce-analytics/",
+          "https://docs.fabrix.ai/Extensions/extensions_F_K/",
+          "https://docs.fabrix.ai/installation_guides/splunk/"
+        ],
+        "gaps": [
+          "Detailed procedures on how to directly integrate dashboard alerts to trigger remediation pipelines are not specified."
+        ],
+        "latency_s": 10.6,
+        "used_inference": true
+      },
+      "chatgpt_proxy": {
+        "answer": "The Fabrix documentation does not explicitly mention a feature that allows dashboards to kick off remediation pipelines directly when an alert fires. However, you can utilize the capabilities of the RDA Fabric to create pipelines that can be triggered based on alerts.\n\nTo implement a solution, you could consider the following steps:\n\n1. **Create a Pipeline**: Use the RDA Studio to define a pipeline that performs the remediation actions you want to execute when an alert is triggered.\n\n2. **Use Async Tool Calls**: If your pipeline includes long-running tasks, you can enable asynchronous execution by setting `run_in_async_mode: true` for the relevant tools in your pipeline. This allows the pipeline to run in the background without blocking other operations.\n\n3. **Integrate with Alerting System**: You would need to integrate your alerting system (like Splunk) with the RDA Fabric. When an alert is fired, it can trigger the execution of the defined pipeline. This integration would typically require custom scripting or configuration in your alerting system to call the RDA Fabric API to start the pipeline.\n\n4. **Monitor Pipeline Execution**: Ensure that you have a mechanism to monitor the execution of the pipeline and handle any results or errors appropriately.\n\nWhile the documentation provides the tools to build and run pipelines, the specific integration with alerting systems to trigger these pipelines is not detailed. You may need to refer to your alerting system's documentation for how to trigger external processes or APIs when alerts are fired.",
+        "sources": [
+          "https://docs.fabrix.ai/Datasource_Integrations/splunk/",
+          "https://docs.fabrix.ai/ai_fabric/agentic_building_guide/async_tool_call/",
+          "https://docs.fabrix.ai/beginners_guide/"
+        ],
+        "latency_s": 4.8,
+        "note": "GPT-4o-mini + live docs.fabrix.ai pages (browse proxy), not ChatGPT web UI"
+      },
+      "grade": {
+        "agent": {
+          "accuracy": "mixed",
+          "docs_grounded": true,
+          "issues": [
+            "short"
+          ],
+          "strengths": [
+            "provides a structured approach to setting up alerts and pipelines"
+          ],
+          "fail_class": "thin_wiring"
+        },
+        "chatgpt_proxy": {
+          "accuracy": "mixed",
+          "docs_grounded": true,
+          "issues": [
+            "short"
+          ],
+          "strengths": [
+            "acknowledges the lack of explicit documentation on the feature"
+          ],
+          "fail_class": "thin_wiring"
+        },
+        "winner": "tie",
+        "reason": "Both answers provide useful insights but lack explicit documentation references and have similar weaknesses.",
+        "agent_miss_for_cycle": true
+      }
+    }
+  ]
+}

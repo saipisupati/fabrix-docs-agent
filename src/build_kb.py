@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-build_kb.py — extract structured KB from public docs, embed, persist under data/kb/.
+build_kb.py: extract structured KB from public docs, embed, persist under data/kb/.
 
 Run (API should be stopped if you also want Qdrant fabrix_kb upsert):
   python3 src/build_kb.py

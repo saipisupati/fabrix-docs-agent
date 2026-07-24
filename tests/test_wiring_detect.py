@@ -1,0 +1,123 @@
+"""Light locks for integration wiring detection + shape gate."""
+
+from __future__ import annotations
+
+import os
+import sys
+
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
+
+from agent import (  # noqa: E402
+    _is_integration_wiring_ask,
+    _wiring_answer_missing_product_bot,
+    _wiring_answer_missing_shape,
+)
+
+
+def test_wiring_detect_map_dashboard():
+    assert _is_integration_wiring_ask(
+        "How do I map Splunk events into a Fabrix dashboard that ops can watch?"
+    )
+
+
+def test_wiring_detect_building_blocks_dataset():
+    assert _is_integration_wiring_ask(
+        "Explain the building blocks I'd use to turn Kafka messages into a searchable dataset."
+    )
+
+
+def test_wiring_detect_land_dashboard():
+    assert _is_integration_wiring_ask(
+        "How would I connect New Relic APM as a datasource and land it in a dashboard?"
+    )
+
+
+def test_wiring_detect_not_plain_param_lookup():
+    assert not _is_integration_wiring_ask(
+        "What parameters does @snowv2:list-incidents take?"
+    )
+
+
+def test_missing_bot_token_forces_shape():
+    q = "Walk me through wiring Datadog metrics into a persistent stream, then alerting Slack."
+    thin = (
+        "Create Datadog credentials, use the Datadog bot to pull metrics, "
+        "then land them in a persistent stream and alert Slack."
+    )
+    # Empty context → still require tokens (strict unit default)
+    assert _wiring_answer_missing_product_bot(q, thin)
+    assert _wiring_answer_missing_shape(q, thin) is False  # auth + sink present
+    # Context with catalog tokens → still missing in answer
+    ctx = "Use @datadog:metrics to query metric data from DataDog."
+    assert _wiring_answer_missing_product_bot(q, thin, ctx)
+    # Context with no family bots → do not force invention
+    assert not _wiring_answer_missing_product_bot(q, thin, "no bots here, only dashboards")
+
+
+def test_full_shape_passes():
+    q = "How do I map Splunk events into a Fabrix dashboard that ops can watch?"
+    good = (
+        "Use a Splunk API token, then @splunkv2:search-index to query events, "
+        "write to a dataset, and build a dashboard on that dataset."
+    )
+    assert not _wiring_answer_missing_product_bot(q, good)
+    assert not _wiring_answer_missing_shape(q, good)
+
+
+def test_hash_prefixed_source_bots_detected():
+    q = "How do I map Splunk events into a Fabrix dashboard that ops can watch?"
+    ctx = """
+## Bot @splunkv2:add-to-index
+Bot Position In Pipeline: Sink
+Add log event records to an index in Splunk
+
+## Bot #splunkv2:search-index
+Bot Position In Pipeline: Source
+Query and filter log event records within an index in Splunk
+"""
+    from agent import _wiring_source_bot_tokens_in_context, _wiring_answer_missing_source_bot
+
+    src = _wiring_source_bot_tokens_in_context(q, ctx)
+    assert "splunkv2:search-index" in src
+    sink_only = (
+        "Auth with Splunk password, use @splunkv2:add-to-index, then dashboard."
+    )
+    assert _wiring_answer_missing_source_bot(q, sink_only, ctx)
+    good = (
+        "Auth with Splunk password, use @splunkv2:search-index to pull events "
+        "into a dataset, then dashboard."
+    )
+    assert not _wiring_answer_missing_source_bot(q, good, ctx)
+
+
+def test_grafana_unmatched_no_family_depth():
+    from agent import (
+        _has_real_family_match,
+        _is_integration_wiring_ask,
+        _unmatched_wiring_product_names,
+    )
+
+    q = "How do I wire Grafana Cloud into Fabrix end to end for dashboards?"
+    assert not _has_real_family_match(q)
+    assert not _is_integration_wiring_ask(q)
+    names = _unmatched_wiring_product_names(q)
+    assert any("grafana" in n.lower() for n in names)
+
+
+def test_pagerduty_still_wiring_family():
+    from agent import _has_real_family_match, _is_integration_wiring_ask
+
+    q = "How do I wire PagerDuty into Fabrix for dashboards?"
+    assert _has_real_family_match(q)
+    assert _is_integration_wiring_ask(q)
+
+
+def test_agentic_end_to_end_not_unmatched_wiring():
+    from agent import _unmatched_wiring_product_names
+
+    q = (
+        "Configure Fabio Copilot to auto-remediate production outages "
+        "end-to-end with no human approval."
+    )
+    assert _unmatched_wiring_product_names(q) == []
+

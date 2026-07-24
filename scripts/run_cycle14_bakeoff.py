@@ -39,7 +39,10 @@ from qdrant_client import QdrantClient  # noqa: E402
 from agent import answer  # noqa: E402
 from live_docs import html_to_text  # noqa: E402
 
-OUT_PATH = ROOT / "data" / "cycle14_bakeoff.json"
+OUT_PATH = Path(
+    os.environ.get("BAKEOFF_OUT")
+    or (ROOT / "data" / "cycle14_bakeoff.json")
+)
 QDRANT_DIR = str(ROOT / "data" / "qdrant_db")
 
 QUESTIONS = [
