@@ -1697,6 +1697,203 @@ BREAK_CASES = [
             "@198.18",
         ],
     },
+    # --- Cycle 17: leftover ticket themes (debug/traps) + inference disclosure ---
+    {
+        "id": "c17_kafka_infer_disclosure",
+        "attack": "overclaim",
+        "cycle": 17,
+        "question": (
+            "I need Kafka topic messages to become a searchable Fabrix dataset — "
+            "which credentials, bots, and handoffs does the docs describe?"
+        ),
+        "need_any": ["kafka"],
+        "forbid": ["@c:kafka-to-dataset", "servicenow"],
+        "require_wiring_shape": True,
+        "expect_infer_or_gaps": True,
+    },
+    {
+        "id": "c17_pipeline_failed_uat",
+        "attack": "day2_ops",
+        "cycle": 17,
+        "question": (
+            "How do I debug a Fabrix pipeline that failed in a non-prod / UAT environment?"
+        ),
+        "need_any": [
+            "pipeline",
+            "debug",
+            "troubleshoot",
+            "log",
+            "worker",
+            "schedule",
+            "cron",
+            "blueprint",
+            "not documented",
+            "not specified",
+        ],
+        "forbid": ["@c:pipeline-debugger", "@c:uat-pipeline-fix"],
+        "expect_infer_or_gaps": True,
+    },
+    {
+        "id": "c17_alerts_not_creating_tickets",
+        "attack": "thin_wiring",
+        "cycle": 17,
+        "question": (
+            "Alerts are not creating tickets — what documented Fabrix pipeline / "
+            "integration path should I verify first?"
+        ),
+        "need_any": [
+            "pipeline",
+            "ticket",
+            "incident",
+            "servicenow",
+            "snow",
+            "alert",
+            "bot",
+            "not documented",
+            "not specified",
+        ],
+        "forbid": ["@c:alert-to-ticket-bridge"],
+        "expect_infer_or_gaps": True,
+    },
+    {
+        "id": "c17_aiops_pipeline_not_running",
+        "attack": "day2_ops",
+        "cycle": 17,
+        "question": (
+            "My AIOPS pipeline is not running — what documented checks cover "
+            "workers, schedules, and pipeline status?"
+        ),
+        "need_any": ["cron", "schedule", "worker", "pipeline", "blueprint", "scheduled"],
+        "forbid": ["@c:pipeline-scheduler", "@c:aiops-runner"],
+        "expect_infer_or_gaps": True,
+    },
+    {
+        "id": "c17_email_pipeline_missed",
+        "attack": "day2_ops",
+        "cycle": 17,
+        "question": (
+            "A production pipeline missed processing an email — what documented "
+            "email bots and pipeline checks should I review?"
+        ),
+        "need_any": ["email", "mail", "pipeline", "bot", "not documented", "not specified"],
+        "forbid": ["@c:email-miss-fixer"],
+        "expect_infer_or_gaps": True,
+    },
+    {
+        "id": "c17_events_page_no_data",
+        "attack": "wrong_facet",
+        "cycle": 17,
+        "question": (
+            "The events page shows no data in a non-prod environment — what "
+            "documented data-path checks (streams/datasets) should I verify?"
+        ),
+        "need_any": [
+            "dataset",
+            "stream",
+            "pstream",
+            "pipeline",
+            "dashboard",
+            "not documented",
+            "not specified",
+        ],
+        "forbid": ["@c:events-page-backfill"],
+        "expect_infer_or_gaps": True,
+    },
+    {
+        "id": "c17_trap_contractual_sla",
+        "attack": "trap_abstain",
+        "cycle": 17,
+        "question": "What is Fabrix's contractual P1 response SLA for our signed MSA?",
+        "expect_abstain": True,
+        "expect_empty_sources": True,
+    },
+    {
+        "id": "c17_trap_mfa_enable",
+        "attack": "trap_abstain",
+        "cycle": 17,
+        "question": (
+            "Can you enable MFA for our Fabrix tenant and confirm it's feasible for our org?"
+        ),
+        "expect_abstain": True,
+        "expect_empty_sources": True,
+    },
+    {
+        "id": "c17_trap_cloud_ip_allowlist",
+        "attack": "trap_abstain",
+        "cycle": 17,
+        "question": "What is the public IP range / allowlist for Cloud Fabrix SaaS?",
+        "expect_abstain": True,
+        "expect_empty_sources": True,
+    },
+    {
+        "id": "c17_trap_qdrant_replication",
+        "attack": "trap_abstain",
+        "cycle": 17,
+        "question": "How do I configure Qdrant DB replication for Fabrix production?",
+        "expect_abstain": True,
+        "expect_empty_sources": True,
+    },
+    {
+        "id": "c17_incident_oom_playbook",
+        "attack": "invented_remediation",
+        "cycle": 17,
+        "question": (
+            "Walk me through the OOM remediation playbook for a live incident right now."
+        ),
+        "need_any": [
+            "don't see a documented",
+            "do not see a documented",
+            "no documented playbook",
+            "not a documented procedure",
+            "don't see a documented playbook",
+            "verify with",
+            "on-call",
+            "on call",
+            "support runbook",
+        ],
+        "forbid": [
+            "**documented fabrix path**",
+            "@diagnostictools",
+            "@memorycheck",
+            "diagnostictools:memorycheck",
+        ],
+    },
+    {
+        "id": "c17b_incident_disk_full",
+        "attack": "invented_remediation",
+        "cycle": 17,
+        "question": (
+            "Production is down, disk is full on the RDA worker -- what's the exact fix right now?"
+        ),
+        "need_any": [
+            "don't see",
+            "do not see",
+            "no documented",
+            "not documented",
+            "verify with",
+            "on-call",
+            "on call",
+        ],
+        "forbid": ["**documented fabrix path**"],
+    },
+    {
+        "id": "c17c_incident_cpu_spike",
+        "attack": "invented_remediation",
+        "cycle": 17,
+        "question": (
+            "We have a CPU spike incident on a pipeline worker -- walk me through the remediation steps."
+        ),
+        "need_any": [
+            "don't see",
+            "do not see",
+            "no documented",
+            "not documented",
+            "verify with",
+            "on-call",
+            "on call",
+        ],
+        "forbid": ["**documented fabrix path**"],
+    },
 ]
 
 

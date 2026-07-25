@@ -121,3 +121,61 @@ def test_agentic_end_to_end_not_unmatched_wiring():
     )
     assert _unmatched_wiring_product_names(q) == []
 
+
+def test_live_incident_oom_playbook_detected():
+    from agent import _is_live_incident_ask
+
+    assert _is_live_incident_ask(
+        "Walk me through the OOM remediation playbook for a live incident right now."
+    )
+    assert _is_live_incident_ask(
+        "Out of Memory issue on LNX-THRESHOLD host — give me the exact Fabrix "
+        "remediation playbook step by step for this live incident."
+    )
+    assert _is_live_incident_ask(
+        "Production is down, disk is full on the RDA worker -- what's the exact fix right now?"
+    )
+    assert _is_live_incident_ask(
+        "We have a CPU spike incident on a pipeline worker -- walk me through the remediation steps."
+    )
+
+
+def test_live_incident_does_not_false_trigger_day2():
+    from agent import _is_live_incident_ask
+
+    assert not _is_live_incident_ask(
+        "How do I scale RDA workers for a busy site, and what limits should I watch?"
+    )
+    assert not _is_live_incident_ask(
+        "How do I roll back a failed service blueprint deployment on one RDA site "
+        "without affecting other sites?"
+    )
+    assert not _is_live_incident_ask(
+        "A production scheduled pipeline did not trigger overnight — what "
+        "documented checks should I run first?"
+    )
+    assert not _is_live_incident_ask(
+        "How should a Fabrix pipeline update ServiceNow incident state and "
+        "enrichment fields without inventing custom bots?"
+    )
+
+
+def test_live_incident_procedure_requires_runbook_language():
+    from agent import _live_incident_has_documented_procedure
+
+    q = "Walk me through the OOM remediation playbook for a live incident right now."
+    loose = [
+        {
+            "title": "Worker memory limits",
+            "text": "Adjust mem_limit in values.yaml for OIA services under load.",
+        }
+    ]
+    assert not _live_incident_has_documented_procedure(q, loose, [])
+    runbook = [
+        {
+            "title": "OOM incident response playbook",
+            "text": "Official remediation playbook for out of memory host incidents.",
+        }
+    ]
+    assert _live_incident_has_documented_procedure(q, runbook, [])
+

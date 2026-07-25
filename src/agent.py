@@ -223,6 +223,155 @@ def _is_full_script_automation_ask(question: str) -> bool:
     return wants_artifact and (end_to_end or "automat" in q)
 
 
+# Live-incident / host-playbook asks: distinct from day-2 how-to and wiring.
+_INCIDENT_SYMPTOM_CUES: tuple[str, ...] = (
+    "oom",
+    "out of memory",
+    "disk is full",
+    "disk full",
+    "cpu spike",
+    "production is down",
+    "prod is down",
+    "on fire",
+    "live incident",
+)
+_INCIDENT_URGENCY_CUES: tuple[str, ...] = (
+    "right now",
+    "urgent",
+    "this live",
+    "live incident",
+)
+_INCIDENT_REMEDIATION_CUES: tuple[str, ...] = (
+    "playbook",
+    "remediation",
+    "remediate",
+    "exact fix",
+    "remediation steps",
+    "remediation playbook",
+    "walk me through fixing",
+    "walk me through the remediation",
+    "what's the exact fix",
+    "what is the exact fix",
+    "fix right now",
+)
+# Strong procedure language — general mem_limit / worker config pages do not count.
+_INCIDENT_PROCEDURE_MARKERS: tuple[str, ...] = (
+    "playbook",
+    "runbook",
+    "remediation guide",
+    "remediation procedure",
+    "incident response procedure",
+    "incident response playbook",
+    "troubleshoot oom",
+    "troubleshooting oom",
+    "disk full remediation",
+    "cpu spike remediation",
+)
+
+
+def _is_live_incident_ask(question: str) -> bool:
+    """
+    Live-incident / "what do I do right now" remediation asks.
+
+    Requires remediation/playbook framing PLUS symptom or urgency cues.
+    Must not false-trigger on ordinary day-2 how-to (scale workers, rollback,
+    scheduled-pipeline debug, ServiceNow incident field updates).
+    """
+    q = (question or "").lower()
+    if not q.strip():
+        return False
+    # Ticketing "incident" how-tos are not live host remediation.
+    if any(
+        w in q
+        for w in (
+            "servicenow",
+            "service now",
+            "snowv2",
+            "snow ",
+            "pagerduty",
+            "opsgenie",
+            "jira",
+        )
+    ) and not any(s in q for s in _INCIDENT_SYMPTOM_CUES):
+        return False
+    has_remediation = any(c in q for c in _INCIDENT_REMEDIATION_CUES)
+    if not has_remediation:
+        return False
+    has_symptom = any(c in q for c in _INCIDENT_SYMPTOM_CUES)
+    has_urgency = any(c in q for c in _INCIDENT_URGENCY_CUES) or (
+        "incident" in q and any(c in q for c in ("live", "right now", "urgent", "on fire"))
+    )
+    return has_symptom or has_urgency
+
+
+def _live_incident_has_documented_procedure(
+    question: str,
+    kb_entries: list[dict] | None,
+    chunks: list[dict] | None,
+) -> bool:
+    """
+    True only when retrieved excerpts look like a named runbook/playbook for the
+    scenario — not loosely related memory/worker/config pages.
+    """
+    blob = _retrieved_context_blob(kb_entries, chunks)
+    if not blob.strip():
+        return False
+    if not any(m in blob for m in _INCIDENT_PROCEDURE_MARKERS):
+        return False
+    q = (question or "").lower()
+    symptoms = [s for s in _INCIDENT_SYMPTOM_CUES if s in q]
+    # If the ask names a symptom, require that symptom (or close token) in excerpts.
+    if symptoms and not any(s in blob for s in symptoms):
+        # Allow common alternate spellings for OOM
+        if any(s in ("oom", "out of memory") for s in symptoms):
+            if not any(t in blob for t in ("oom", "out of memory", "memory")):
+                return False
+        else:
+            return False
+    return True
+
+
+def _live_incident_honesty(
+    question: str,
+    kb_entries: list[dict] | None = None,
+    chunks: list[dict] | None = None,
+    existing_gaps: list[str] | None = None,
+) -> tuple[str, list[str]]:
+    """Refuse invented live-incident playbooks; point at related docs + on-call."""
+    titles: list[str] = []
+    for e in (kb_entries or [])[:4]:
+        t = (e.get("title") or "").strip()
+        if t and t.lower() not in {x.lower() for x in titles}:
+            titles.append(t)
+    for c in (chunks or [])[:4]:
+        t = (c.get("title") or "").strip()
+        if t and t.lower() not in {x.lower() for x in titles}:
+            titles.append(t)
+    if titles:
+        related = (
+            " Here's what IS documented that may be related: "
+            + "; ".join(titles[:3])
+            + "."
+        )
+    else:
+        related = ""
+    text = (
+        "I don't see a documented playbook for this specific live-incident scenario "
+        "in the Fabrix / RDA public docs."
+        f"{related} "
+        "Related pages (if any) are general reference, not a step-by-step incident "
+        "remediation procedure. For a live incident, verify with your on-call process "
+        "/ support runbook rather than treating this chat as an executable playbook."
+    )
+    gaps = list(existing_gaps or [])
+    gap = (
+        "No documented live-incident playbook/runbook for this scenario in public docs"
+    )
+    if gap.lower() not in " ".join(g.lower() for g in gaps):
+        gaps.insert(0, gap)
+    return text, gaps[:8]
+
+
 def _answer_has_turnkey_script_risk(answer: str) -> bool:
     """Detect invented ready-to-run scripts / credential placeholders."""
     text = answer or ""
@@ -3902,6 +4051,33 @@ def answer(question: str, client: QdrantClient | None = None) -> AgentResponse:
             examples=[],
             gaps=gaps,
             scope=scope,
+            used_inference=False,
+            inferred_summary="",
+            timing=timing,
+        )
+
+    # Live-incident playbook asks: do not invent a Documented Fabrix path from
+    # loosely related memory/worker docs unless a real runbook is in excerpts.
+    if _is_live_incident_ask(question) and not _live_incident_has_documented_procedure(
+        question, kb_entries, chunks
+    ):
+        logger.info("live-incident ask without documented procedure — honesty gate")
+        answer_text, gaps = _live_incident_honesty(
+            question, kb_entries, chunks, []
+        )
+        timing["generate_ms"] = 0
+        timing["total_ms"] = _ms(t0)
+        _log_gap(question, scope, gaps, True)
+        # Keep related sources for "what IS documented" transparency, but do not
+        # claim a grounded executable playbook.
+        sources = (_sources_from_kb(kb_entries) + _sources_from_chunks(chunks))[:8]
+        return AgentResponse(
+            answer=polish_answer_text(answer_text),
+            sources=sources,
+            sufficient=False,
+            examples=[],
+            gaps=gaps,
+            scope=scope if (kb_entries or chunks) else "related",
             used_inference=False,
             inferred_summary="",
             timing=timing,
