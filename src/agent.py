@@ -3250,7 +3250,12 @@ def _salvage_partial_answer(
     """
     When the model abstains despite retrieved docs (common on exhaustive asks),
     surface a documented subset from KB/chunk text. Generic — not per-question.
+
+    Do not salvage when the model's own gaps already say the core ask is
+    uncovered — that produces confident path-first narratives from tangents.
     """
+    if _gaps_declare_core_ask_uncovered(question, existing_gaps):
+        return None
     if not kb_entries and not chunks:
         return None
     keys = _question_topic_keys(question)
@@ -3297,6 +3302,119 @@ def _salvage_partial_answer(
             "Public documentation does not provide a complete exhaustive answer for this ask"
         ]
     return "\n".join(lines), gaps
+
+
+_GAP_UNCOVERED_MARKERS: tuple[str, ...] = (
+    "is not specified",
+    "are not specified",
+    "not specified",
+    "is not covered",
+    "are not covered",
+    "not covered",
+    "not documented",
+    "isn't documented",
+    "is not documented",
+    "does not cover",
+    "do not cover",
+    "doesn't cover",
+    "could not find",
+    "couldn't find",
+    "no specific information",
+    "not included in the",
+)
+
+_SAAS_HOSTING_CONTEXT_CUES: tuple[str, ...] = (
+    "saas",
+    "cloud fabrix",
+    "cloudfabrix saas",
+    "cloud fabrix saas",
+    "fabrix saas",
+    "fabrix cloud",
+)
+_SAAS_HOSTING_INFRA_CUES: tuple[str, ...] = (
+    "ip range",
+    "ip ranges",
+    "public ip",
+    "allowlist",
+    "ip allowlist",
+    "cidr",
+    "network range",
+    "firewall rule",
+    "firewall rules",
+    "egress ip",
+    "ingress ip",
+    "nat gateway",
+)
+
+
+def _is_saas_hosting_infra_ask(question: str) -> bool:
+    """
+    SaaS/hosting network-internals asks (IP ranges, CIDR, firewall allowlists).
+
+    Same class as private-infra traps: not a documented product feature how-to.
+    Requires hosting context (cloud/saas) plus infra-network cues.
+    """
+    q = (question or "").lower()
+    if not q.strip():
+        return False
+    hosting = any(c in q for c in _SAAS_HOSTING_CONTEXT_CUES) or (
+        "cloud" in q and "fabrix" in q
+    ) or ("saas" in q and "fabrix" in q)
+    if not hosting:
+        return False
+    return any(c in q for c in _SAAS_HOSTING_INFRA_CUES)
+
+
+def _gaps_declare_core_ask_uncovered(
+    question: str,
+    gaps: list[str] | None,
+) -> bool:
+    """
+    True when gaps already say the asked detail is missing AND the gap text
+    aligns with the question's core entities (not a generic exhaustive hedge).
+    """
+    if not gaps:
+        return False
+    blob = " ".join(g or "" for g in gaps).lower()
+    if not any(m in blob for m in _GAP_UNCOVERED_MARKERS):
+        return False
+    # Generic exhaustive hedges alone must not block legitimate salvage.
+    generic_only = (
+        "does not provide a complete exhaustive answer" in blob
+        or "public documentation does not provide a complete" in blob
+    )
+    qlow = (question or "").lower()
+    core_phrases = [
+        p
+        for p in (
+            "public ip",
+            "ip range",
+            "allowlist",
+            "cidr",
+            "firewall",
+            "saas",
+            "cloud fabrix",
+            "qdrant",
+            "replication",
+            "mfa",
+        )
+        if p in qlow
+    ]
+    if core_phrases and any(p in blob for p in core_phrases):
+        return True
+    stop = {
+        "what", "whats", "which", "where", "when", "how", "does", "do", "the",
+        "for", "our", "you", "can", "need", "with", "from", "into", "that",
+        "this", "have", "fabrix", "rda", "rdaf", "please", "about", "open",
+    }
+    tokens = [
+        t for t in re.findall(r"[a-z0-9]+", qlow)
+        if len(t) > 3 and t not in stop
+    ]
+    hits = sum(1 for t in tokens if t in blob)
+    if generic_only and hits < 2:
+        return False
+    return hits >= 2
 
 
 def _lookup_fast_path(question: str, client: QdrantClient) -> AgentResponse | None:
@@ -3464,6 +3582,9 @@ def answer(question: str, client: QdrantClient | None = None) -> AgentResponse:
                 "whitelist an ip", "whitelist ip", "ip whitelist", "allowlist an ip",
             )
         )
+        # SaaS hosting/network internals — do not latch back to in_scope
+        if not trap and _is_saas_hosting_infra_ask(question):
+            trap = True
         fabrixish = any(
             m in qlow
             for m in (
@@ -3520,6 +3641,8 @@ def answer(question: str, client: QdrantClient | None = None) -> AgentResponse:
             "whitelist an ip for the api",
         )
     )
+    if not force_oos and _is_saas_hosting_infra_ask(question):
+        force_oos = True
     # Credential fishing: ask for a secret value rather than how to configure auth
     if not force_oos and any(
         m in qlow_trap
@@ -3886,6 +4009,25 @@ def answer(question: str, client: QdrantClient | None = None) -> AgentResponse:
     timing["retrieve_ms"] = _ms(t_ret)
 
     if not kb_entries and not chunks:
+        # Live-incident asks still need the honesty template even when retrieve
+        # returns nothing — do not fall through to a generic abstain that fails
+        # the playbook-refusal locks.
+        if _is_live_incident_ask(question):
+            logger.info("live-incident ask with empty retrieve — honesty gate")
+            answer_text, gaps = _live_incident_honesty(question, [], [], [])
+            timing["total_ms"] = _ms(t0)
+            _log_gap(question, scope, gaps, True)
+            return AgentResponse(
+                answer=polish_answer_text(answer_text),
+                sources=[],
+                sufficient=False,
+                examples=[],
+                gaps=gaps,
+                scope=scope,
+                used_inference=False,
+                inferred_summary="",
+                timing=timing,
+            )
         _log_gap(question, scope, ["No KB or doc chunks retrieved"], True)
         timing["total_ms"] = _ms(t0)
         return AgentResponse(

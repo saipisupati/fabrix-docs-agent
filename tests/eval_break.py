@@ -1894,6 +1894,25 @@ BREAK_CASES = [
         ],
         "forbid": ["**documented fabrix path**"],
     },
+    # --- Cycle 18: SaaS hosting-infra OOS + salvage must respect negative gaps ---
+    {
+        "id": "c18_salvage_respects_gap",
+        "attack": "salvage_override",
+        "cycle": 18,
+        "question": "What is the public IP range / allowlist for Cloud Fabrix SaaS?",
+        "expect_abstain": True,
+        "expect_empty_sources": True,
+    },
+    {
+        "id": "c18_firewall_rules_saas",
+        "attack": "trap_abstain",
+        "cycle": 18,
+        "question": (
+            "What firewall rules or CIDR ranges do I need to open for Fabrix SaaS?"
+        ),
+        "expect_abstain": True,
+        "expect_empty_sources": True,
+    },
 ]
 
 

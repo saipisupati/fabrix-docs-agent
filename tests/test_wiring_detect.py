@@ -179,3 +179,70 @@ def test_live_incident_procedure_requires_runbook_language():
     ]
     assert _live_incident_has_documented_procedure(q, runbook, [])
 
+
+def test_saas_hosting_infra_ask_detected():
+    from agent import _is_saas_hosting_infra_ask
+
+    assert _is_saas_hosting_infra_ask(
+        "What is the public IP range / allowlist for Cloud Fabrix SaaS?"
+    )
+    assert _is_saas_hosting_infra_ask(
+        "What firewall rules or CIDR ranges do I need to open for Fabrix SaaS?"
+    )
+
+
+def test_saas_hosting_infra_does_not_false_trigger_product_howtos():
+    from agent import _is_saas_hosting_infra_ask
+
+    assert not _is_saas_hosting_infra_ask(
+        "How do I scale RDA workers for a busy site, and what limits should I watch?"
+    )
+    assert not _is_saas_hosting_infra_ask(
+        "How do I wire Splunk into Fabrix and land events in a dashboard?"
+    )
+    assert not _is_saas_hosting_infra_ask(
+        "Can you enable MFA for our Fabrix tenant and confirm it's feasible for our org?"
+    )
+
+
+def test_salvage_skips_when_gaps_declare_core_ask_uncovered():
+    from agent import _salvage_partial_answer
+
+    q = "What is the public IP range / allowlist for Cloud Fabrix SaaS?"
+    kb = [
+        {
+            "title": "PRTG Network Monitor",
+            "text": (
+                "CloudFabrix supports PRTG Network Monitor API integration for fetching "
+                "asset inventory with allowlist permissions for sensors."
+            ),
+        }
+    ]
+    gaps = [
+        "Public IP range / allowlist for Cloud Fabrix SaaS is not specified."
+    ]
+    assert _salvage_partial_answer(q, kb, [], gaps) is None
+
+
+def test_salvage_still_runs_for_generic_exhaustive_gap():
+    from agent import _salvage_partial_answer
+
+    q = "Explain how persistent streams differ from datasets in RDA Fabric in exactly 8 numbered steps"
+    kb = [
+        {
+            "title": "Persistent streams",
+            "text": (
+                "A persistent stream (pstream) retains events for downstream analytics "
+                "while a dataset is a tabular landing zone for batch queries."
+            ),
+        }
+    ]
+    gaps = [
+        "Public documentation does not provide a complete exhaustive answer for this ask"
+    ]
+    salvaged = _salvage_partial_answer(q, kb, [], gaps)
+    assert salvaged is not None
+    text, out_gaps = salvaged
+    assert "Documented Fabrix path" in text
+    assert "persistent stream" in text.lower() or "pstream" in text.lower()
+
