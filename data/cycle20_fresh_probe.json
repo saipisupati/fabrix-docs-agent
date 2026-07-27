@@ -1,0 +1,248 @@
+[
+  {
+    "id": "q1_clone_pipeline",
+    "question": "How do I clone an existing pipeline so I can adapt it for a new use case?",
+    "answer": "**Documented Fabrix path**  \n1. To clone an existing pipeline, you typically start with the pipeline interface in your Fabrix environment. First, access the specific pipeline you wish to duplicate.  \n2. Use the available bot functionalities to create a new pipeline based on the existing structure. While a specific copy bot is not mentioned in the documentation, the `@files:loadfile` bot can be leveraged to handle the data aspects when redefining your pipeline.  \n3. After cloning, adapt the new pipeline by modifying the components, such as dataset inputs or any necessary transformations. You would generally pass your adjusted dataset through the pipeline as a new dataset, forming a persistent stream for further processing or analysis.  \n4. Subsequently, push the updated pipeline to your dashboard or integrate it wherever needed. \n\n**Next (inferred):** You may require permissions or specific configurations for modifying and deploying pipelines, which are not detailed in the documentation.  \n\n**Prerequisites:** Ensure you have access to the pipeline you want to clone and necessary permissions to create new pipelines in your Fabrix environment.\n\n*Includes inferred Fabrix guidance not stated verbatim in the docs.*",
+    "gaps": [
+      "No specific bot for directly cloning pipelines is documented; refer to general pipeline manipulation docs."
+    ],
+    "sources": [
+      "Full doc page: Bots/index.md",
+      "Welcome to Fabrix.ai Documentation",
+      "Example Pipelines",
+      "****2.1 Pipelines****: Once a snapshot of artifacts **`tar.gz`** file is generat",
+      "Servicenow",
+      "2. Starting with a sample dataset: In this example, we will use one of the [Exam"
+    ],
+    "scope": "related",
+    "sufficient": true,
+    "used_inference": true,
+    "elapsed_s": 25.21,
+    "timing": {
+      "scope_ms": 3245.0,
+      "retrieve_ms": 1506.0,
+      "generate_ms": 6414.9,
+      "critique_ms": 12762.1,
+      "total_ms": 23943.3,
+      "llm_calls": 5
+    }
+  },
+  {
+    "id": "q2_pstream_retention",
+    "question": "How do I set data retention on a persistent stream?",
+    "answer": "To set data retention on a persistent stream in the Fabrix environment, you can configure it through the RDAF UI or using the `rdac` CLI. Here\u2019s the documented process using the UI:\n\n1. **Access Persistent Streams Configuration**:\n   - Login to the RDAF UI portal.\n   - Navigate to **Main Menu** \u2192 **Configuration** \u2192 **RDA Administration** \u2192 **Persistent Streams**.\n\n2. **Add or Edit Persistent Stream**:\n   - Click on the **Add** button to create a new persistent stream or choose an existing one to edit.\n   \n3. **Configure Data Retention Settings**:\n   - In the attributes section, you can specify the `retention_days` parameter. This dictates the number of days to retain data in the persistent stream before it gets permanently deleted. For example:\n     \n\n4. **(Optional) Configure Additional Filters**:\n   - You can also add a `retention_purge_extra_filter` to apply additional criteria for purging older data based on specific conditions. For example:\n     \n\n5. **Save Configuration**:\n   - Ensure everything is correctly configured and then save the changes.\n\n**Next (inferred):** The process for using the `rdac` CLI to set data retention is not detailed in the provided excerpts, but you would typically use a command similar to the one below, adapting it to your needs based on the relevant command format:\n- Command: `rdac add/update persistent_stream --name <stream_name> --retention_days <number_of_days>`\n\nThis coverage demonstrates how to establish data retention for persistent streams effectively within the Fabrix platform.\n\n*Includes inferred Fabrix guidance not stated verbatim in the docs.*",
+    "gaps": [
+      "The exact CLI command for setting retention is not documented."
+    ],
+    "sources": [
+      "Full doc page: beginners_guide/persistent_streams.md",
+      "Full doc page: beginners_guide/ps_ui.md",
+      "Data Retention/Archival"
+    ],
+    "scope": "related",
+    "sufficient": true,
+    "used_inference": true,
+    "elapsed_s": 15.77,
+    "timing": {
+      "scope_ms": 1566.5,
+      "retrieve_ms": 1801.7,
+      "generate_ms": 11314.0,
+      "critique_ms": 0.0,
+      "total_ms": 14693.7,
+      "llm_calls": 3
+    }
+  },
+  {
+    "id": "q3_pause_schedules_maint",
+    "question": "What's the process to pause all scheduled pipelines during a maintenance window?",
+    "answer": "**Documented Fabrix path**  \n1. During a maintenance window, to manage scheduled pipelines, one approach is to evict all currently active jobs. Navigate to **Home Menu** -> **Fabric Health** -> **Active Jobs** to identify the jobs that are running. \n2. You can then use the UI to select each job and choose the option to **Evict Job** by clicking on the three dots next to the job you want to pause. This will stop all scheduled jobs currently running.\n3. For those scheduled pipelines that are set to start during the maintenance, temporarily modify them to either disable or reschedule them using the defined `cron_expression`. This prevents them from executing during the maintenance window as they will not trigger until the next scheduled time, or you can completely disable the scheduled pipeline in the service blueprint temporarily.\n4. After the maintenance window has ended, you can re-enable or revise the scheduled pipelines as needed to resume normal operations.\n\n**Next (inferred):** This process assumes access to the necessary user interface and that the ability to manage scheduled pipelines is granted to your user role. \n\n**Prerequisites**  \n- Ensure you have the necessary permissions to modify or evict jobs within the RDA Administration.\n\n*Includes inferred Fabrix guidance not stated verbatim in the docs.*",
+    "gaps": [
+      "Specific steps or commands to programmatically pause scheduled pipelines are not documented."
+    ],
+    "sources": [
+      "Full doc page: installation_guides/evict_stuck_pipelines.md",
+      "Full doc page: beginners_guide/scheduled_pipelines.md",
+      "Bots used in this Pipeline: [@c:timed-loop](/Bots/control/#timed-loop) [@exec:ru"
+    ],
+    "scope": "in_scope",
+    "sufficient": true,
+    "used_inference": true,
+    "elapsed_s": 21.37,
+    "timing": {
+      "scope_ms": 1743.2,
+      "retrieve_ms": 1022.5,
+      "generate_ms": 3700.5,
+      "critique_ms": 14022.0,
+      "total_ms": 20498.8,
+      "llm_calls": 5
+    }
+  },
+  {
+    "id": "q4_custom_dynamic_bot",
+    "question": "How do I create a custom dynamic bot with Python/Mako for my own API call?",
+    "answer": "**Documented Fabrix path**  \n1. For creating a custom dynamic bot in Fabrix.ai, you need to define the required bot configuration elements, including the Mako template for your logic, the imports list, and a JSON schema for parameter validation. These definitions should be stored in a persistent stream (pstream) which can be accessed dynamically. This involves utilizing the `@dm:dynamic-bot` execution command to call your bot. \n   \n2. Your Mako template will incorporate the logic for your API call, utilizing modules such as `rda_requests` for secure HTTP requests. It\u2019s essential to include security features by using the wrapper module instead of direct requests.\n\n3. Ensure to include configurations for sensitive credentials through a secure method in your template. An example of an API integration bot using a dynamic bot framework may look like this:\n\n4. With the bot registered in the persistent stream, it can be invoked using the `@dm:dynamic-bot` command along with the relevant parameters and secrets.\n\n**Next (inferred):** Make sure to set up the pstream correctly with the required `bot_name`, `mako_template`, and `imports` as specified. Further details on the structure of your payload and accessing the API endpoints will require proper API documentation for the specific API you intend to call.\n\n**Prerequisites** \nYou need to have a valid API key and ensure proper read-only API permissions are set up for your bot to function correctly.\n\n*Includes inferred Fabrix guidance not stated verbatim in the docs.*",
+    "gaps": [
+      "Specific examples of parameter validation schemas and examples of successful API endpoint interactions are not detailed."
+    ],
+    "sources": [
+      "Full doc page: beginners_guide/dynamic_bots_usage.md",
+      "Full doc page: ai_fabric/agentic_building_guide/agentic_building_guide.md",
+      "2. Bot Configuration: A dynamic bot is registered with three pieces of configura",
+      "****2. Prerequisites****: The Fabrix.ai platform requires a ServiceNow user acco",
+      "The **Fabrix.ai** RDAF Platform provides a powerful, standards-compliant RESTful",
+      "Splunk API Integration Doc"
+    ],
+    "scope": "related",
+    "sufficient": true,
+    "used_inference": true,
+    "elapsed_s": 26.18,
+    "timing": {
+      "scope_ms": 2471.0,
+      "retrieve_ms": 5932.8,
+      "generate_ms": 7962.6,
+      "critique_ms": 8578.1,
+      "total_ms": 24952.7,
+      "llm_calls": 4
+    }
+  },
+  {
+    "id": "q5_cfxvault_update_params",
+    "question": "What parameters does @cfxvault:update-credential take?",
+    "answer": "@cfxvault:update-credential takes the following parameters:\n- **columns** *: List of comma separated column names to be retrieved",
+    "gaps": [],
+    "sources": [
+      "@cfxvault:update-credential"
+    ],
+    "scope": "in_scope",
+    "sufficient": true,
+    "used_inference": false,
+    "elapsed_s": 2.07,
+    "timing": {
+      "scope_ms": 0.0,
+      "retrieve_ms": 0.0,
+      "generate_ms": 0.0,
+      "critique_ms": 0.0,
+      "total_ms": 96.8,
+      "llm_calls": 0
+    }
+  },
+  {
+    "id": "q6_saml_sso_login",
+    "question": "How do I configure SAML SSO for Fabrix login?",
+    "answer": "**Documented Fabrix path**  \n1. Start by logging into the Fabrix UI and navigating to **Administration** \u2192 **Authentication Servers** \u2192 **Servers** \u2192 **SSO Details**. Here, click on **Add Details** to begin the SAML configuration.  \n2. You will need to provide the **SSO Type** and **Name**, select the appropriate **User Group**, and enter the **MetaData URL** along with other SAML authentication details as specified in the metadata section entered [1], [8].  \n3. After entering the SAML configuration details, check for connectivity to ensure everything is functioning correctly. Once confirmed as successful, click on **Add** to save the details.  \n4. Finally, after configuring SAML, you will need to log out and test the login process using remote user credentials (username and password). The system will automatically log these users in based on their permissions set up in the user groups [3], [5].\n\n**Next (inferred):** Make sure that your SAML metadata URL and related authentication information is correctly provided from your SSO admin team to ensure successful configuration.\n\n**Prerequisites:** Ensure you have the necessary permissions to access the Administration settings and add SSO details in Fabrix.\n\n*Includes inferred Fabrix guidance not stated verbatim in the docs.*",
+    "gaps": [
+      "Specific details on SAML certificate requirements or configuration errors are not mentioned."
+    ],
+    "sources": [
+      "Full doc page: installation_guides/auto_login.md",
+      "Full doc page: beginners_guide/ad_sso_external_user_authentication.md"
+    ],
+    "scope": "related",
+    "sufficient": true,
+    "used_inference": true,
+    "elapsed_s": 9.47,
+    "timing": {
+      "scope_ms": 2200.8,
+      "retrieve_ms": 1125.2,
+      "generate_ms": 5135.7,
+      "critique_ms": 0.0,
+      "total_ms": 8468.9,
+      "llm_calls": 2
+    }
+  },
+  {
+    "id": "q7_webhook_no_pipeline",
+    "question": "Can I invoke a Fabrix bot from an external webhook without defining a pipeline?",
+    "answer": "No, you cannot directly invoke a Fabrix bot from an external webhook without defining a pipeline. The classic RDA automation stack involves several components, including bots and pipelines, which are necessary for orchestrating the interactions and handling the data flow. Specifically, an external webhook can be configured to send notifications to a Fabrix service, but it requires a well-defined pipeline to manage the end-to-end processing of that data and the bots that will operate on it.\n\n1. You would first need to set up the webhook in your external system to send data to your Fabrix environment.\n2. Then, you would configure a pipeline that includes the appropriate bots to handle the incoming data as per your workflow requirements.\n\nThus, without a defined pipeline to facilitate the connection between the external webhook and the Fabrix bot, invoking the bot successfully would not be possible.",
+    "gaps": [
+      "The documentation does not include details on invoking bots directly from webhooks without pipelines."
+    ],
+    "sources": [
+      "Full doc page: ai_fabric/agent_collab_ops/fabrix_meeting_agent.md",
+      "Full doc page: Datasource_Integrations/ms_teams.md",
+      "****2. Prerequisites****: The Fabrix.ai platform requires a ServiceNow user acco",
+      "Fabrix.ai \u2014 Build, Orchestrate & Operate AI Agents",
+      "STEP-1: Download the python script: Make the script an executable:"
+    ],
+    "scope": "in_scope",
+    "sufficient": true,
+    "used_inference": false,
+    "elapsed_s": 7.35,
+    "timing": {
+      "scope_ms": 1509.6,
+      "retrieve_ms": 1109.3,
+      "generate_ms": 3820.0,
+      "critique_ms": 0.0,
+      "total_ms": 6446.9,
+      "llm_calls": 2
+    }
+  },
+  {
+    "id": "q8_migrate_vault_creds",
+    "question": "How do I migrate vault credentials from UAT to production?",
+    "answer": "I couldn't find that in the documentation.",
+    "gaps": [
+      "No information on migrating vault credentials from UAT to production."
+    ],
+    "sources": [],
+    "scope": "related",
+    "sufficient": false,
+    "used_inference": false,
+    "elapsed_s": 12.81,
+    "timing": {
+      "scope_ms": 2116.5,
+      "retrieve_ms": 4755.1,
+      "generate_ms": 5047.3,
+      "critique_ms": 0.0,
+      "total_ms": 11923.8,
+      "llm_calls": 4
+    }
+  },
+  {
+    "id": "q9_export_dashboard_xlsx",
+    "question": "How do I export dashboard report data to Excel or CSV?",
+    "answer": "To export dashboard report data to Excel or CSV, you can utilize the bots designed for file operations within Fabrix. The main steps involve:\n\n1. **Configure Your Source**: Use the bot `@files:datasets-to-xlsx` to export specified datasets to an Excel file. You need to provide a filename and specify which datasets to include through a regular expression.\n\n2. **Use Bots in Pipelines**: Create a pipeline that utilizes the `@files:datasets-to-xlsx` bot, allowing you to automate the export of your dashboard data. Pipelines are part of the classic RDA automation stack, and they work with datasets to manage your data effectively.\n\n3. **Select Your Data Format**: For CSV exports, apart from the Excel option, other relevant bots such as `@files:appendfile` or `@files:archivefile` can help you save your data in the desired format.\n\n4. **Data Flow**: The data will flow from your dashboard through the pipeline and then be saved in your specified file format using the selected bot. Make sure your data is correctly formatted in the datasets to ensure successful exports.\n\nThis approach integrates the classic automation stack components (bots and pipelines) while facilitating effective exports of your dashboard data to Excel or CSV formats.\n\n*Includes inferred Fabrix guidance not stated verbatim in the docs.*",
+    "gaps": [
+      "The docs do not specify details on how to create pipelines or specific example workflow setups for exporting data."
+    ],
+    "sources": [
+      "Full doc page: beginners_guide/dashboard_export.md",
+      "Full doc page: Bots/file.md",
+      "@cisco-fso:export-logs-generic parameters: body_column (required, Text): Log mes",
+      "Dashboard: # Dashboard"
+    ],
+    "scope": "related",
+    "sufficient": true,
+    "used_inference": true,
+    "elapsed_s": 10.54,
+    "timing": {
+      "scope_ms": 1948.8,
+      "retrieve_ms": 1378.1,
+      "generate_ms": 6438.0,
+      "critique_ms": 0.0,
+      "total_ms": 9776.4,
+      "llm_calls": 2
+    }
+  },
+  {
+    "id": "q10_multitenant_isolation",
+    "question": "Walk me through enabling multi-tenancy isolation between two customer orgs on one Fabrix cluster.",
+    "answer": "I couldn't find that in the documentation.",
+    "gaps": [
+      "No specific information found on enabling multi-tenancy isolation between customer organizations on a Fabrix cluster."
+    ],
+    "sources": [],
+    "scope": "related",
+    "sufficient": false,
+    "used_inference": false,
+    "elapsed_s": 26.09,
+    "timing": {
+      "scope_ms": 2515.6,
+      "retrieve_ms": 4830.6,
+      "generate_ms": 17878.2,
+      "critique_ms": 0.0,
+      "total_ms": 25230.2,
+      "llm_calls": 4
+    }
+  }
+]

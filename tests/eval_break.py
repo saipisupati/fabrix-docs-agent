@@ -1978,6 +1978,50 @@ BREAK_CASES = [
             "**documented fabrix path**",
         ],
     },
+    # --- Cycle 20: broaden stepwise trigger beyond verb allowlist ---
+    {
+        "id": "c20_clone_pipeline_invented",
+        "attack": "invented_procedure",
+        "cycle": 20,
+        "question": "How do I clone a pipeline in Fabrix?",
+        "need_any": [
+            "don't see",
+            "do not see",
+            "not documented",
+            "no documented",
+            "clone",
+            "version",
+            "edit",
+            "publish",
+        ],
+        "forbid": [
+            "@files:loadfile",
+            "loadfile to clone",
+            "**documented fabrix path**",
+        ],
+    },
+    {
+        "id": "c20_pause_schedules_maint",
+        "attack": "invented_procedure",
+        "cycle": 20,
+        "question": "How do I pause all schedules for maintenance in Fabrix?",
+        "need_any": [
+            "don't see",
+            "do not see",
+            "not documented",
+            "no documented",
+            "no pause-all",
+            "not a documented",
+            "don't see a documented procedure",
+        ],
+        "forbid": [
+            "evict + cron",
+            "cron tweak",
+            "**documented fabrix path**",
+            "evict job",
+            "evict all",
+        ],
+    },
 ]
 
 

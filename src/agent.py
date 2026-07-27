@@ -229,12 +229,15 @@ _STEPWISE_HOW_CUES: tuple[str, ...] = (
     "how would i",
     "how can i",
     "how should i",
+    "how's the process",
     "what's the process",
     "what is the process",
     "walk me through",
     "steps to",
     "step by step",
     "step-by-step",
+    "way to",
+    "how to",
 )
 _STEPWISE_ACTION_CUES: tuple[str, ...] = (
     "roll back",
@@ -248,21 +251,58 @@ _STEPWISE_ACTION_CUES: tuple[str, ...] = (
     "previous version",
     "who changed",
 )
+# Named product objects for the broader imperative+object fallback (cycle 20).
+_STEPWISE_FABRIX_OBJECTS: tuple[str, ...] = (
+    "pipeline",
+    "pipelines",
+    "bot",
+    "bots",
+    "dataset",
+    "datasets",
+    "dashboard",
+    "dashboards",
+    "schedule",
+    "schedules",
+    "scheduled",
+    "credential",
+    "credentials",
+    "vault",
+    "tenant",
+    "tenancy",
+    "workspace",
+    "persistent stream",
+    "pstream",
+    "extension",
+    "blueprint",
+    "blueprints",
+    "pack",
+    "packs",
+)
+
+
+def _matches_stepwise_action_verbs(q: str) -> bool:
+    """Fast path: allowlisted high-risk procedure verbs (rollback, audit, …)."""
+    return any(c in q for c in _STEPWISE_ACTION_CUES)
 
 
 def _is_stepwise_procedure_ask(question: str) -> bool:
     """
     How-to / walk-me-through asks that invite a numbered procedure.
 
-    Paired with action cues (rollback, audit, revert, …) so ordinary param
-    lookups and yes/no capability asks do not pick up the procedure guardrail.
+    Fast path: allowlisted action verbs (rollback, audit, revert, …).
+    Fallback (cycle 20): imperative/how-to frame + a named Fabrix object, so
+    clone/pause/migrate/export how-tos pick up the grounding guardrail without
+    endlessly extending the verb list. Param lookups and yes/no capability asks
+    still stay out (no imperative frame).
     """
     q = (question or "").lower()
     if not q.strip():
         return False
     if not any(c in q for c in _STEPWISE_HOW_CUES):
         return False
-    return any(c in q for c in _STEPWISE_ACTION_CUES)
+    if _matches_stepwise_action_verbs(q):
+        return True
+    return any(obj in q for obj in _STEPWISE_FABRIX_OBJECTS)
 
 
 def _excerpts_describe_asked_procedure(
@@ -310,7 +350,57 @@ def _excerpts_describe_asked_procedure(
                 "audit who",
             )
         )
-    # Unknown stepwise action: require explicit "procedure"/"how to" language for the ask.
+    # Clone-a-pipeline: builder "Clone" clones a bot row — not a pipeline copy.
+    if "clone" in q and "pipeline" in q:
+        return any(
+            t in blob
+            for t in (
+                "clone a pipeline",
+                "clone the pipeline",
+                "clone pipeline",
+                "duplicate a pipeline",
+                "duplicate the pipeline",
+                "copy a pipeline",
+                "pipeline clone",
+            )
+        )
+    # Pause-all / maintenance: adjacent cron + evict pages are not that procedure.
+    if ("pause" in q or "maintenance" in q) and (
+        "schedule" in q or "schedules" in q or "scheduled" in q
+    ):
+        return any(
+            t in blob
+            for t in (
+                "pause all",
+                "pause scheduled",
+                "pause schedules",
+                "pause all scheduled",
+                "maintenance window",
+                "disable all scheduled",
+                "disable scheduled pipelines",
+                "pause for maintenance",
+            )
+        )
+    # Broader stepwise asks: require the named object + enough question tokens in
+    # excerpts so documented how-tos (SSO, dynamic bots, retention, …) still pass.
+    objects_in_q = [o for o in _STEPWISE_FABRIX_OBJECTS if o in q]
+    if objects_in_q and not any(o in blob for o in objects_in_q):
+        return False
+    stop = {
+        "what", "whats", "which", "where", "when", "how", "does", "do", "the",
+        "for", "our", "you", "can", "need", "with", "from", "into", "that",
+        "this", "have", "fabrix", "rda", "rdaf", "please", "about", "process",
+        "steps", "step", "through", "walk", "would", "should", "could",
+        "configure", "enable", "create", "make", "using", "after", "before",
+        "between", "during", "without", "within",
+    }
+    tokens = [
+        t for t in re.findall(r"[a-z0-9]+", q)
+        if len(t) > 3 and t not in stop
+    ]
+    hits = sum(1 for t in tokens if t in blob)
+    if objects_in_q:
+        return hits >= 2
     return any(t in blob for t in ("documented procedure", "step-by-step", "walkthrough"))
 
 

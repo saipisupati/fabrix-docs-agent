@@ -294,6 +294,14 @@ def test_stepwise_procedure_ask_detected():
     assert _is_stepwise_procedure_ask(
         "Walk me through the steps to restore a previous pipeline deploy."
     )
+    # Cycle 20: imperative + Fabrix object (no allowlisted verb required)
+    assert _is_stepwise_procedure_ask("How do I clone a pipeline in Fabrix?")
+    assert _is_stepwise_procedure_ask(
+        "How do I pause all schedules for maintenance in Fabrix?"
+    )
+    assert _is_stepwise_procedure_ask(
+        "What's the process to migrate vault credentials between sites?"
+    )
 
 
 def test_stepwise_procedure_ask_does_not_false_trigger():
@@ -306,6 +314,55 @@ def test_stepwise_procedure_ask_does_not_false_trigger():
         "What parameters does @snowv2:list-incidents take?"
     )
     assert not _is_stepwise_procedure_ask(
+        "What are the parameters for @cfxvault:update-credential?"
+    )
+    assert not _is_stepwise_procedure_ask(
         "What is the public IP range / allowlist for Cloud Fabrix SaaS?"
+    )
+    assert not _is_stepwise_procedure_ask(
+        "Can I invoke a bot via webhook without a pipeline?"
+    )
+
+
+def test_excerpts_procedure_grounding_clone_and_pause():
+    from agent import _excerpts_describe_asked_procedure
+
+    adjacent = [
+        {
+            "title": "pipe_builder",
+            "text": (
+                "Click on Clone action on the top right side of the pane to clone "
+                "the bot to add more rows. Publish the draft pipeline when verified."
+            ),
+        }
+    ]
+    assert not _excerpts_describe_asked_procedure(
+        "How do I clone a pipeline in Fabrix?", adjacent, []
+    )
+    schedules = [
+        {
+            "title": "scheduled_pipelines",
+            "text": (
+                "scheduled_pipelines use cron_expression. Evict stuck pipelines from "
+                "Active Jobs when a job is stuck in initialization."
+            ),
+        }
+    ]
+    assert not _excerpts_describe_asked_procedure(
+        "How do I pause all schedules for maintenance in Fabrix?", schedules, []
+    )
+    retention = [
+        {
+            "title": "persistent_streams",
+            "text": (
+                "Configure retention_days on a persistent stream under RDA "
+                "Administration → Persistent Streams. Older data is purged."
+            ),
+        }
+    ]
+    assert _excerpts_describe_asked_procedure(
+        "How do I set data retention on a persistent stream?",
+        retention,
+        [],
     )
 
