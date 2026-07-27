@@ -223,6 +223,134 @@ def _is_full_script_automation_ask(question: str) -> bool:
     return wants_artifact and (end_to_end or "automat" in q)
 
 
+_STEPWISE_HOW_CUES: tuple[str, ...] = (
+    "how do i",
+    "how do you",
+    "how would i",
+    "how can i",
+    "how should i",
+    "what's the process",
+    "what is the process",
+    "walk me through",
+    "steps to",
+    "step by step",
+    "step-by-step",
+)
+_STEPWISE_ACTION_CUES: tuple[str, ...] = (
+    "roll back",
+    "rollback",
+    "revert",
+    "undo",
+    "restore",
+    "audit",
+    "redeploy",
+    "bad deploy",
+    "previous version",
+    "who changed",
+)
+
+
+def _is_stepwise_procedure_ask(question: str) -> bool:
+    """
+    How-to / walk-me-through asks that invite a numbered procedure.
+
+    Paired with action cues (rollback, audit, revert, …) so ordinary param
+    lookups and yes/no capability asks do not pick up the procedure guardrail.
+    """
+    q = (question or "").lower()
+    if not q.strip():
+        return False
+    if not any(c in q for c in _STEPWISE_HOW_CUES):
+        return False
+    return any(c in q for c in _STEPWISE_ACTION_CUES)
+
+
+def _excerpts_describe_asked_procedure(
+    question: str,
+    kb_entries: list[dict] | None,
+    chunks: list[dict] | None,
+) -> bool:
+    """
+    True only when retrieved text actually discusses the asked procedure —
+    not merely that related bots/commands exist for other purposes.
+    """
+    blob = _retrieved_context_blob(kb_entries, chunks)
+    if not blob.strip():
+        return False
+    q = (question or "").lower()
+    if any(w in q for w in ("roll back", "rollback", "revert", "previous version")) and (
+        "bot" in q or "deploy" in q
+    ):
+        return any(
+            t in blob
+            for t in (
+                "roll back a bot",
+                "rollback a bot",
+                "rollback bot",
+                "revert bot",
+                "bot rollback",
+                "rollback to a previous version",
+                "previous version of the bot",
+                "revert to a previous version",
+                "undeploy bot",
+                "bot version history",
+            )
+        )
+    if "audit" in q and ("pipeline" in q or "configuration" in q or "who changed" in q):
+        return any(
+            t in blob
+            for t in (
+                "audit log",
+                "audit trail",
+                "who changed",
+                "pipeline configuration change",
+                "configuration audit",
+                "change history",
+                "pipeline audit",
+                "audit who",
+            )
+        )
+    # Unknown stepwise action: require explicit "procedure"/"how to" language for the ask.
+    return any(t in blob for t in ("documented procedure", "step-by-step", "walkthrough"))
+
+
+def _undocumented_procedure_honesty(
+    question: str,
+    kb_entries: list[dict] | None = None,
+    chunks: list[dict] | None = None,
+    existing_gaps: list[str] | None = None,
+) -> tuple[str, list[str]]:
+    """Refuse invented how-to procedures when excerpts lack that specific process."""
+    titles: list[str] = []
+    for e in (kb_entries or [])[:4]:
+        t = (e.get("title") or "").strip()
+        if t and t.lower() not in {x.lower() for x in titles}:
+            titles.append(t)
+    for c in (chunks or [])[:4]:
+        t = (c.get("title") or "").strip()
+        if t and t.lower() not in {x.lower() for x in titles}:
+            titles.append(t)
+    related = ""
+    if titles:
+        related = (
+            " Related documented pages that may be adjacent (not a substitute procedure): "
+            + "; ".join(titles[:3])
+            + "."
+        )
+    text = (
+        "I don't see a documented procedure for this specific ask in the Fabrix / RDA "
+        "public docs. Related bots or pages may exist for adjacent tasks, but the excerpts "
+        "do not describe this exact step-by-step workflow — I won't invent parameters or "
+        "combine real bot names into an undocumented procedure."
+        f"{related}"
+    )
+    gaps = list(existing_gaps or [])
+    gap = "No documented procedure for this specific how-to ask in the retrieved public docs"
+    if gap.lower() not in " ".join(g.lower() for g in gaps):
+        gaps.insert(0, gap)
+    return text, gaps[:8]
+
+
 # Live-incident / host-playbook asks: distinct from day-2 how-to and wiring.
 _INCIDENT_SYMPTOM_CUES: tuple[str, ...] = (
     "oom",
@@ -2190,6 +2318,14 @@ Fabrix mental model (use when relevant; do not keyword-stuff):
 - Never invent password variables, default credentials, or example secrets in code blocks, even as placeholders like $PASSWORD or admin:changeme.
 """
 
+    procedure_grounding_guardrail = ""
+    if _is_stepwise_procedure_ask(question):
+        procedure_grounding_guardrail = """
+- Before writing a numbered step-by-step procedure, verify that the excerpts actually describe that SPECIFIC procedure -- not just that the individual bots/commands mentioned exist for OTHER purposes.
+- Do not combine real bot names with invented parameters or invented usage patterns to construct a plausible-sounding procedure. If a bot's real documented parameters don't include something like a "rollback" or "version" usage, do not invent that it does.
+- If the excerpts don't describe the specific procedure asked about, say so directly ("I don't see a documented procedure for X") even if related bots/tools exist for adjacent purposes. Only then may you optionally note what IS documented that's tangentially related, clearly separated from the (nonexistent) procedure.
+"""
+
     specificity_guardrail = """
 - CRITICAL: a topic being documented does not mean every specific detail about it is documented. Before stating a specific number, version, exact comparison, or precise technical claim, verify that exact detail appears in the excerpts -- not just the general topic.
 - If the excerpts discuss a topic broadly (e.g., "integrates with Kubernetes") but do NOT state a specific requested detail (e.g., a version number, a named comparison to another product, an exact limit), say so explicitly: name the topic that IS documented, then clearly state the specific detail is not specified in the docs.
@@ -2202,7 +2338,7 @@ Fabrix mental model (use when relevant; do not keyword-stuff):
   technical synthesis implied by the docs.
 - Cite documented claims with [1], [2], … Do NOT put [n] on inferred reasoning.
 - Set used_inference=true and fill inferred_summary when you synthesize beyond verbatim docs.
-{objects_line}{full_page_line}{fidelity_line}{ungrounded_line}{path_first}{code_gen_guardrail}{specificity_guardrail}
+{objects_line}{full_page_line}{fidelity_line}{ungrounded_line}{path_first}{code_gen_guardrail}{procedure_grounding_guardrail}{specificity_guardrail}
 """
     else:
         infer_guidance = f"""
@@ -2210,7 +2346,7 @@ Fabrix mental model (use when relevant; do not keyword-stuff):
 - If you add connective technical reasoning beyond a single excerpt, set used_inference=true
   and fill inferred_summary. Otherwise used_inference=false and inferred_summary="".
 - Do NOT put [n] on inferred reasoning.
-{objects_line}{full_page_line}{fidelity_line}{ungrounded_line}{path_first}{code_gen_guardrail}{specificity_guardrail}
+{objects_line}{full_page_line}{fidelity_line}{ungrounded_line}{path_first}{code_gen_guardrail}{procedure_grounding_guardrail}{specificity_guardrail}
 """
 
     revision_block = ""
@@ -3308,19 +3444,38 @@ _GAP_UNCOVERED_MARKERS: tuple[str, ...] = (
     "is not specified",
     "are not specified",
     "not specified",
+    "does not specify",
+    "doesn't specify",
+    "do not specify",
     "is not covered",
     "are not covered",
     "not covered",
-    "not documented",
-    "isn't documented",
-    "is not documented",
     "does not cover",
     "do not cover",
     "doesn't cover",
+    "not documented",
+    "isn't documented",
+    "is not documented",
+    "does not document",
+    "do not document",
+    "doesn't document",
+    "no documentation",
+    "no documented",
+    "no information",
+    "no information about",
+    "not available in the",
+    "is not available in the",
+    "not stated",
+    "is not stated",
+    "are not stated",
+    "does not state",
     "could not find",
     "couldn't find",
     "no specific information",
     "not included in the",
+    "there is no documented",
+    "there is no rest api",
+    "no rest api",
 )
 
 _SAAS_HOSTING_CONTEXT_CUES: tuple[str, ...] = (
@@ -3397,6 +3552,9 @@ def _gaps_declare_core_ask_uncovered(
             "qdrant",
             "replication",
             "mfa",
+            "rest api",
+            "list all bots",
+            "bots in a pipeline",
         )
         if p in qlow
     ]
@@ -4212,6 +4370,31 @@ def answer(question: str, client: QdrantClient | None = None) -> AgentResponse:
         _log_gap(question, scope, gaps, True)
         # Keep related sources for "what IS documented" transparency, but do not
         # claim a grounded executable playbook.
+        sources = (_sources_from_kb(kb_entries) + _sources_from_chunks(chunks))[:8]
+        return AgentResponse(
+            answer=polish_answer_text(answer_text),
+            sources=sources,
+            sufficient=False,
+            examples=[],
+            gaps=gaps,
+            scope=scope if (kb_entries or chunks) else "related",
+            used_inference=False,
+            inferred_summary="",
+            timing=timing,
+        )
+
+    # Stepwise how-to whose specific procedure is absent from excerpts: refuse
+    # invented Documented Fabrix path built from adjacent bots/params.
+    if _is_stepwise_procedure_ask(question) and not _excerpts_describe_asked_procedure(
+        question, kb_entries, chunks
+    ):
+        logger.info("stepwise procedure ask without grounded procedure — honesty gate")
+        answer_text, gaps = _undocumented_procedure_honesty(
+            question, kb_entries, chunks, []
+        )
+        timing["generate_ms"] = 0
+        timing["total_ms"] = _ms(t0)
+        _log_gap(question, scope, gaps, True)
         sources = (_sources_from_kb(kb_entries) + _sources_from_chunks(chunks))[:8]
         return AgentResponse(
             answer=polish_answer_text(answer_text),

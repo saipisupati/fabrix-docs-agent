@@ -246,3 +246,66 @@ def test_salvage_still_runs_for_generic_exhaustive_gap():
     assert "Documented Fabrix path" in text
     assert "persistent stream" in text.lower() or "pstream" in text.lower()
 
+
+def test_gaps_declare_uncovered_accepts_does_not_specify():
+    from agent import _gaps_declare_core_ask_uncovered, _salvage_partial_answer
+
+    q = "Is there a REST API to programmatically list all bots in a pipeline?"
+    gaps = [
+        "The documentation does not specify whether there is a REST API to list all bots in a pipeline."
+    ]
+    assert _gaps_declare_core_ask_uncovered(q, gaps)
+    kb = [
+        {
+            "title": "ServiceNow bots",
+            "text": "bot #snowv2:list-incidents lists incidents from ServiceNow.",
+        }
+    ]
+    assert _salvage_partial_answer(q, kb, [], gaps) is None
+
+
+def test_gaps_declare_uncovered_accepts_no_information_about():
+    from agent import _gaps_declare_core_ask_uncovered, _salvage_partial_answer
+
+    q = "Is there a REST API to programmatically list all bots in a pipeline?"
+    gaps = [
+        "No information about a REST API to programmatically list all bots in a "
+        "pipeline is available in the documentation."
+    ]
+    assert _gaps_declare_core_ask_uncovered(q, gaps)
+    kb = [
+        {
+            "title": "ServiceNow bots",
+            "text": "bot #snowv2:list-incidents lists incidents from ServiceNow.",
+        }
+    ]
+    assert _salvage_partial_answer(q, kb, [], gaps) is None
+
+
+def test_stepwise_procedure_ask_detected():
+    from agent import _is_stepwise_procedure_ask
+
+    assert _is_stepwise_procedure_ask(
+        "How do I roll back a bot to a previous version after a bad deploy?"
+    )
+    assert _is_stepwise_procedure_ask(
+        "How do I audit who changed a pipeline configuration and when?"
+    )
+    assert _is_stepwise_procedure_ask(
+        "Walk me through the steps to restore a previous pipeline deploy."
+    )
+
+
+def test_stepwise_procedure_ask_does_not_false_trigger():
+    from agent import _is_stepwise_procedure_ask
+
+    assert not _is_stepwise_procedure_ask(
+        "Is there a REST API to programmatically list all bots in a pipeline?"
+    )
+    assert not _is_stepwise_procedure_ask(
+        "What parameters does @snowv2:list-incidents take?"
+    )
+    assert not _is_stepwise_procedure_ask(
+        "What is the public IP range / allowlist for Cloud Fabrix SaaS?"
+    )
+

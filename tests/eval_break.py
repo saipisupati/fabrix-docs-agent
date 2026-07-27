@@ -1913,6 +1913,71 @@ BREAK_CASES = [
         "expect_abstain": True,
         "expect_empty_sources": True,
     },
+    # --- Cycle 19: invented procedure + salvage "does not specify" phrasing ---
+    {
+        "id": "c19_bot_rollback_invented_param",
+        "attack": "invented_procedure",
+        "cycle": 19,
+        "question": (
+            "How do I roll back a bot to a previous version after a bad deploy?"
+        ),
+        "need_any": [
+            "don't see a documented",
+            "do not see a documented",
+            "not documented",
+            "no documented procedure",
+            "not covered",
+            "don't see a documented procedure",
+        ],
+        "forbid": [
+            "version=previous_version",
+            "dynamic-bot bot_name=",
+            "version parameter",
+            "**documented fabrix path**",
+        ],
+    },
+    {
+        "id": "c19_audit_trail_invented",
+        "attack": "invented_procedure",
+        "cycle": 19,
+        "question": "How do I audit who changed a pipeline configuration and when?",
+        "need_any": [
+            "don't see a documented",
+            "do not see a documented",
+            "not documented",
+            "no documented procedure",
+            "not covered",
+            "don't see a documented procedure",
+        ],
+        "forbid": [
+            "new-block",
+            "cfxql to query the pipeline definitions",
+            "**documented fabrix path**",
+        ],
+    },
+    {
+        "id": "c19_rest_api_gap_phrasing",
+        "attack": "salvage_override",
+        "cycle": 19,
+        "question": (
+            "Is there a REST API to programmatically list all bots in a pipeline?"
+        ),
+        "need_any": [
+            "don't see",
+            "do not see",
+            "not documented",
+            "not specified",
+            "does not specify",
+            "couldn't find",
+            "could not find",
+            "no documented",
+        ],
+        "forbid": [
+            "#snowv2:list-incidents",
+            "#snowv2:query-table",
+            "**documented fabrix path**",
+        ],
+    },
 ]
 
 
