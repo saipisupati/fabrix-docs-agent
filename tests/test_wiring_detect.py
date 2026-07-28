@@ -416,3 +416,18 @@ def test_excerpts_procedure_grounding_clone_and_pause():
         [],
     )
 
+
+def test_bot_naming_uniqueness_ask_detected():
+    from agent import _is_bot_naming_uniqueness_ask, _normalize_question_typos
+
+    q = "Can two bots share the same name if they're in different pipelines?"
+    assert _is_bot_naming_uniqueness_ask(q)
+    expanded = _normalize_question_typos(q)
+    assert "bot package unique naming SDK" in expanded
+    assert not _is_bot_naming_uniqueness_ask(
+        "What parameters does @cfxvault:update-credential take?"
+    )
+    assert not _is_bot_naming_uniqueness_ask(
+        "How do I wire Splunk into a Fabrix dashboard?"
+    )
+

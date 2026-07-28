@@ -2907,6 +2907,35 @@ _PRODUCT_TYPOS: tuple[tuple[str, str], ...] = (
 )
 
 
+def _is_bot_naming_uniqueness_ask(question: str) -> bool:
+    """
+    Bot identity / uniqueness asks ("same name in different pipelines?").
+
+    Natural phrasing often misses beginners_guide/sdk.md; expand toward
+    SDK / bot-package naming terminology for retrieve (cycle 22).
+    """
+    q = (question or "").lower()
+    if "bot" not in q and "bots" not in q:
+        return False
+    return any(
+        c in q
+        for c in (
+            "same name",
+            "share a name",
+            "share the same name",
+            "unique name",
+            "naming conflict",
+            "name collision",
+            "duplicate name",
+            "identical name",
+            "name if they're in different",
+            "name if they are in different",
+            "names across",
+            "name across pipelines",
+        )
+    )
+
+
 def _normalize_question_typos(question: str) -> str:
     """Rewrite known product misspellings / slang so family detection still fires."""
     q = question or ""
@@ -2929,6 +2958,10 @@ def _normalize_question_typos(question: str) -> str:
             for w in ("dataset", "datasets", "query", "queries", "querying", "filter")
         ):
             q = re.sub(r"\bSQL\b", "SQL CFXQL", q, flags=re.IGNORECASE)
+            low = q.lower()
+    # Bot naming / uniqueness → SDK package-naming terms (keep user framing).
+    if _is_bot_naming_uniqueness_ask(q) and "bot package unique" not in low:
+        q = q.rstrip() + " bot package unique naming SDK"
     return q
 
 
@@ -4129,6 +4162,25 @@ def answer(question: str, client: QdrantClient | None = None) -> AgentResponse:
                 objs.insert(0, term)
         facet_plan["primary_objects"] = objs[:8]
         logger.info("cfxql topic retrieve bias")
+        use_facets = True
+
+    # Bot naming / uniqueness: natural phrasing misses SDK package-name rules
+    if _is_bot_naming_uniqueness_ask(question):
+        queries0 = list(facet_plan["search_queries"] or [])
+        for seed in (
+            "bot name must be unique within the bot package",
+            "Developing RDA Bots SDK bots.yml name unique",
+            "bot package unique naming SDK",
+        ):
+            if seed not in queries0:
+                queries0 = [seed] + queries0
+        facet_plan["search_queries"] = queries0
+        objs = list(facet_plan.get("primary_objects") or [])
+        for term in ("bot name", "bot package", "SDK", "unique"):
+            if term not in objs:
+                objs.insert(0, term)
+        facet_plan["primary_objects"] = objs[:8]
+        logger.info("bot naming uniqueness retrieve bias")
         use_facets = True
 
     # Worker scale / capacity asks

@@ -2070,6 +2070,17 @@ BREAK_CASES = [
             "no automatic deletion",
         ],
     },
+    # --- Cycle 22: retrieval routing for bot naming / uniqueness ---
+    {
+        "id": "c22_bot_name_uniqueness_routing",
+        "attack": "wrong_facet",
+        "cycle": 22,
+        "question": (
+            "Can two bots share the same name if they're in different pipelines?"
+        ),
+        "need_any": ["unique", "package", "catalog", "reused", "prefix"],
+        "forbid": ["couldn't find that in the documentation"],
+    },
 ]
 
 
