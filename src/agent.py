@@ -1492,10 +1492,24 @@ def _answer_claims_missing_from_excerpts(answer: str) -> bool:
 
 
 def _is_concurrent_dataset_ask(question: str) -> bool:
+    """
+    Asks about conflict / who-wins when multiple writers hit the same dataset.
+
+    Includes "concurrent writes", "at once", and "which one wins" / multi-branch
+    phrasings (cycle 21) — docs do not define a merge/lock policy.
+    """
     q = (question or "").lower()
-    return "concurrent" in q and "dataset" in q and any(
-        w in q for w in ("write", "writes", "writing", "pipeline")
-    )
+    if "dataset" not in q:
+        return False
+    if not any(w in q for w in ("write", "writes", "writing")):
+        return False
+    if any(w in q for w in ("concurrent", "at once", "same time", "simultaneously")):
+        return True
+    if ("which" in q and "win" in q) or ("who" in q and "win" in q):
+        return True
+    if "branch" in q and any(w in q for w in ("two", "both", "multiple")):
+        return True
+    return False
 
 
 def _concurrent_dataset_honesty(
@@ -1504,14 +1518,110 @@ def _concurrent_dataset_honesty(
     text = (
         "Public Fabrix docs describe datasets / pstreams and pipelines as building blocks "
         "for landing and transforming data. They do **not** specify a locking mechanism, "
-        "merge policy, or guaranteed behavior for concurrent writes to the same dataset "
-        "from two pipelines. Treat that concurrency detail as **not documented**; use "
-        "separate datasets/streams or operational controls unless a cited excerpt says "
-        "otherwise."
+        "merge policy, last-write-wins rule, or guaranteed behavior when two pipeline "
+        "branches (or concurrent writers) write to the same dataset. That conflict/"
+        "concurrency detail is **not documented**; use separate datasets/streams or "
+        "operational controls unless a cited excerpt says otherwise."
     )
     gaps = list(existing_gaps or [])
     gap = (
-        "Concurrent writes / dataset locking behavior is not specified in the public docs"
+        "Concurrent writes / dataset locking / who-wins behavior is not specified "
+        "in the public docs"
+    )
+    if gap.lower() not in " ".join(g.lower() for g in gaps):
+        gaps.insert(0, gap)
+    return text, gaps[:8]
+
+
+_BEHAVIOR_CERTAINTY_CUES: tuple[str, ...] = (
+    "which one wins",
+    "which wins",
+    "who wins",
+    "does that also",
+    "does it also",
+    "also delete",
+    "also remove",
+    "also cascade",
+    "what happens if",
+    "what happens when",
+    "is there a rule",
+    "handle conflict",
+    "handle conflicts",
+    "conflict resolution",
+    "concurrent write",
+    "concurrently",
+    "at once",
+    "cascade",
+)
+
+
+def _is_undocumented_behavior_ask(question: str) -> bool:
+    """
+    Asks that invite a confident yes/no or a single deterministic rule
+    (who wins, does X also Y, what happens if …) — high false-certainty risk
+    when docs only cover adjacent features.
+    """
+    q = (question or "").lower()
+    if not q.strip():
+        return False
+    if any(c in q for c in _BEHAVIOR_CERTAINTY_CUES):
+        return True
+    if "which" in q and "win" in q:
+        return True
+    if "does " in q and " also " in q:
+        return True
+    return False
+
+
+def _is_cascade_side_effect_ask(question: str) -> bool:
+    """
+    'Does deleting X also delete Y?' side-effect / cascade asks.
+
+    Distinct from a plain how-to delete; invites a confident yes/no the docs
+    often do not state for the second object.
+    """
+    q = (question or "").lower()
+    if "delete" not in q and "remove" not in q:
+        return False
+    if not any(c in q for c in ("also", "cascade", "as well", "too")):
+        return False
+    # Need two object-ish nouns in play (e.g. pstream + dataset).
+    objects = (
+        "pstream", "persistent stream", "dataset", "pipeline", "dashboard",
+        "credential", "blueprint", "index",
+    )
+    hits = sum(1 for o in objects if o in q)
+    return hits >= 2
+
+
+def _cascade_side_effect_honesty(
+    question: str,
+    kb_entries: list[dict] | None = None,
+    chunks: list[dict] | None = None,
+    existing_gaps: list[str] | None = None,
+) -> tuple[str, list[str]]:
+    """Refuse confident yes/no on undocumented cascade; note adjacent delete facts."""
+    blob = _retrieved_context_blob(kb_entries, chunks).lower()
+    adjacent = ""
+    if "pstream" in (question or "").lower() or "persistent stream" in (question or "").lower():
+        if "delete all the data" in blob or "delete" in blob:
+            adjacent = (
+                " Closest related (not the same question): pstream delete docs describe "
+                "removing the persistent stream configuration and an optional "
+                "'Delete all the data as well' choice for the backing OpenSearch index — "
+                "they do **not** state whether object-store datasets that reference the "
+                "pstream are also deleted."
+            )
+    text = (
+        "The public docs do **not** specify whether that delete/cascade side effect "
+        "happens for the objects you asked about. I won't assert a confident yes or no "
+        "without an excerpt that states that exact behavior."
+        f"{adjacent}"
+    )
+    gaps = list(existing_gaps or [])
+    gap = (
+        "Cascade / side-effect of delete across related objects is not specified "
+        "in the public docs"
     )
     if gap.lower() not in " ".join(g.lower() for g in gaps):
         gaps.insert(0, gap)
@@ -2416,6 +2526,14 @@ Fabrix mental model (use when relevant; do not keyword-stuff):
 - If the excerpts don't describe the specific procedure asked about, say so directly ("I don't see a documented procedure for X") even if related bots/tools exist for adjacent purposes. Only then may you optionally note what IS documented that's tangentially related, clearly separated from the (nonexistent) procedure.
 """
 
+    behavior_certainty_guardrail = ""
+    if _is_undocumented_behavior_ask(question):
+        behavior_certainty_guardrail = """
+- For questions asking about a specific behavior, conflict-resolution rule, or "what happens if" scenario: only state a definitive answer (yes/no/a specific rule) if the excerpts EXPLICITLY describe that exact behavior.
+- If the excerpts only show related/adjacent features (e.g., a delete option for one object, but not whether it cascades to another; a default parameter, but not what happens under concurrent access) do NOT construct a confident rule by inference. State clearly that the specific behavior/rule is not documented, and only then describe the closest documented adjacent fact, clearly separated as "closest related, but not the same question."
+- Avoid confident absolutes ("no", "always", "last one wins") unless the excerpts state that outcome directly.
+"""
+
     specificity_guardrail = """
 - CRITICAL: a topic being documented does not mean every specific detail about it is documented. Before stating a specific number, version, exact comparison, or precise technical claim, verify that exact detail appears in the excerpts -- not just the general topic.
 - If the excerpts discuss a topic broadly (e.g., "integrates with Kubernetes") but do NOT state a specific requested detail (e.g., a version number, a named comparison to another product, an exact limit), say so explicitly: name the topic that IS documented, then clearly state the specific detail is not specified in the docs.
@@ -2428,7 +2546,7 @@ Fabrix mental model (use when relevant; do not keyword-stuff):
   technical synthesis implied by the docs.
 - Cite documented claims with [1], [2], … Do NOT put [n] on inferred reasoning.
 - Set used_inference=true and fill inferred_summary when you synthesize beyond verbatim docs.
-{objects_line}{full_page_line}{fidelity_line}{ungrounded_line}{path_first}{code_gen_guardrail}{procedure_grounding_guardrail}{specificity_guardrail}
+{objects_line}{full_page_line}{fidelity_line}{ungrounded_line}{path_first}{code_gen_guardrail}{procedure_grounding_guardrail}{behavior_certainty_guardrail}{specificity_guardrail}
 """
     else:
         infer_guidance = f"""
@@ -2436,7 +2554,7 @@ Fabrix mental model (use when relevant; do not keyword-stuff):
 - If you add connective technical reasoning beyond a single excerpt, set used_inference=true
   and fill inferred_summary. Otherwise used_inference=false and inferred_summary="".
 - Do NOT put [n] on inferred reasoning.
-{objects_line}{full_page_line}{fidelity_line}{ungrounded_line}{path_first}{code_gen_guardrail}{procedure_grounding_guardrail}{specificity_guardrail}
+{objects_line}{full_page_line}{fidelity_line}{ungrounded_line}{path_first}{code_gen_guardrail}{procedure_grounding_guardrail}{behavior_certainty_guardrail}{specificity_guardrail}
 """
 
     revision_block = ""
@@ -5068,10 +5186,23 @@ def answer(question: str, client: QdrantClient | None = None) -> AgentResponse:
         abstained = False
         used_inference = True
         inferred_summary = inferred_summary or (
-            "Concurrent dataset write behavior is not documented"
+            "Concurrent dataset write / who-wins behavior is not documented"
         )
         examples = []
         logger.info("concurrent dataset honesty fallback applied")
+
+    if _is_cascade_side_effect_ask(question):
+        # Always replace — models invent confident yes/no cascade answers.
+        answer_text, gaps = _cascade_side_effect_honesty(
+            question, kb_entries, chunks, gaps
+        )
+        abstained = False
+        used_inference = True
+        inferred_summary = inferred_summary or (
+            "Delete cascade / side-effect across related objects is not documented"
+        )
+        examples = []
+        logger.info("cascade side-effect honesty fallback applied")
 
     if _is_full_script_automation_ask(question) and (
         _answer_has_turnkey_script_risk(answer_text)

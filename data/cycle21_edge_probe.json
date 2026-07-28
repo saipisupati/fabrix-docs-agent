@@ -1,0 +1,132 @@
+[
+  {
+    "id": "q1_two_branches_same_dataset",
+    "question": "If a pipeline has two branches that both write to the same dataset, which one wins?",
+    "answer": "In a pipeline with two branches that both write to the same dataset in Fabrix, the general behavior is that the last execution of the write operation will overwrite the previous one. In this scenario, if both branches are writing to the same dataset, the output from the branch that executes last will \"win,\" meaning it will be the final content of the dataset.\n\nWhen using the classic RDA automation stack, such as pipelines in Fabrix, it's essential to design your data flows carefully to avoid unintentional data loss due to overwrites. You might choose to employ coordination mechanisms or separate datasets for different branches to manage data integrity effectively.\n\n[1] and [2] do not provide specific details on merge strategies within datasets, but understanding the order and timing of executions in pipelines will help you anticipate such data conflicts.\n\n*Includes inferred Fabrix guidance not stated verbatim in the docs.*",
+    "gaps": [
+      "Specific merge or conflict resolution strategies for datasets within the Fabrix documentation."
+    ],
+    "scope": "related",
+    "sufficient": true,
+    "used_inference": true,
+    "n_sources": 7,
+    "elapsed_s": 23.79
+  },
+  {
+    "id": "q2_dashboard_two_tenants",
+    "question": "Can a dashboard show data from two different tenants side by side?",
+    "answer": "In Fabrix, dashboards are designed to provide analytics and reporting tailored to user needs. However, the documentation does not explicitly mention the capability to display data from two different tenants side by side on a single dashboard. Dashboards can be configured using datasets and persistent streams, which typically handle data from individual tenant contexts. \n\nTo achieve a comparative analysis of data from different tenants, one common approach is to leverage the classic automation stack: first, data from multiple tenants can be retrieved using bots, then processed through pipelines, and stored in datasets or persistent streams. Finally, these datasets can be represented in dashboards. Each dataset would likely correspond to an individual tenant, but combining these datasets into a singular view on one dashboard isn't outlined in the available documentation, indicating that specific functionality for that may not exist.\n\nThus, while it might be feasible to visualize data from separate tenants using distinct datasets, showing them side by side within one dashboard isn't clearly supported as per the current documentation.\n\n*Includes inferred Fabrix guidance not stated verbatim in the docs.*",
+    "gaps": [
+      "The documentation does not specify the capabilities and configurations for multi-tenant data visualization on a single dashboard."
+    ],
+    "scope": "related",
+    "sufficient": true,
+    "used_inference": true,
+    "n_sources": 8,
+    "elapsed_s": 15.49
+  },
+  {
+    "id": "q3_dataset_max_size",
+    "question": "What's the maximum size of a single dataset before performance degrades?",
+    "answer": "I couldn't find that in the documentation.",
+    "gaps": [
+      "The documentation does not specify the maximum size of a single dataset before performance degrades."
+    ],
+    "scope": "in_scope",
+    "sufficient": false,
+    "used_inference": false,
+    "n_sources": 0,
+    "elapsed_s": 10.75
+  },
+  {
+    "id": "q4_bots_parallel_default",
+    "question": "Do bots run in parallel by default, or do I need to configure that?",
+    "answer": "**Documented Fabrix path**  \n1. Bots in the Fabrix platform generally run sequentially within a pipeline unless explicitly configured for parallel execution. Agents or pipelines can be designed to run multiple bots concurrently, but this often requires specific configurations or the use of special parallelization bots.\n2. The default behavior is sequential execution, so users must explore configuration options if they want to implement parallel processing for specific scenarios.\n\n**Next (inferred):** For parallel bot execution, further details on configuration requirements or which specific bots facilitate parallel execution were not provided in the documentation.  \n**Prerequisites**: Familiarity with pipeline design and bot configuration basics in Fabrix.\n\n*Includes inferred Fabrix guidance not stated verbatim in the docs.*",
+    "gaps": [
+      "Exact configuration details for enabling parallel execution of bots are not specified."
+    ],
+    "scope": "related",
+    "sufficient": true,
+    "used_inference": true,
+    "n_sources": 12,
+    "elapsed_s": 15.45
+  },
+  {
+    "id": "q5_delete_pstream_cascade",
+    "question": "If I delete a pstream, does that also delete the datasets that reference it?",
+    "answer": "Deleting a pstream does not automatically delete the datasets that reference it. The relationship between pstreams and datasets in the Fabrix system allows datasets to exist independently of their associated pstreams. Therefore, if you delete a pstream, you should manually manage the datasets and decide whether to keep or delete them as necessary.\n\nIn summary, managing pstreams and datasets involves understanding their independent lifecycle, and no automatic deletion occurs between these components.\n\n*Includes inferred Fabrix guidance not stated verbatim in the docs.*",
+    "gaps": [
+      "The specific behavior of datasets upon the deletion of their referenced pstream is not documented in detail."
+    ],
+    "scope": "related",
+    "sufficient": true,
+    "used_inference": true,
+    "n_sources": 7,
+    "elapsed_s": 11.88
+  },
+  {
+    "id": "q6_pipeline_git",
+    "question": "Can I version-control my pipeline definitions in Git?",
+    "answer": "**Documented Fabrix path**  \n1. While the documentation does not explicitly state the capability to version-control pipeline definitions in Git, it describes versioning for toolsets and prompt templates. Each modification to these can create a new version, thus managing changes over time effectively. \n2. To implement Git version control, it is advisable to extract or export your pipeline definitions and commit them to a Git repository manually. This will enable history tracking and versioning outside the automated versioning provided by the tool itself.\n3. Utilize the version history feature of toolsets and prompt templates to track changes and ensure you can revert or compare previous configurations as needed. However, a direct integration path to automate this process with Git is not documented.\n\n**Next (inferred):** You might need to set up a manual process for direct integration with Git for continuous version control of pipeline definitions. An automated integration mechanism for Git with pipelines is not specified in the documentation.  \n**Prerequisites** Familiarity with Git operations and how to structure your repository for version control.\n\n*Includes inferred Fabrix guidance not stated verbatim in the docs.*",
+    "gaps": [
+      "The documentation does not cover specific steps for integrating pipeline definitions directly with Git for version control."
+    ],
+    "scope": "in_scope",
+    "sufficient": true,
+    "used_inference": true,
+    "n_sources": 5,
+    "elapsed_s": 10.01
+  },
+  {
+    "id": "q7_toolset_vs_extension",
+    "question": "What's the difference between a Toolset and an Extension?",
+    "answer": "A Toolset and an Extension in the Fabrix.ai ecosystem serve different purposes within the automation and integration framework.\n\n**Toolset**  \nA Toolset is a YAML-based configuration that groups together one or more MCP (Model Context Protocol) tools. These tools define what an agent can do, providing capabilities for tasks such as running pipelines, querying streams, fetching documents, and interacting with external systems. Toolsets are essential for enabling agents to automate workflows by defining clear operational capabilities tailored to specific tasks. They are project-scoped and can be regulated by Personas that determine which tools are available for use within specific contexts [1][3][7].\n\n**Extension**  \nOn the other hand, an Extension is a broader component that can refer to various modules or functionalities that enhance the capabilities of the Fabrix platform. Extensions can be specific integrations, libraries, or functionalities that can be included in pipelines or workflows. They do not necessarily define the operational capabilities of an agent but instead add specific functionalities for data processing, communication, and other tasks within the orchestration of operations [5][6].\n\nIn summary, while Toolsets are focused on defining what agents can do through a collection of tools, Extensions are supplementary components that add specific functionalities or integrations to enhance overall performance within the Fabrix platform.\n\n*Includes inferred Fabrix guidance not stated verbatim in the docs.*",
+    "gaps": [
+      "The documentation does not detail specific examples of how Extensions can be implemented compared to Toolsets."
+    ],
+    "scope": "related",
+    "sufficient": true,
+    "used_inference": true,
+    "n_sources": 11,
+    "elapsed_s": 13.23
+  },
+  {
+    "id": "q8_staging_sandbox",
+    "question": "Is there a staging/sandbox environment separate from production, or do I need to build one myself?",
+    "answer": "I couldn't find that in the documentation.",
+    "gaps": [
+      "Specific details about staging or sandbox environments are not documented."
+    ],
+    "scope": "related",
+    "sufficient": false,
+    "used_inference": false,
+    "n_sources": 0,
+    "elapsed_s": 12.57
+  },
+  {
+    "id": "q9_bot_deprecated",
+    "question": "How do I know if a bot is deprecated before I build a pipeline around it?",
+    "answer": "**Documented Fabrix path**  \n1. **Check the Bot Catalog**: To determine if a bot is deprecated, start by consulting the Bot Catalog, where you can browse bots by their name and extension. Ensure to look for any indicated versions or deprecation notices directly associated with the bot you are interested in [2].\n2. **Review Bot Documentation Pages**: Each bot often has an associated documentation page that may mention its status, including whether it is current or deprecated. Regularly check these pages to stay updated on any changes to bot status.\n3. **Follow Release Notes or Announcements**: It's advisable to keep an eye on the release notes or community updates from Fabrix. Any changes regarding deprecated bots or new alternatives are often detailed in these materials.\n\n**Next (inferred):** Monitoring community forums or support channels may also provide insights into deprecated bots or best practices for replacements. \n\n**Prerequisites**: Familiarize yourself with navigating the Bot Catalog and the documentation associated with the bots.\n\n*Includes inferred Fabrix guidance not stated verbatim in the docs.*",
+    "gaps": [
+      "Specific examples of deprecated bots or the exact wording used in the documentation to convey deprecation status."
+    ],
+    "scope": "related",
+    "sufficient": true,
+    "used_inference": true,
+    "n_sources": 6,
+    "elapsed_s": 8.71
+  },
+  {
+    "id": "q10_bot_same_name",
+    "question": "Can two bots share the same name if they're in different pipelines?",
+    "answer": "I couldn't find that in the documentation.",
+    "gaps": [
+      "The documentation does not specify whether bots can share the same name in different pipelines."
+    ],
+    "scope": "related",
+    "sufficient": false,
+    "used_inference": false,
+    "n_sources": 0,
+    "elapsed_s": 15.34
+  }
+]

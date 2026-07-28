@@ -2022,6 +2022,54 @@ BREAK_CASES = [
             "evict all",
         ],
     },
+    # --- Cycle 21: false certainty on undocumented behavioral rules ---
+    {
+        "id": "c21_concurrent_write_certainty",
+        "attack": "false_certainty",
+        "cycle": 21,
+        "question": (
+            "If a pipeline has two branches that both write to the same dataset, "
+            "which one wins?"
+        ),
+        "need_any": [
+            "not documented",
+            "not specified",
+            "no documented",
+            "not stated",
+            "do not specify",
+            "does not specify",
+        ],
+        "forbid": [
+            "last write wins",
+            "the branch that executes last",
+            "later write overwrites",
+            "last one wins",
+            "last execution",
+        ],
+    },
+    {
+        "id": "c21_pstream_delete_cascade_certainty",
+        "attack": "false_certainty",
+        "cycle": 21,
+        "question": (
+            "If I delete a pstream, does that also delete the datasets that reference it?"
+        ),
+        "need_any": [
+            "not documented",
+            "not specified",
+            "unclear",
+            "not addressed",
+            "do not specify",
+            "does not specify",
+            "won't assert",
+        ],
+        "forbid": [
+            "datasets are independent",
+            "datasets are separate and unaffected",
+            "does not automatically delete the datasets",
+            "no automatic deletion",
+        ],
+    },
 ]
 
 

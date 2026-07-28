@@ -324,6 +324,56 @@ def test_stepwise_procedure_ask_does_not_false_trigger():
     )
 
 
+def test_undocumented_behavior_ask_detected():
+    from agent import _is_undocumented_behavior_ask
+
+    assert _is_undocumented_behavior_ask(
+        "If a pipeline has two branches that both write to the same dataset, which one wins?"
+    )
+    assert _is_undocumented_behavior_ask(
+        "If I delete a pstream, does that also delete the datasets that reference it?"
+    )
+    assert _is_undocumented_behavior_ask(
+        "What happens if two bots try to write to the same dataset at once?"
+    )
+
+
+def test_undocumented_behavior_ask_does_not_false_trigger():
+    from agent import _is_undocumented_behavior_ask
+
+    assert not _is_undocumented_behavior_ask(
+        "What parameters does @cfxvault:update-credential take?"
+    )
+    assert not _is_undocumented_behavior_ask(
+        "What's the maximum size of a single dataset before performance degrades?"
+    )
+    assert not _is_undocumented_behavior_ask(
+        "How do I configure SAML SSO?"
+    )
+
+
+def test_concurrent_dataset_ask_covers_branch_wins_phrasing():
+    from agent import _is_concurrent_dataset_ask
+
+    assert _is_concurrent_dataset_ask(
+        "If a pipeline has two branches that both write to the same dataset, which one wins?"
+    )
+    assert _is_concurrent_dataset_ask(
+        "What happens if two bots try to write to the same dataset at once?"
+    )
+
+
+def test_cascade_side_effect_ask_detected():
+    from agent import _is_cascade_side_effect_ask
+
+    assert _is_cascade_side_effect_ask(
+        "If I delete a pstream, does that also delete the datasets that reference it?"
+    )
+    assert not _is_cascade_side_effect_ask(
+        "How do I delete a pstream in the UI?"
+    )
+
+
 def test_excerpts_procedure_grounding_clone_and_pause():
     from agent import _excerpts_describe_asked_procedure
 
