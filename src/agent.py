@@ -2323,6 +2323,11 @@ def merge_kb_entries_diverse(entry_lists: list[list[dict]], limit: int = 12) -> 
     return merged
 
 
+# Hard ceiling for multi-facet retrieve so facet_count × embed-retry cannot
+# unbounded-scale (cycle 23). Stop issuing further facet queries past this.
+MULTI_FACET_DEADLINE_S = 15.0
+
+
 def retrieve_multi_facet(
     question: str,
     client: QdrantClient,
@@ -2331,11 +2336,31 @@ def retrieve_multi_facet(
     """Retrieve KB (+ chunks if thin) per query, merge with diversity."""
     kb_lists: list[list[dict]] = []
     chunk_lists: list[list[dict]] = []
-    for q in search_queries[:4]:
+    t0 = time.perf_counter()
+    queries = search_queries[:4]
+    for i, q in enumerate(queries):
+        elapsed = time.perf_counter() - t0
+        if elapsed >= MULTI_FACET_DEADLINE_S:
+            logger.info(
+                "multi_facet deadline: stopping after %.0fms (%s/%s facets done)",
+                elapsed * 1000,
+                i,
+                len(queries),
+            )
+            break
+        t_q = time.perf_counter()
         hits = retrieve_kb(q, top_k=6)
         kb_lists.append(hits)
         if len(hits) < 2:
             chunk_lists.append(retrieve(q, client, top_k=4, filter_dict=None))
+        logger.info(
+            "multi_facet query=%s/%s elapsed_ms=%.0f hits=%s q=%r",
+            i + 1,
+            len(queries),
+            (time.perf_counter() - t_q) * 1000,
+            len(hits),
+            (q[:80] + "…") if len(q) > 80 else q,
+        )
     kb_entries = merge_kb_entries_diverse(kb_lists, limit=12)
     chunks: list[dict] = []
     seen_txt: set[str] = set()
@@ -2346,15 +2371,24 @@ def retrieve_multi_facet(
                 continue
             seen_txt.add(t)
             chunks.append(c)
-    if len(kb_entries) < 3 and not chunks:
-        chunks = retrieve(question, client, top_k=6, filter_dict=None)
-    elif len(kb_entries) < 3:
-        extra = retrieve(question, client, top_k=6, filter_dict=None)
-        for c in extra:
-            t = (c.get("text") or "")[:120]
-            if t not in seen_txt:
-                chunks.append(c)
-                seen_txt.add(t)
+    # Fallback chunk retrieve only if still under deadline and KB is thin.
+    if len(kb_entries) < 3 and (time.perf_counter() - t0) < MULTI_FACET_DEADLINE_S:
+        if not chunks:
+            chunks = retrieve(question, client, top_k=6, filter_dict=None)
+        else:
+            extra = retrieve(question, client, top_k=6, filter_dict=None)
+            for c in extra:
+                t = (c.get("text") or "")[:120]
+                if t not in seen_txt:
+                    chunks.append(c)
+                    seen_txt.add(t)
+    logger.info(
+        "multi_facet done total_ms=%.0f facets_used=%s kb=%s chunks=%s",
+        (time.perf_counter() - t0) * 1000,
+        len(kb_lists),
+        len(kb_entries),
+        len(chunks),
+    )
     return kb_entries, chunks[:8]
 
 

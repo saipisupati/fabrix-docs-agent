@@ -9,6 +9,7 @@ import os
 import re
 import sys
 import time
+import logging
 from functools import lru_cache
 
 import requests
@@ -27,6 +28,11 @@ from config import (
 )
 
 MODEL = LLM_MODEL
+logger = logging.getLogger(__name__)
+
+# Match kb/store.py: fail fast on connect, bound read (cycle 23).
+EMBED_CONNECT_TIMEOUT_S = 5.0
+EMBED_READ_TIMEOUT_S = 20.0
 
 
 def _local_embedding_model():
@@ -48,16 +54,37 @@ def _embed_question_cached(model: str, question: str):
         "Content-Type": "application/json",
     }
     payload = {"model": model, "input": [question]}
+    timeout = (EMBED_CONNECT_TIMEOUT_S, EMBED_READ_TIMEOUT_S)
+    preview = (question[:80] + "…") if len(question) > 80 else question
+    max_retries = 2
 
     last_err = None
-    for attempt in range(2):
+    for attempt in range(max_retries):
+        t0 = time.perf_counter()
         try:
-            response = requests.post(url, headers=headers, json=payload, timeout=30)
+            response = requests.post(url, headers=headers, json=payload, timeout=timeout)
             response.raise_for_status()
             data = response.json()
+            elapsed_ms = (time.perf_counter() - t0) * 1000
+            logger.info(
+                "chunk_embed ok attempt=%s/%s elapsed_ms=%.0f q=%r",
+                attempt + 1,
+                max_retries,
+                elapsed_ms,
+                preview,
+            )
             return data["data"][0]["embedding"]
         except Exception as e:
             last_err = e
+            elapsed_ms = (time.perf_counter() - t0) * 1000
+            logger.info(
+                "chunk_embed fail attempt=%s/%s elapsed_ms=%.0f q=%r err=%s",
+                attempt + 1,
+                max_retries,
+                elapsed_ms,
+                preview,
+                type(e).__name__,
+            )
             if attempt == 0:
                 time.sleep(1)
                 continue
@@ -199,7 +226,7 @@ def retrieve_remote(question, top_k=5, filter_dict=None):
         f"{REMOTE_BASE_URL}/search",
         headers={"Content-Type": "application/json"},
         json={"collection_name": COLLECTION_NAME, "query": question, "limit": top_k},
-        timeout=30,
+        timeout=(EMBED_CONNECT_TIMEOUT_S, EMBED_READ_TIMEOUT_S),
     )
     if not response.ok:
         return []

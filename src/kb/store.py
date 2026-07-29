@@ -5,6 +5,7 @@ kb/store.py — persist KB JSON + embeddings; retrieve by cosine similarity.
 from __future__ import annotations
 
 import json
+import logging
 import os
 import sys
 import time
@@ -19,10 +20,18 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 from config import EMBED_BATCH_SIZE, EMBEDDING_MODEL, EMBEDDINGS_URL, QDRANT_DIR
 from kb.schema import KnowledgeBase
 
+logger = logging.getLogger(__name__)
+
 KB_DIR = os.path.join(os.path.dirname(__file__), "..", "..", "data", "kb")
 KB_JSON_PATH = os.path.join(KB_DIR, "kb.json")
 KB_EMBED_PATH = os.path.join(KB_DIR, "embeddings.npz")
 KB_COLLECTION = "fabrix_kb"
+
+# Split connect vs read so a black-holed TCP socket fails fast (cycle 23).
+# Query embeds stay short; ingest batches keep a longer read budget.
+EMBED_CONNECT_TIMEOUT_S = 5.0
+EMBED_READ_TIMEOUT_S = 20.0
+EMBED_BATCH_READ_TIMEOUT_S = 90.0
 
 
 def ensure_kb_dir() -> None:
@@ -33,35 +42,74 @@ def save_kb(kb: KnowledgeBase, path: str = KB_JSON_PATH) -> None:
     ensure_kb_dir()
     with open(path, "w", encoding="utf-8") as f:
         json.dump(kb.to_dict(), f, indent=2, ensure_ascii=False)
+    clear_kb_disk_cache()
 
 
-def load_kb(path: str = KB_JSON_PATH) -> KnowledgeBase | None:
+@lru_cache(maxsize=4)
+def _load_kb_cached(path: str) -> KnowledgeBase | None:
     if not os.path.isfile(path):
         return None
     with open(path, encoding="utf-8") as f:
         return KnowledgeBase.from_dict(json.load(f))
 
 
-def _embed_batch(texts: list[str], model: str, max_retries: int = 3) -> list[list[float]]:
+def load_kb(path: str = KB_JSON_PATH) -> KnowledgeBase | None:
+    """Load KB JSON once per process (memoized)."""
+    return _load_kb_cached(path)
+
+
+def _embed_batch(
+    texts: list[str],
+    model: str,
+    max_retries: int = 3,
+    *,
+    read_timeout: float | None = None,
+) -> list[list[float]]:
     headers = {
         "Authorization": f"Bearer {os.environ['OPENROUTER_API_KEY']}",
         "Content-Type": "application/json",
     }
+    if read_timeout is None:
+        read_timeout = (
+            EMBED_BATCH_READ_TIMEOUT_S if len(texts) > 1 else EMBED_READ_TIMEOUT_S
+        )
+    timeout = (EMBED_CONNECT_TIMEOUT_S, read_timeout)
+    preview = (texts[0][:80] + "…") if texts and len(texts[0]) > 80 else (texts[0] if texts else "")
     last_err = None
     for attempt in range(max_retries):
+        t0 = time.perf_counter()
         try:
             response = requests.post(
                 EMBEDDINGS_URL,
                 headers=headers,
                 json={"model": model, "input": texts},
-                timeout=90,
+                timeout=timeout,
             )
             response.raise_for_status()
             data = response.json()["data"]
             data.sort(key=lambda d: d["index"])
+            elapsed_ms = (time.perf_counter() - t0) * 1000
+            logger.info(
+                "embed ok attempt=%s/%s elapsed_ms=%.0f n_texts=%s q=%r",
+                attempt + 1,
+                max_retries,
+                elapsed_ms,
+                len(texts),
+                preview,
+            )
             return [d["embedding"] for d in data]
         except Exception as e:
             last_err = e
+            elapsed_ms = (time.perf_counter() - t0) * 1000
+            logger.info(
+                "embed fail attempt=%s/%s elapsed_ms=%.0f n_texts=%s q=%r err=%s",
+                attempt + 1,
+                max_retries,
+                elapsed_ms,
+                len(texts),
+                preview,
+                type(e).__name__,
+            )
             if attempt < max_retries - 1:
                 time.sleep(1 + attempt)
                 continue
@@ -82,7 +130,9 @@ def embed_entries(entries: list[dict[str, Any]], model: str = "") -> np.ndarray:
     for i in range(0, len(texts), EMBED_BATCH_SIZE):
         batch = texts[i : i + EMBED_BATCH_SIZE]
         print(f"  Embedding KB batch {i // EMBED_BATCH_SIZE + 1} ({len(batch)} entries)...")
-        vectors.extend(_embed_batch(batch, model))
+        vectors.extend(
+            _embed_batch(batch, model, read_timeout=EMBED_BATCH_READ_TIMEOUT_S)
+        )
     return np.array(vectors, dtype=np.float32)
 
 
@@ -90,14 +140,31 @@ def save_embeddings(entries: list[dict[str, Any]], matrix: np.ndarray, path: str
     ensure_kb_dir()
     ids = np.array([e["id"] for e in entries])
     np.savez_compressed(path, vectors=matrix, ids=ids)
+    clear_kb_disk_cache()
 
 
-def load_embeddings(path: str = KB_EMBED_PATH) -> tuple[np.ndarray, list[str]] | None:
+@lru_cache(maxsize=4)
+def _load_embeddings_cached(path: str) -> tuple[np.ndarray, tuple[str, ...]] | None:
     if not os.path.isfile(path):
         return None
     data = np.load(path, allow_pickle=True)
-    ids = [str(x) for x in data["ids"].tolist()]
+    ids = tuple(str(x) for x in data["ids"].tolist())
     return data["vectors"].astype(np.float32), ids
+
+
+def load_embeddings(path: str = KB_EMBED_PATH) -> tuple[np.ndarray, list[str]] | None:
+    """Load embeddings.npz once per process (memoized)."""
+    loaded = _load_embeddings_cached(path)
+    if loaded is None:
+        return None
+    matrix, ids = loaded
+    return matrix, list(ids)
+
+
+def clear_kb_disk_cache() -> None:
+    """Drop memoized KB / embeddings after rebuild or save."""
+    _load_kb_cached.cache_clear()
+    _load_embeddings_cached.cache_clear()
 
 
 def upsert_qdrant_kb(entries: list[dict[str, Any]], matrix: np.ndarray, model: str) -> bool:
