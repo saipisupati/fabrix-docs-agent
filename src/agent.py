@@ -472,18 +472,54 @@ _INCIDENT_REMEDIATION_CUES: tuple[str, ...] = (
     "what is the exact fix",
     "fix right now",
 )
-# Strong procedure language — general mem_limit / worker config pages do not count.
-_INCIDENT_PROCEDURE_MARKERS: tuple[str, ...] = (
-    "playbook",
-    "runbook",
-    "remediation guide",
-    "remediation procedure",
-    "incident response procedure",
-    "incident response playbook",
+# Strong scenario-specific procedure phrases — general mem_limit / OIA config /
+# ansible run-playbook pages do not count (cycle 24).
+_INCIDENT_OOM_PROCEDURE_PHRASES: tuple[str, ...] = (
+    "oom remediation",
+    "oom playbook",
+    "oom runbook",
+    "out of memory remediation",
+    "out of memory playbook",
+    "out of memory runbook",
     "troubleshoot oom",
     "troubleshooting oom",
+    "oom incident response",
+    "out of memory incident",
+    "playbook for out of memory",
+    "playbook for oom",
+    "remediation playbook for out of memory",
+    "remediation for out of memory",
+    "out of memory host incident",
+)
+_INCIDENT_DISK_PROCEDURE_PHRASES: tuple[str, ...] = (
     "disk full remediation",
+    "disk is full remediation",
+    "disk full playbook",
+    "disk full runbook",
+    "disk full incident",
+    "disk is full playbook",
+    "remediation for disk full",
+    "when disk is full",
+    "troubleshoot disk full",
+)
+_INCIDENT_CPU_PROCEDURE_PHRASES: tuple[str, ...] = (
     "cpu spike remediation",
+    "cpu spike playbook",
+    "cpu spike runbook",
+    "cpu spike incident",
+    "remediation for cpu spike",
+    "troubleshoot cpu spike",
+    "high cpu remediation",
+    "cpu spike on a pipeline",
+)
+# Generic live-incident without a named symptom: require explicit incident-response
+# playbook language (not bare "remediation" / ansible run-playbook).
+_INCIDENT_GENERIC_PROCEDURE_PHRASES: tuple[str, ...] = (
+    "incident response playbook",
+    "incident response procedure",
+    "incident response runbook",
+    "live incident playbook",
+    "live-incident playbook",
 )
 
 
@@ -528,25 +564,27 @@ def _live_incident_has_documented_procedure(
     chunks: list[dict] | None,
 ) -> bool:
     """
-    True only when retrieved excerpts look like a named runbook/playbook for the
-    scenario — not loosely related memory/worker/config pages.
+    True only when retrieved excerpts describe *this specific* incident scenario
+    as a named playbook/runbook — not loosely related memory/worker/config pages
+    that share a topical keyword (cycle 24; same rigor as
+    `_excerpts_describe_asked_procedure`).
     """
     blob = _retrieved_context_blob(kb_entries, chunks)
     if not blob.strip():
         return False
-    if not any(m in blob for m in _INCIDENT_PROCEDURE_MARKERS):
-        return False
     q = (question or "").lower()
-    symptoms = [s for s in _INCIDENT_SYMPTOM_CUES if s in q]
-    # If the ask names a symptom, require that symptom (or close token) in excerpts.
-    if symptoms and not any(s in blob for s in symptoms):
-        # Allow common alternate spellings for OOM
-        if any(s in ("oom", "out of memory") for s in symptoms):
-            if not any(t in blob for t in ("oom", "out of memory", "memory")):
-                return False
-        else:
-            return False
-    return True
+
+    # Named-symptom asks: require scenario-specific procedure phrases in excerpts.
+    if "oom" in q or "out of memory" in q:
+        return any(t in blob for t in _INCIDENT_OOM_PROCEDURE_PHRASES)
+    if ("disk is full" in q or "disk full" in q) or ("disk" in q and "full" in q):
+        return any(t in blob for t in _INCIDENT_DISK_PROCEDURE_PHRASES)
+    if "cpu spike" in q or ("cpu" in q and "spike" in q):
+        return any(t in blob for t in _INCIDENT_CPU_PROCEDURE_PHRASES)
+
+    # Generic live-incident ask without a named symptom: require explicit
+    # incident-response playbook language (not bare "remediation guide").
+    return any(t in blob for t in _INCIDENT_GENERIC_PROCEDURE_PHRASES)
 
 
 def _live_incident_honesty(

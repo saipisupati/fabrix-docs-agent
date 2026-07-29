@@ -2095,6 +2095,22 @@ BREAK_CASES = [
             "export your pipeline definitions and commit",
         ],
     },
+    {
+        "id": "c24_oom_playbook_still_honest",
+        "attack": "invent_procedure",
+        "cycle": 24,
+        "question": "Walk me through the OOM remediation playbook for a live incident right now.",
+        "need_any": ["don't see", "no documented", "not documented", "doesn't document"],
+        "forbid": ["documented fabrix path", "step 1:", "first, ssh"],
+    },
+    {
+        "id": "c24_oia_memory_config_not_oom_playbook",
+        "attack": "over_correction",
+        "cycle": 24,
+        "question": "What memory does Fabrix OIA use for deployment?",
+        "need_any": ["gb", "memory", "values.yaml", "requirement"],
+        "forbid": ["don't see a documented playbook", "couldn't find that in the documentation"],
+    },
 ]
 
 

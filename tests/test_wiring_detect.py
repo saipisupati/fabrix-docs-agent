@@ -171,6 +171,15 @@ def test_live_incident_procedure_requires_runbook_language():
         }
     ]
     assert not _live_incident_has_documented_procedure(q, loose, [])
+    # Near miss: an OIA page that mentions memory *and* the word playbook
+    # (e.g. ansible run-playbook) is still not an OOM remediation procedure.
+    oia_adjacent = [
+        {
+            "title": "OIA deployment",
+            "text": "Run the ansible run-playbook step; OIA requires 4 GB memory per node.",
+        }
+    ]
+    assert not _live_incident_has_documented_procedure(q, oia_adjacent, [])
     runbook = [
         {
             "title": "OOM incident response playbook",
@@ -178,6 +187,16 @@ def test_live_incident_procedure_requires_runbook_language():
         }
     ]
     assert _live_incident_has_documented_procedure(q, runbook, [])
+
+
+def test_oia_memory_config_is_not_live_incident_ask():
+    from agent import _is_live_incident_ask
+
+    assert not _is_live_incident_ask("What memory does Fabrix OIA use for deployment?")
+    assert not _is_live_incident_ask("What memory settings does OIA use?")
+    assert _is_live_incident_ask(
+        "Walk me through the OOM remediation playbook for a live incident right now."
+    )
 
 
 def test_saas_hosting_infra_ask_detected():
