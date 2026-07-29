@@ -431,3 +431,27 @@ def test_bot_naming_uniqueness_ask_detected():
         "How do I wire Splunk into a Fabrix dashboard?"
     )
 
+
+def test_git_pipeline_versioning_ask_detected():
+    from agent import _is_git_pipeline_versioning_ask, _git_pipeline_versioning_honesty
+
+    assert _is_git_pipeline_versioning_ask(
+        "Can I version-control my pipeline definitions in Git?"
+    )
+    assert _is_git_pipeline_versioning_ask(
+        "How do I put Fabrix pipelines under GitHub version control?"
+    )
+    assert not _is_git_pipeline_versioning_ask(
+        "How do I wire Slack alerts into a Fabrix pipeline?"
+    )
+    assert not _is_git_pipeline_versioning_ask(
+        "Does GitHub Actions deploy Fabrix pipelines?"
+    )
+    text, gaps = _git_pipeline_versioning_honesty([])
+    low = text.lower()
+    assert "version history" in low and "publish" in low and "studio" in low
+    assert "git" in low and "first-class" in low
+    assert "manual git export" not in low
+    assert "export to git" not in low
+    assert any("version history" in g.lower() for g in gaps)
+

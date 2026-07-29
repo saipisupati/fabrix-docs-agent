@@ -2081,6 +2081,20 @@ BREAK_CASES = [
         "need_any": ["unique", "package", "catalog", "reused", "prefix"],
         "forbid": ["couldn't find that in the documentation"],
     },
+    {
+        "id": "c22b_git_versioning_framing",
+        "attack": "wrong_facet",
+        "cycle": 22,
+        "question": "Can I version-control my pipeline definitions in Git?",
+        "need_any": ["version history", "publish", "studio"],
+        "forbid": [
+            "manual git export",
+            "commit to git provider",
+            "export to git",
+            "commit them to a git",
+            "export your pipeline definitions and commit",
+        ],
+    },
 ]
 
 

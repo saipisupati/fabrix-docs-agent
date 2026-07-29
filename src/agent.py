@@ -1491,6 +1491,65 @@ def _answer_claims_missing_from_excerpts(answer: str) -> bool:
     )
 
 
+def _is_git_pipeline_versioning_ask(question: str) -> bool:
+    """
+    'Can I version-control pipelines in Git?' style asks.
+
+    Docs cover Studio Version History / Publish, not a first-class Git sync.
+    Generation often invents a manual Git export story (cycle 22b).
+    """
+    q = (question or "").lower()
+    if not any(t in q for t in ("git", "github", "gitlab", "bitbucket")):
+        return False
+    has_vcs_intent = any(
+        c in q
+        for c in (
+            "version-control",
+            "version control",
+            "versioning",
+            " under git",
+            " in git",
+            " with git",
+            "into git",
+            "to git",
+            "via git",
+        )
+    )
+    if not has_vcs_intent:
+        return False
+    return any(
+        c in q
+        for c in (
+            "pipeline",
+            "pipelines",
+            "definitions",
+            "rda",
+            ".rda",
+        )
+    )
+
+
+def _git_pipeline_versioning_honesty(
+    existing_gaps: list[str] | None = None,
+) -> tuple[str, list[str]]:
+    """Map Git-as-version-control asks to documented Studio versioning."""
+    text = (
+        "Fabrix Studio documents **Version History** and **Publish** for pipeline "
+        "definitions in the Pipeline Builder — that is the built-in way to track and "
+        "promote pipeline versions. Public docs do **not** describe a first-class Git / "
+        "GitHub / GitLab integration for pipeline definitions, so there is no documented "
+        "Fabrix↔Git sync. Stick to that Studio path; do not invent undocumented "
+        "workarounds for putting definitions under an external VCS."
+    )
+    # Replace model gaps — prior drafts often invent a "manual export" gap story.
+    _ = existing_gaps
+    gaps = [
+        "No first-class Git integration for pipeline definitions; Studio Version "
+        "History / Publish is the documented versioning path"
+    ]
+    return text, gaps
+
+
 def _is_concurrent_dataset_ask(question: str) -> bool:
     """
     Asks about conflict / who-wins when multiple writers hit the same dataset.
@@ -2534,6 +2593,13 @@ Fabrix mental model (use when relevant; do not keyword-stuff):
 - Avoid confident absolutes ("no", "always", "last one wins") unless the excerpts state that outcome directly.
 """
 
+    tool_equivalence_guardrail = """
+- When a question asks whether Fabrix integrates with a specific named third-party tool/standard (e.g., "Git", "Slack", "Jira") for a general capability (e.g., version control, notifications, ticketing), check whether the excerpts show:
+  (a) a first-class, named integration with that exact tool, OR
+  (b) Fabrix's own native/built-in feature that serves the same general purpose, without naming that third-party tool.
+- If only (b) is documented, lead with what Fabrix's own feature IS (name it specifically, e.g. "Version History and Publish in Studio") and clearly state there is no first-class integration with the named third-party tool the user asked about. Do not invent a manual workaround/export story unless the docs explicitly describe one.
+"""
+
     specificity_guardrail = """
 - CRITICAL: a topic being documented does not mean every specific detail about it is documented. Before stating a specific number, version, exact comparison, or precise technical claim, verify that exact detail appears in the excerpts -- not just the general topic.
 - If the excerpts discuss a topic broadly (e.g., "integrates with Kubernetes") but do NOT state a specific requested detail (e.g., a version number, a named comparison to another product, an exact limit), say so explicitly: name the topic that IS documented, then clearly state the specific detail is not specified in the docs.
@@ -2546,7 +2612,7 @@ Fabrix mental model (use when relevant; do not keyword-stuff):
   technical synthesis implied by the docs.
 - Cite documented claims with [1], [2], … Do NOT put [n] on inferred reasoning.
 - Set used_inference=true and fill inferred_summary when you synthesize beyond verbatim docs.
-{objects_line}{full_page_line}{fidelity_line}{ungrounded_line}{path_first}{code_gen_guardrail}{procedure_grounding_guardrail}{behavior_certainty_guardrail}{specificity_guardrail}
+{objects_line}{full_page_line}{fidelity_line}{ungrounded_line}{path_first}{code_gen_guardrail}{procedure_grounding_guardrail}{behavior_certainty_guardrail}{tool_equivalence_guardrail}{specificity_guardrail}
 """
     else:
         infer_guidance = f"""
@@ -2554,7 +2620,7 @@ Fabrix mental model (use when relevant; do not keyword-stuff):
 - If you add connective technical reasoning beyond a single excerpt, set used_inference=true
   and fill inferred_summary. Otherwise used_inference=false and inferred_summary="".
 - Do NOT put [n] on inferred reasoning.
-{objects_line}{full_page_line}{fidelity_line}{ungrounded_line}{path_first}{code_gen_guardrail}{procedure_grounding_guardrail}{behavior_certainty_guardrail}{specificity_guardrail}
+{objects_line}{full_page_line}{fidelity_line}{ungrounded_line}{path_first}{code_gen_guardrail}{procedure_grounding_guardrail}{behavior_certainty_guardrail}{tool_equivalence_guardrail}{specificity_guardrail}
 """
 
     revision_block = ""
@@ -5255,6 +5321,17 @@ def answer(question: str, client: QdrantClient | None = None) -> AgentResponse:
         )
         examples = []
         logger.info("cascade side-effect honesty fallback applied")
+
+    if _is_git_pipeline_versioning_ask(question):
+        # Always replace — models invent manual Git export / toolset-version drift.
+        answer_text, gaps = _git_pipeline_versioning_honesty(gaps)
+        abstained = False
+        used_inference = True
+        inferred_summary = (
+            "Studio Version History / Publish is documented; no first-class Git sync"
+        )
+        examples = []
+        logger.info("git pipeline versioning framing honesty applied")
 
     if _is_full_script_automation_ask(question) and (
         _answer_has_turnkey_script_risk(answer_text)
