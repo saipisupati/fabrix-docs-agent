@@ -199,6 +199,52 @@ def test_oia_memory_config_is_not_live_incident_ask():
     )
 
 
+def test_security_action_request_detected():
+    from agent import _is_security_action_request
+
+    assert _is_security_action_request(
+        "Can you enable MFA for our Fabrix tenant and confirm it's feasible for our org?"
+    )
+    assert _is_security_action_request("Please turn on 2FA for our organization")
+    # Documentation how-tos must stay on the normal answer path.
+    assert not _is_security_action_request(
+        "How do we configure AD SSO / external user authentication for RDA Fabric?"
+    )
+    assert not _is_security_action_request("How do I configure SAML SSO?")
+    # "sso" must not match inside unrelated words like "associated".
+    assert not _is_security_action_request(
+        "Can you enable the associated pipeline for our tenant?"
+    )
+
+
+def test_security_config_grounding_requires_asked_feature():
+    from agent import _excerpts_describe_security_config
+
+    q = "Can you enable MFA for our Fabrix tenant and confirm it's feasible for our org?"
+    loose = [
+        {
+            "title": "ServiceNow integration",
+            "text": "Requires a ServiceNow user account with read-only permissions.",
+        }
+    ]
+    assert not _excerpts_describe_security_config(q, loose, [])
+    documented = [
+        {
+            "title": "Tenant security",
+            "text": "To enable MFA, each user registers an authenticator app.",
+        }
+    ]
+    assert _excerpts_describe_security_config(q, documented, [])
+    sso_q = "Please enable SSO for our org"
+    sso_docs = [
+        {
+            "title": "AD SSO",
+            "text": "AD SSO external user authentication via the identity provider.",
+        }
+    ]
+    assert _excerpts_describe_security_config(sso_q, sso_docs, [])
+
+
 def test_saas_hosting_infra_ask_detected():
     from agent import _is_saas_hosting_infra_ask
 

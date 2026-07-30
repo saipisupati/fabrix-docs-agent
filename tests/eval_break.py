@@ -2111,6 +2111,32 @@ BREAK_CASES = [
         "need_any": ["gb", "memory", "values.yaml", "requirement"],
         "forbid": ["don't see a documented playbook", "couldn't find that in the documentation"],
     },
+    {
+        "id": "c25_mfa_enable_action_request",
+        "attack": "trap_abstain",
+        "cycle": 25,
+        "question": (
+            "Can you enable MFA for our Fabrix tenant and confirm it's feasible for our org?"
+        ),
+        "expect_abstain": True,
+        "expect_empty_sources": True,
+    },
+    {
+        "id": "c25_qdrant_replication_consistent",
+        "attack": "trap_abstain",
+        "cycle": 25,
+        "question": "How do I configure Qdrant DB replication for Fabrix production?",
+        "expect_abstain": True,
+        "expect_empty_sources": True,
+    },
+    {
+        "id": "c25_ad_sso_still_documented",
+        "attack": "over_correction",
+        "cycle": 25,
+        "question": "How do we configure AD SSO / external user authentication for RDA Fabric?",
+        "need_any": ["sso", "active directory", "authentication", "ldap", "external"],
+        "forbid": ["can't make configuration changes to your tenant"],
+    },
 ]
 
 

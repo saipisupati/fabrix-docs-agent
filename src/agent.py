@@ -3899,6 +3899,135 @@ def _is_saas_hosting_infra_ask(question: str) -> bool:
     return any(c in q for c in _SAAS_HOSTING_INFRA_CUES)
 
 
+# Cycle 25: "can you enable <security feature> for our tenant" is an action
+# request on the customer's own environment, not a docs lookup. Short tokens use
+# word boundaries ("sso" must not match "associated").
+_SECURITY_FEATURE_PATTERN = re.compile(
+    r"\b(mfa|2fa|two[- ]factor|multi[- ]?factor|sso|single sign[- ]?on|saml)\b"
+)
+_SECURITY_ACTION_REQUEST_CUES: tuple[str, ...] = (
+    "can you enable",
+    "can you configure",
+    "can you turn on",
+    "can you set up",
+    "can you switch on",
+    "could you enable",
+    "could you configure",
+    "could you turn on",
+    "could you set up",
+    "would you enable",
+    "will you enable",
+    "please enable",
+    "please configure",
+    "please turn on",
+    "please set up",
+    "enable it for us",
+    "set it up for us",
+    "turn it on for us",
+)
+_SECURITY_ACTION_TARGET_CUES: tuple[str, ...] = (
+    "for our tenant",
+    "for our org",
+    "for our organization",
+    "for our company",
+    "for our environment",
+    "for my tenant",
+    "for my org",
+    "for my organization",
+    "for us",
+    "on our tenant",
+    "on our behalf",
+    "our tenant",
+    "my tenant",
+)
+_MFA_CONFIG_PROCEDURE_PHRASES: tuple[str, ...] = (
+    "enable mfa",
+    "enabling mfa",
+    "configure mfa",
+    "mfa setup",
+    "set up mfa",
+    "multi-factor authentication",
+    "multi factor authentication",
+    "two-factor authentication",
+    "two factor authentication",
+    "authenticator app",
+    "one-time passcode",
+    "totp",
+)
+_SSO_CONFIG_PROCEDURE_PHRASES: tuple[str, ...] = (
+    "configure sso",
+    "sso configuration",
+    "single sign-on",
+    "single sign on",
+    "ad sso",
+    "saml",
+    "external user authentication",
+    "identity provider",
+    "idp metadata",
+)
+
+
+def _is_security_action_request(question: str) -> bool:
+    """
+    Action requests to enable/configure a security feature on the asker's own
+    tenant ("Can you enable MFA for our org?").
+
+    Requires request framing PLUS a possessive tenant/org target, so ordinary
+    documentation how-tos ("How do we configure AD SSO for RDA Fabric?") stay on
+    the normal answer path.
+    """
+    q = (question or "").lower()
+    if not q.strip():
+        return False
+    if not _SECURITY_FEATURE_PATTERN.search(q):
+        return False
+    if not any(c in q for c in _SECURITY_ACTION_REQUEST_CUES):
+        return False
+    return any(c in q for c in _SECURITY_ACTION_TARGET_CUES)
+
+
+def _excerpts_describe_security_config(
+    question: str,
+    kb_entries: list[dict] | None,
+    chunks: list[dict] | None,
+) -> bool:
+    """
+    True only when excerpts actually describe configuring the asked security
+    feature — so a documented SSO/MFA procedure still yields a real answer.
+    """
+    blob = _retrieved_context_blob(kb_entries, chunks)
+    if not blob.strip():
+        return False
+    q = (question or "").lower()
+    if re.search(r"\b(mfa|2fa|two[- ]factor|multi[- ]?factor)\b", q):
+        return any(t in blob for t in _MFA_CONFIG_PROCEDURE_PHRASES)
+    if re.search(r"\b(sso|single sign[- ]?on|saml)\b", q):
+        return any(t in blob for t in _SSO_CONFIG_PROCEDURE_PHRASES)
+    return False
+
+
+def _security_action_request_honesty(
+    question: str,
+    existing_gaps: list[str] | None = None,
+) -> tuple[str, list[str]]:
+    """Refuse to imply a UI walkthrough exists for an undocumented tenant action."""
+    text = (
+        "I couldn't find a documented procedure for this in the Fabrix / RDA public "
+        "docs, and I can't make configuration changes to your tenant. I won't "
+        "describe a settings path or feasibility verdict that the documentation "
+        "doesn't state. Please confirm availability and the exact steps with your "
+        "Fabrix administrator or Fabrix support."
+    )
+    gaps = list(existing_gaps or [])
+    gap = (
+        "No documented procedure in public docs for this tenant security "
+        "configuration request"
+    )
+    if gap.lower() not in " ".join(g.lower() for g in gaps):
+        gaps.insert(0, gap)
+    return text, gaps[:8]
+
+
 def _gaps_declare_core_ask_uncovered(
     question: str,
     gaps: list[str] | None,
@@ -4176,6 +4305,7 @@ def answer(question: str, client: QdrantClient | None = None) -> AgentResponse:
             "i'm a fabrix engineer", "i am a fabrix engineer", "for debugging purposes",
             "whitelist an ip", "whitelist ip", "ip whitelist", "allowlist an ip",
             "whitelist an ip for the api",
+            "qdrant", "vector db replication", "vector database replication",
         )
     )
     if not force_oos and _is_saas_hosting_infra_ask(question):
@@ -4584,6 +4714,22 @@ def answer(question: str, client: QdrantClient | None = None) -> AgentResponse:
                 inferred_summary="",
                 timing=timing,
             )
+        if _is_security_action_request(question):
+            logger.info("security action request with empty retrieve — honesty gate")
+            answer_text, gaps = _security_action_request_honesty(question, [])
+            timing["total_ms"] = _ms(t0)
+            _log_gap(question, scope, gaps, True)
+            return AgentResponse(
+                answer=polish_answer_text(answer_text),
+                sources=[],
+                sufficient=False,
+                examples=[],
+                gaps=gaps,
+                scope=scope,
+                used_inference=False,
+                inferred_summary="",
+                timing=timing,
+            )
         _log_gap(question, scope, ["No KB or doc chunks retrieved"], True)
         timing["total_ms"] = _ms(t0)
         return AgentResponse(
@@ -4776,6 +4922,28 @@ def answer(question: str, client: QdrantClient | None = None) -> AgentResponse:
             examples=[],
             gaps=gaps,
             scope=scope if (kb_entries or chunks) else "related",
+            used_inference=False,
+            inferred_summary="",
+            timing=timing,
+        )
+
+    # Tenant security-action requests (enable MFA/SSO for our org): refuse an
+    # invented settings walkthrough unless the excerpts document that procedure.
+    if _is_security_action_request(question) and not _excerpts_describe_security_config(
+        question, kb_entries, chunks
+    ):
+        logger.info("security action request without documented config — honesty gate")
+        answer_text, gaps = _security_action_request_honesty(question, [])
+        timing["generate_ms"] = 0
+        timing["total_ms"] = _ms(t0)
+        _log_gap(question, scope, gaps, True)
+        return AgentResponse(
+            answer=polish_answer_text(answer_text),
+            sources=[],
+            sufficient=False,
+            examples=[],
+            gaps=gaps,
+            scope=scope,
             used_inference=False,
             inferred_summary="",
             timing=timing,
