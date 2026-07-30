@@ -1786,19 +1786,107 @@ def _dashboard_kickoff_honesty(
 
 
 def _strip_ungrounded_bot_mentions(answer: str, tokens: list[str]) -> str:
-    """Deterministically remove invented bot tokens that survived LLM revision."""
+    """
+    Deterministically remove invented bot tokens that survived LLM revision.
+
+    Never leave the old placeholder phrase ("a documented bot from the retrieved
+    catalog") in user-facing prose — drop the claim/line when no real substitute
+    exists (cycle 26).
+    """
     text = answer or ""
     for tok in tokens:
-        raw = (tok or "").lstrip("@")
+        raw = (tok or "").lstrip("@*")
         if not raw:
             continue
-        text = re.sub(
-            rf"`?@?{re.escape(raw)}`?",
-            "a documented bot from the retrieved catalog",
-            text,
-            flags=re.IGNORECASE,
+        tok_re = rf"`?@?\*?{re.escape(raw)}`?"
+        new_lines: list[str] = []
+        for line in text.splitlines(keepends=True):
+            if not re.search(tok_re, line, flags=re.IGNORECASE):
+                new_lines.append(line)
+                continue
+            remnant = re.sub(tok_re, "", line, flags=re.IGNORECASE)
+            core = re.sub(r"^[\s\d.\-*]+", "", remnant).strip()
+            core = re.sub(r"\s{2,}", " ", core)
+            # Drop hollow lines that only existed to name the invented bot.
+            alnum = re.sub(r"[^\w\s]", "", core)
+            if len(alnum) < 25:
+                continue
+            if re.search(
+                r"^(use|using|employ|employing|via|through|with)\b.{0,40}\b(bot|token)?\s*$",
+                core,
+                flags=re.IGNORECASE,
+            ):
+                continue
+            new_lines.append(remnant)
+        text = "".join(new_lines)
+        text = re.sub(tok_re, "", text, flags=re.IGNORECASE)
+
+    # Scrub any leftover placeholder from prior strip/critique paths.
+    text = re.sub(
+        r"a documented bot from the retrieved catalog",
+        "",
+        text,
+        flags=re.IGNORECASE,
+    )
+    text = re.sub(r"[ \t]{2,}", " ", text)
+    text = re.sub(r"\s+([.,;:])", r"\1", text)
+    text = re.sub(r"([,;:]){2,}", r"\1", text)
+    text = re.sub(r"(?m)^\s*[-*]\s*$", "", text)
+    text = re.sub(r"\n{3,}", "\n\n", text)
+    return text.strip()
+
+
+def _is_incremental_load_ask(question: str) -> bool:
+    """Vocabulary mismatch: users say incremental load; docs say bookmarks."""
+    q = (question or "").lower()
+    return any(
+        p in q
+        for p in (
+            "incremental load",
+            "incremental loads",
+            "incremental sync",
+            "incremental update",
+            "incremental data",
         )
-    return text
+    )
+
+
+def _is_general_secrets_management_ask(question: str) -> bool:
+    """
+    Conceptual secrets/credentials how-to (not a named-integration auth ask).
+
+    Biases retrieve toward Vault / rdac secret instead of a random datasource
+    page that happens to mention credentials (cycle 26 / Q6).
+    """
+    q = (question or "").lower()
+    if not q.strip():
+        return False
+    # Named-product credential how-tos stay on the integration path.
+    # Inline scan (do not call _integration_family_hits — it normalizes, which
+    # would recurse through this helper).
+    for canonical, aliases in INTEGRATION_FAMILIES:
+        if canonical in q or any(a in q for a in aliases):
+            return False
+    if not any(w in q for w in ("secret", "secrets", "credential", "credentials")):
+        return False
+    return any(
+        p in q
+        for p in (
+            "across pipeline",
+            "across multiple",
+            "recommended way",
+            "best practice",
+            "best practices",
+            "manage credential",
+            "manage secret",
+            "handling secret",
+            "handle secret",
+            "store secret",
+            "storing secret",
+            "handle credential",
+            "handling credential",
+        )
+    )
 
 
 def _is_pipeline_schedule_ask(question: str) -> bool:
@@ -3100,6 +3188,14 @@ def _normalize_question_typos(question: str) -> str:
     # Bot naming / uniqueness → SDK package-naming terms (keep user framing).
     if _is_bot_naming_uniqueness_ask(q) and "bot package unique" not in low:
         q = q.rstrip() + " bot package unique naming SDK"
+        low = q.lower()
+    # Incremental load/sync → bookmarks terminology (docs name, user vocabulary differs).
+    if _is_incremental_load_ask(q) and "bookmark" not in low:
+        q = q.rstrip() + " bookmark save load persistent stream"
+        low = q.lower()
+    # General secrets/credentials across pipelines → Vault / rdac secret.
+    if _is_general_secrets_management_ask(q) and "vault" not in low:
+        q = q.rstrip() + " Vault rdac secret credential encryption"
     return q
 
 
@@ -4451,6 +4547,45 @@ def answer(question: str, client: QdrantClient | None = None) -> AgentResponse:
         logger.info("bot naming uniqueness retrieve bias")
         use_facets = True
 
+    # Incremental loads → bookmarks / persistent-stream resume (vocab mismatch)
+    if _is_incremental_load_ask(question):
+        queries0 = list(facet_plan["search_queries"] or [])
+        for seed in (
+            "bookmark save load persistent stream",
+            "RDA Fabric Bookmarks how far data stream has been read",
+            "dm:save-bookmark dm:load-bookmark bookmark-loop",
+        ):
+            if seed not in queries0:
+                queries0 = [seed] + queries0
+        facet_plan["search_queries"] = queries0
+        objs = list(facet_plan.get("primary_objects") or [])
+        for term in ("bookmark", "persistent stream", "save-bookmark", "load-bookmark"):
+            if term not in objs:
+                objs.insert(0, term)
+        facet_plan["primary_objects"] = objs[:8]
+        logger.info("incremental-load→bookmarks retrieve bias")
+        use_facets = True
+
+    # General secrets/credentials → Vault (not a random datasource credentials page)
+    if _is_general_secrets_management_ask(question):
+        queries0 = list(facet_plan["search_queries"] or [])
+        for seed in (
+            "Vault rdac secret credential encryption",
+            "RDA Fabric Vault credentials Fernet rdac secret",
+            "cfxvault configured-credentials credential-types",
+            "beginners_guide data_control Credentials Vault",
+        ):
+            if seed not in queries0:
+                queries0 = [seed] + queries0
+        facet_plan["search_queries"] = queries0
+        objs = list(facet_plan.get("primary_objects") or [])
+        for term in ("Vault", "rdac secret", "cfxvault", "credential"):
+            if term not in objs:
+                objs.insert(0, term)
+        facet_plan["primary_objects"] = objs[:8]
+        logger.info("secrets/credentials→Vault retrieve bias")
+        use_facets = True
+
     # Worker scale / capacity asks
     if "worker" in qlow_seed and any(
         w in qlow_seed for w in ("scale", "site", "limit", "max", "capacity", "busy")
@@ -5442,7 +5577,13 @@ def answer(question: str, client: QdrantClient | None = None) -> AgentResponse:
     if still_ungrounded:
         answer_text = _strip_ungrounded_bot_mentions(answer_text, still_ungrounded)
         examples = [
-            _strip_ungrounded_bot_mentions(ex, still_ungrounded) for ex in (examples or [])
+            e
+            for e in (
+                _strip_ungrounded_bot_mentions(ex, still_ungrounded)
+                for ex in (examples or [])
+            )
+            if e.strip()
+            and "documented bot from the retrieved catalog" not in e.lower()
         ]
         gap = (
             "Invented bot names were removed because they do not appear in retrieved excerpts: "

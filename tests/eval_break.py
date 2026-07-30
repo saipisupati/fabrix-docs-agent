@@ -2137,6 +2137,33 @@ BREAK_CASES = [
         "need_any": ["sso", "active directory", "authentication", "ldap", "external"],
         "forbid": ["can't make configuration changes to your tenant"],
     },
+    {
+        "id": "c26_incremental_load_bookmarks_routing",
+        "attack": "wrong_facet",
+        "cycle": 26,
+        "question": "Does Fabrix support incremental data loads, or only full refreshes?",
+        "need_any": ["bookmark", "incremental"],
+        "forbid": ["couldn't find that in the documentation"],
+    },
+    {
+        "id": "c26_credentials_vault_routing",
+        "attack": "wrong_facet",
+        "cycle": 26,
+        "question": (
+            "What's the recommended way to handle secrets/credentials across multiple pipelines?"
+        ),
+        "need_any": ["vault", "rdac secret", "cfxvault"],
+        "forbid_in_sources": ["logrhythm"],
+    },
+    {
+        "id": "c26_no_placeholder_leak",
+        "attack": "contamination",
+        "cycle": 26,
+        "question": (
+            "How does Fabrix handle schema drift when a source system changes its data format?"
+        ),
+        "forbid": ["a documented bot from the retrieved catalog"],
+    },
 ]
 
 

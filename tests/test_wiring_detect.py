@@ -199,6 +199,53 @@ def test_oia_memory_config_is_not_live_incident_ask():
     )
 
 
+def test_incremental_load_expands_to_bookmarks():
+    from agent import (
+        _is_incremental_load_ask,
+        _normalize_question_typos,
+    )
+
+    q = "Does Fabrix support incremental data loads, or only full refreshes?"
+    assert _is_incremental_load_ask(q)
+    assert not _is_incremental_load_ask("How do I load a CSV file?")
+    expanded = _normalize_question_typos(q).lower()
+    assert "bookmark" in expanded
+    assert "persistent stream" in expanded
+
+
+def test_general_secrets_ask_expands_to_vault():
+    from agent import (
+        _is_general_secrets_management_ask,
+        _normalize_question_typos,
+    )
+
+    q = "What's the recommended way to handle secrets/credentials across multiple pipelines?"
+    assert _is_general_secrets_management_ask(q)
+    # Named-integration credential asks must not get the Vault expansion.
+    assert not _is_general_secrets_management_ask(
+        "What credentials does LogRhythm need for Fabrix?"
+    )
+    expanded = _normalize_question_typos(q).lower()
+    assert "vault" in expanded
+    assert "rdac secret" in expanded
+
+
+def test_strip_ungrounded_bots_never_leaves_placeholder():
+    from agent import _strip_ungrounded_bot_mentions
+
+    draft = (
+        "Fabrix uses the @c:schema-drift-handler bot to detect changes. "
+        "Then apply @dm:add-schema for validation."
+    )
+    cleaned = _strip_ungrounded_bot_mentions(draft, ["@c:schema-drift-handler"])
+    assert "schema-drift-handler" not in cleaned.lower()
+    assert "a documented bot from the retrieved catalog" not in cleaned.lower()
+    # Old placeholder leftovers must also be scrubbed.
+    leaked = "Use a documented bot from the retrieved catalog to fetch data."
+    scrubbed = _strip_ungrounded_bot_mentions(leaked, [])
+    assert "documented bot from the retrieved catalog" not in scrubbed.lower()
+
+
 def test_security_action_request_detected():
     from agent import _is_security_action_request
 
