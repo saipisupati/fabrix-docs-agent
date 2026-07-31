@@ -1889,6 +1889,36 @@ def _is_general_secrets_management_ask(question: str) -> bool:
     )
 
 
+def _is_service_pipeline_category_ask(question: str) -> bool:
+    """
+    "Service pipeline vs X" blueprint execution-mode asks (cycle 27).
+
+    Natural phrasing pulls toward AI Fabric event-based triggers instead of
+    `svc_blueprints_cli` / `scheduled_pipelines`, which hold the real
+    always-running vs cron distinction. Requires comparison framing so ordinary
+    "how do I run a service pipeline" how-tos are unaffected.
+    """
+    q = (question or "").lower()
+    if not q.strip():
+        return False
+    if "service pipeline" not in q and "service_pipelines" not in q:
+        return False
+    return any(
+        c in q
+        for c in (
+            "difference between",
+            "differences between",
+            " vs ",
+            " vs.",
+            "versus",
+            "compared to",
+            "compare",
+            "different from",
+            "differ from",
+        )
+    )
+
+
 def _is_pipeline_schedule_ask(question: str) -> bool:
     q = (question or "").lower()
     if ("schedule" in q or "cron" in q) and (
@@ -2760,6 +2790,11 @@ Fabrix mental model (use when relevant; do not keyword-stuff):
 - If only (b) is documented, lead with what Fabrix's own feature IS (name it specifically, e.g. "Version History and Publish in Studio") and clearly state there is no first-class integration with the named third-party tool the user asked about. Do not invent a manual workaround/export story unless the docs explicitly describe one.
 """
 
+    pipeline_category_guardrail = """
+- Fabrix's documented pipeline execution modes inside Service Blueprints are `service_pipelines` (always-running -- typically infinite-loop or stream-reading pipelines that RDAF monitors and restarts on exit/failure) and `scheduled_pipelines` (cron-driven). If the user names a pipeline "category" that the excerpts do not define as such (e.g. "event-driven pipeline"), do NOT invent a parallel definition or a symmetric contrast for it.
+- Instead: give the documented distinction that DOES exist (service vs scheduled), then state plainly that the named category is not a documented blueprint pipeline type. Only mention adjacent documented features (e.g. AI Fabric event-based triggers) if excerpts support them, and label them as a separate feature rather than a pipeline category.
+"""
+
     specificity_guardrail = """
 - CRITICAL: a topic being documented does not mean every specific detail about it is documented. Before stating a specific number, version, exact comparison, or precise technical claim, verify that exact detail appears in the excerpts -- not just the general topic.
 - If the excerpts discuss a topic broadly (e.g., "integrates with Kubernetes") but do NOT state a specific requested detail (e.g., a version number, a named comparison to another product, an exact limit), say so explicitly: name the topic that IS documented, then clearly state the specific detail is not specified in the docs.
@@ -2772,7 +2807,7 @@ Fabrix mental model (use when relevant; do not keyword-stuff):
   technical synthesis implied by the docs.
 - Cite documented claims with [1], [2], … Do NOT put [n] on inferred reasoning.
 - Set used_inference=true and fill inferred_summary when you synthesize beyond verbatim docs.
-{objects_line}{full_page_line}{fidelity_line}{ungrounded_line}{path_first}{code_gen_guardrail}{procedure_grounding_guardrail}{behavior_certainty_guardrail}{tool_equivalence_guardrail}{specificity_guardrail}
+{objects_line}{full_page_line}{fidelity_line}{ungrounded_line}{path_first}{code_gen_guardrail}{procedure_grounding_guardrail}{behavior_certainty_guardrail}{tool_equivalence_guardrail}{pipeline_category_guardrail}{specificity_guardrail}
 """
     else:
         infer_guidance = f"""
@@ -2780,7 +2815,7 @@ Fabrix mental model (use when relevant; do not keyword-stuff):
 - If you add connective technical reasoning beyond a single excerpt, set used_inference=true
   and fill inferred_summary. Otherwise used_inference=false and inferred_summary="".
 - Do NOT put [n] on inferred reasoning.
-{objects_line}{full_page_line}{fidelity_line}{ungrounded_line}{path_first}{code_gen_guardrail}{procedure_grounding_guardrail}{behavior_certainty_guardrail}{tool_equivalence_guardrail}{specificity_guardrail}
+{objects_line}{full_page_line}{fidelity_line}{ungrounded_line}{path_first}{code_gen_guardrail}{procedure_grounding_guardrail}{behavior_certainty_guardrail}{tool_equivalence_guardrail}{pipeline_category_guardrail}{specificity_guardrail}
 """
 
     revision_block = ""
@@ -3196,6 +3231,10 @@ def _normalize_question_typos(question: str) -> str:
     # General secrets/credentials across pipelines → Vault / rdac secret.
     if _is_general_secrets_management_ask(q) and "vault" not in low:
         q = q.rstrip() + " Vault rdac secret credential encryption"
+        low = q.lower()
+    # Service-pipeline comparison → blueprint execution modes (not AI Fabric triggers).
+    if _is_service_pipeline_category_ask(q) and "service_pipelines" not in low:
+        q = q.rstrip() + " service_pipelines blueprint always-running restart scheduled_pipelines"
     return q
 
 
@@ -4584,6 +4623,31 @@ def answer(question: str, client: QdrantClient | None = None) -> AgentResponse:
                 objs.insert(0, term)
         facet_plan["primary_objects"] = objs[:8]
         logger.info("secrets/credentials→Vault retrieve bias")
+        use_facets = True
+
+    # Service-pipeline comparison → blueprint execution modes (svc_blueprints_cli)
+    if _is_service_pipeline_category_ask(question):
+        queries0 = list(facet_plan["search_queries"] or [])
+        for seed in (
+            "service_pipelines blueprint always-running restart scheduled_pipelines",
+            "Managing Service Blueprints using RDA CLI service_pipelines",
+            "Service Pipeline always running mode RDAF monitors restart infinite loop stream",
+            "Schedule Pipelines within Service Blueprints cron_expression",
+        ):
+            if seed not in queries0:
+                queries0 = [seed] + queries0
+        facet_plan["search_queries"] = queries0
+        objs = list(facet_plan.get("primary_objects") or [])
+        for term in (
+            "service_pipelines",
+            "scheduled_pipelines",
+            "service blueprint",
+            "always running",
+        ):
+            if term not in objs:
+                objs.insert(0, term)
+        facet_plan["primary_objects"] = objs[:8]
+        logger.info("service-pipeline blueprint retrieve bias")
         use_facets = True
 
     # Worker scale / capacity asks

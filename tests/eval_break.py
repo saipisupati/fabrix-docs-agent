@@ -2164,6 +2164,14 @@ BREAK_CASES = [
         ),
         "forbid": ["a documented bot from the retrieved catalog"],
     },
+    {
+        "id": "c27_service_pipeline_blueprint_routing",
+        "attack": "wrong_facet",
+        "cycle": 27,
+        "question": "What's the difference between a service pipeline and an event-driven pipeline?",
+        "need_any": ["service_pipelines", "always-running", "always running", "auto-restart", "scheduled"],
+        "forbid": ["structured vs trigger-based"],
+    },
 ]
 
 

@@ -199,6 +199,41 @@ def test_oia_memory_config_is_not_live_incident_ask():
     )
 
 
+def test_service_pipeline_category_ask_expands_to_blueprint():
+    from agent import (
+        _is_service_pipeline_category_ask,
+        _normalize_question_typos,
+    )
+
+    q = "What's the difference between a service pipeline and an event-driven pipeline?"
+    assert _is_service_pipeline_category_ask(q)
+    assert _is_service_pipeline_category_ask(
+        "service pipeline vs scheduled pipeline in RDA Fabric"
+    )
+    # Plain how-tos and unrelated trigger asks must not pick up the bias.
+    assert not _is_service_pipeline_category_ask("How do I deploy a service pipeline?")
+    assert not _is_service_pipeline_category_ask(
+        "How do event-based triggers work in AI Fabric?"
+    )
+    expanded = _normalize_question_typos(q).lower()
+    assert "service_pipelines" in expanded
+    assert "scheduled_pipelines" in expanded
+
+
+def test_pipeline_category_guardrail_in_prompt():
+    from agent import build_kb_prompt
+
+    prompt = build_kb_prompt(
+        "What's the difference between a service pipeline and an event-driven pipeline?",
+        [],
+        [],
+        scope="related",
+    )
+    low = prompt.lower()
+    assert "service_pipelines" in low and "scheduled_pipelines" in low
+    assert "not a documented blueprint pipeline type" in low
+
+
 def test_incremental_load_expands_to_bookmarks():
     from agent import (
         _is_incremental_load_ask,
