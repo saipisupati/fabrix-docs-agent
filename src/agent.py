@@ -2622,9 +2622,9 @@ def _sources_from_kb(entries: list[dict]) -> list[dict]:
             continue
         seen.add(key)
         sources.append({
-            "title": e.get("title") or source or "docs",
+            "title": _clean_source_title(e.get("title") or source or "docs"),
             "url": url,
-            "excerpt": (e.get("text") or "")[:200],
+            "excerpt": _clean_display_snippet(e.get("text") or "", max_len=200),
         })
     return sources
 
@@ -2636,9 +2636,9 @@ def _sources_from_chunks(chunks: list[dict]) -> list[dict]:
         bot_name = meta.get("bot_name") or ""
         title = bot_name if bot_name and bot_name != "n/a" else (meta.get("source") or "")
         sources.append({
-            "title": title,
+            "title": _clean_source_title(title),
             "url": _chunk_url(meta),
-            "excerpt": chunk.get("text", "")[:200],
+            "excerpt": _clean_display_snippet(chunk.get("text", ""), max_len=200),
         })
     return sources
 
@@ -3658,28 +3658,184 @@ def _text_matches_topic(text: str, keys: list[str]) -> bool:
     return any(k in t for k in keys)
 
 
+# Weak question tokens that match too many unrelated excerpts (cycle 28).
+_WEAK_EXAMPLE_TOPIC_KEYS = frozenset({
+    "access", "grant", "specific", "teammate", "options", "available",
+    "logging", "level", "levels", "debugging", "failing", "difference",
+    "between", "compare", "versus", "readonly", "read-only", "only",
+    "using", "with", "from", "into", "about", "what", "how", "does",
+    "should", "would", "could", "make", "give", "need", "want", "help",
+    "please", "steps", "setup", "configure", "configuration",
+})
+
+# Raw OS/ACL dump markers — not Fabrix pipeline examples unless the ask is about them.
+_EXAMPLE_DUMP_MARKERS = (
+    "nt authority",
+    "accessmask",
+    "sc_manager",
+    "acetype",
+    "generic_read",
+    "aceflags",
+)
+
+
+def _strong_topic_keys(question: str) -> list[str]:
+    return [
+        k
+        for k in _question_topic_keys(question)
+        if k not in _WEAK_EXAMPLE_TOPIC_KEYS and len(k) >= 4
+    ]
+
+
+def _looks_like_unrelated_dump(example: str, question: str) -> bool:
+    """True when example is raw OS/ACL dump content unrelated to the ask."""
+    low = (example or "").lower()
+    q = (question or "").lower()
+    if not any(m in low for m in _EXAMPLE_DUMP_MARKERS):
+        return False
+    # Allow when the question itself is about Windows/ACL/OS permissions.
+    if any(t in q for t in ("windows", "acl", "nt authority", "accessmask", "os permission")):
+        return False
+    return True
+
+
+def _clean_display_snippet(text: str, max_len: int = 200) -> str:
+    """Truncate on a line/sentence/word boundary; strip raw markdown debris."""
+    s = (text or "").strip()
+    if not s:
+        return ""
+    # Plain-text excerpts: drop heading markers / table pipes / link syntax.
+    s = re.sub(r"\[([^\]]+)\]\([^)]*\)", r"\1", s)
+    s = re.sub(r"#+\s*", " ", s)
+    s = s.replace("|", " ")
+    s = re.sub(r"[*_`]+", "", s)
+    s = re.sub(r"\s+", " ", s).strip(" -:|#[]()")
+    if not s:
+        return ""
+    if len(s) <= max_len:
+        return s
+    cut = s[: max_len + 1]
+    # Prefer sentence end, then line-ish punctuation, then last space.
+    for sep in (". ", "; ", "! ", "? ", ", "):
+        idx = cut.rfind(sep)
+        if idx >= max_len // 3:
+            return cut[: idx + 1].rstrip()
+    idx = cut.rfind(" ")
+    if idx >= max_len // 3:
+        return cut[:idx].rstrip()
+    return s[:max_len].rstrip()
+
+
+def _clean_source_title(title: str, max_len: int = 100) -> str:
+    """
+    Plain-text source titles for display (cycle 28).
+
+    Strip markdown headers/links/table debris and truncate on a word boundary
+    so titles never end mid-`####`, mid-link, or mid-table cell.
+    """
+    s = (title or "").strip()
+    if not s:
+        return "docs"
+    # Keep "Full doc page: path" intact (already clean).
+    if s.lower().startswith("full doc page:"):
+        return _clean_display_snippet(s, max_len=max_len)
+
+    # Extract markdown link labels — closed or truncated mid-URL.
+    s = re.sub(r"\[([^\]]+)\]\([^)]*\)", r"\1", s)
+    s = re.sub(r"\[([^\]]+)\]\([^)]*$", r"\1", s)
+    s = re.sub(r"\[([^\]]+)\]\(", r"\1", s)
+    # Drop heading markers anywhere (including ": # Title" leftovers).
+    s = re.sub(r"#+\s*", " ", s)
+    s = re.sub(r"[*_`]+", "", s)
+    # Table pipes / broken markdown debris
+    s = s.replace("|", " ")
+    s = re.sub(r"\s+", " ", s).strip(" -:|#[]()")
+    # "Label: Label rest…" / duplicated heading pasted after colon → keep Label
+    if ":" in s:
+        left, right = s.split(":", 1)
+        left_s, right_s = left.strip(), right.strip()
+        if left_s and right_s:
+            shorter, longer = (
+                (left_s, right_s) if len(left_s) <= len(right_s) else (right_s, left_s)
+            )
+            dup = longer.lower().startswith(shorter.lower()) and len(shorter) >= 10
+            md_body = right_s.startswith("#") or "|" in right or right_s.startswith("[")
+            prose_body = any(
+                right_s.lower().startswith(p)
+                for p in (
+                    "follow ",
+                    "the following",
+                    "this section",
+                    "in this ",
+                    "use the ",
+                    "to ",
+                )
+            ) and len(left_s) >= 8
+            if dup or md_body or prose_body:
+                s = left_s
+    s = _clean_display_snippet(s, max_len=max_len)
+    # Don't leave dangling markdown openers / single-letter stumps at the end.
+    s = s.rstrip(" #|[]()`*_")
+    parts = s.rsplit(" ", 1)
+    if len(parts) == 2 and len(parts[1]) <= 2:
+        s = parts[0]
+    return s or "docs"
+
+
+def _example_relevant_to_ask(
+    example: str,
+    question: str,
+    answer_text: str = "",
+) -> bool:
+    """Require a strong topic hit (or answer overlap), not weak words like 'access'."""
+    if _looks_like_unrelated_dump(example, question):
+        return False
+    strong = _strong_topic_keys(question)
+    low = (example or "").lower()
+    if strong and any(k in low for k in strong):
+        return True
+    # Fall back: overlap with substantive tokens from the answer body.
+    ans_tokens = [
+        w
+        for w in re.findall(r"[a-z0-9][a-z0-9_-]{4,}", (answer_text or "").lower())
+        if w not in _WEAK_EXAMPLE_TOPIC_KEYS
+        and w not in {"fabrix", "fabric", "documented", "inferred", "docs", "documentation"}
+    ]
+    if ans_tokens and any(t in low for t in ans_tokens[:24]):
+        # Still require at least one strong question key when we have them,
+        # otherwise answer-overlap alone is too loose for dumps.
+        if not strong:
+            return True
+        return False
+    # No strong keys at all: keep only if any topic key matches (legacy path).
+    if not strong:
+        return _text_matches_topic(example, _question_topic_keys(question))
+    return False
+
+
 def _filter_examples_to_topic(
     examples: list[str],
     question: str,
     kb_entries: list[dict] | None = None,
+    answer_text: str = "",
 ) -> list[str]:
-    """Drop cross-topic example snippets (sibling integrations when families named)."""
-    keys = _question_topic_keys(question)
-    if not keys or not examples:
-        return examples
+    """Drop cross-topic / dump example snippets; omit section when nothing relevant."""
+    if not examples:
+        return []
 
     blocked = _blocked_sibling_terms(question)
     kept: list[str] = []
     for ex in examples:
         low = (ex or "").lower()
         if blocked and _blob_has_blocked(low, blocked):
-            # keep if it also names an allowed family
             allowed_terms = _allowed_family_terms(question)
-            if allowed_terms and any(t in low for t in allowed_terms):
-                kept.append(ex)
+            if not (allowed_terms and any(t in low for t in allowed_terms)):
+                continue
+        if not _example_relevant_to_ask(ex, question, answer_text=answer_text):
             continue
-        if _text_matches_topic(ex, keys):
-            kept.append(ex)
+        cleaned = _clean_display_snippet(ex, max_len=220)
+        if cleaned:
+            kept.append(cleaned)
     if kept:
         return kept[:8]
 
@@ -3690,10 +3846,14 @@ def _filter_examples_to_topic(
                 allowed_terms = _allowed_family_terms(question)
                 if not (allowed_terms and any(t in blob.lower() for t in allowed_terms)):
                     continue
-            if not _text_matches_topic(blob, keys):
+            ex = str(e.get("example") or "").strip()
+            if not ex:
                 continue
-            if e.get("example"):
-                kept.append(str(e["example"])[:400])
+            if not _example_relevant_to_ask(ex, question, answer_text=answer_text):
+                continue
+            cleaned = _clean_display_snippet(ex, max_len=220)
+            if cleaned:
+                kept.append(cleaned)
             if len(kept) >= 3:
                 break
     return kept[:8]
@@ -3885,7 +4045,7 @@ def _kb_examples_for_topic(question: str, kb_entries: list[dict], limit: int = 3
         if keys and not _text_matches_topic(blob, keys):
             continue
         if e.get("example"):
-            out.append(str(e["example"])[:400])
+            out.append(_clean_display_snippet(str(e["example"]), max_len=220))
         if len(out) >= limit:
             break
     return out
@@ -5797,9 +5957,14 @@ def answer(question: str, client: QdrantClient | None = None) -> AgentResponse:
     grounded = bool(kb_entries or chunks) and not abstained
 
     if grounded:
-        examples = _filter_examples_to_topic(examples, question, kb_entries)
+        examples = _filter_examples_to_topic(
+            examples, question, kb_entries, answer_text=answer_text
+        )
         if not examples:
             examples = _kb_examples_for_topic(question, kb_entries, limit=3)
+            examples = _filter_examples_to_topic(
+                examples, question, None, answer_text=answer_text
+            )
     else:
         examples = []
         used_inference = False
@@ -5879,7 +6044,7 @@ if __name__ == "__main__":
     if result.examples:
         print("\nExamples:")
         for ex in result.examples:
-            print(f"  - {ex[:200]}")
+            print(f"  - {ex}")
     if result.gaps:
         print("\nGaps:")
         for g in result.gaps:

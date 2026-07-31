@@ -2172,6 +2172,21 @@ BREAK_CASES = [
         "need_any": ["service_pipelines", "always-running", "always running", "auto-restart", "scheduled"],
         "forbid": ["structured vs trigger-based"],
     },
+    {
+        "id": "c28_examples_relevance_no_leak",
+        "attack": "contamination",
+        "cycle": 28,
+        "question": "How do I grant a teammate read-only access to a specific pipeline?",
+        "forbid": ["NT AUTHORITY", "SC_MANAGER_CONNECT", "AccessMask"],
+        "forbid_in_examples": ["NT AUTHORITY", "SC_MANAGER_CONNECT", "AccessMask"],
+    },
+    {
+        "id": "c28_source_titles_clean",
+        "attack": "contamination",
+        "cycle": 28,
+        "question": "What's the difference between a Pipeline and a Blueprint in RDA Fabric?",
+        "forbid_in_sources": ["####", "| Artifac"],
+    },
 ]
 
 

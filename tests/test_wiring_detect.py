@@ -220,6 +220,42 @@ def test_service_pipeline_category_ask_expands_to_blueprint():
     assert "scheduled_pipelines" in expanded
 
 
+def test_examples_reject_unrelated_acl_dump():
+    from agent import _filter_examples_to_topic
+
+    q = "How do I grant a teammate read-only access to a specific pipeline?"
+    dump = (
+        "Output\n\n```\nAccount    : NT AUTHORITY\\INTERACTIVE\n"
+        "Access     : SC_MANAGER_CONNECT, GENERIC_READ\n"
+        "AccessMask : 0x00020015\n"
+    )
+    assert _filter_examples_to_topic([dump], q, answer_text="pipeline settings") == []
+    ok = "In Studio, open the pipeline and set viewer role for the teammate."
+    kept = _filter_examples_to_topic([ok], q, answer_text="pipeline settings")
+    assert kept and "pipeline" in kept[0].lower()
+
+
+def test_source_titles_strip_markdown_debris():
+    from agent import _clean_source_title
+
+    messy = (
+        "Artifacts used in this Pipeline: #### Artifacts used in this Pipeline\n\n"
+        "| Artifac"
+    )
+    clean = _clean_source_title(messy)
+    assert "####" not in clean
+    assert "| Artifac" not in clean
+    assert "Artifacts used in this Pipeline" in clean
+
+    linky = (
+        'Guides: - [**Beginner\'s Guide**](beginners_guide/ "Beginner\'s guide to building'
+    )
+    clean2 = _clean_source_title(linky)
+    assert "](" not in clean2
+    assert "####" not in clean2
+    assert "Beginner" in clean2 or "Guides" in clean2
+
+
 def test_pipeline_category_guardrail_in_prompt():
     from agent import build_kb_prompt
 
