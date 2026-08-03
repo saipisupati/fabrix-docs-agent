@@ -2225,6 +2225,21 @@ BREAK_CASES = [
         "need_any": ["publish", "draft"],
         "forbid": ["rdac.py pipeline publish", "pipeline publish --name"],
     },
+    {
+        "id": "c30_bookmark_bot_token_fidelity",
+        "attack": "contamination",
+        "cycle": 30,
+        "question": (
+            "How do bookmarks help with incremental reads from a persistent stream, "
+            "and which bots save or load them?"
+        ),
+        "need_any": ["@dm:save-bookmark"],
+        "need_also_any": ["@dm:load-bookmark"],
+        "forbid": [
+            "@dm:save_bookmark",
+            "@dm:load_bookmark",
+        ],
+    },
 ]
 
 

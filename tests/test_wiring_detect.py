@@ -301,15 +301,52 @@ def test_pipeline_category_guardrail_in_prompt():
 def test_incremental_load_expands_to_bookmarks():
     from agent import (
         _is_incremental_load_ask,
+        _is_bookmark_resume_ask,
         _normalize_question_typos,
     )
 
     q = "Does Fabrix support incremental data loads, or only full refreshes?"
     assert _is_incremental_load_ask(q)
+    assert _is_bookmark_resume_ask(q)
     assert not _is_incremental_load_ask("How do I load a CSV file?")
-    expanded = _normalize_question_typos(q).lower()
-    assert "bookmark" in expanded
+    # Direct bookmark phrasing (cycle 30) must share the same routing.
+    q2 = (
+        "How do bookmarks help with incremental reads from a persistent stream, "
+        "and which bots save or load them?"
+    )
+    assert _is_bookmark_resume_ask(q2)
+    assert not _is_bookmark_resume_ask("How do I clone a bot in Pipeline Builder?")
+    expanded = _normalize_question_typos(q2).lower()
+    assert "save-bookmark" in expanded or "bookmark" in expanded
     assert "persistent stream" in expanded
+
+
+def test_canonicalize_bot_tokens_prefers_excerpt_hyphen_form():
+    from agent import _canonicalize_bot_tokens_to_excerpts
+
+    kb = [
+        {
+            "title": "mixed",
+            "source": "Bots/cfxdm.md",
+            "text": (
+                # Underscore noise first — hyphenated catalog form must still win.
+                "mentions dm:save_bookmark loosely. "
+                "@dm:save-bookmark parameters: name. "
+                "@dm:load-bookmark parameters: name. "
+                "@c:bookmark-loop is a documented bot."
+            ),
+        }
+    ]
+    ans = (
+        "Use `@dm:save_bookmark` then `@dm:load_bookmark`. "
+        "Optionally `@c:bookmark-loop`."
+    )
+    out = _canonicalize_bot_tokens_to_excerpts(ans, kb, [])
+    assert "@dm:save-bookmark" in out
+    assert "@dm:load-bookmark" in out
+    assert "@dm:save_bookmark" not in out
+    assert "@dm:load_bookmark" not in out
+    assert "@c:bookmark-loop" in out
 
 
 def test_general_secrets_ask_expands_to_vault():

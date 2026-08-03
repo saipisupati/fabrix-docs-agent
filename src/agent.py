@@ -1865,6 +1865,76 @@ def _is_incremental_load_ask(question: str) -> bool:
     )
 
 
+def _is_bookmark_resume_ask(question: str) -> bool:
+    """
+    Bookmark / incremental-resume asks (cycle 26 + 30).
+
+    Covers both user vocabulary ("incremental load") and direct bookmark
+    phrasing so retrieve bias + token fidelity apply to both.
+    """
+    if _is_incremental_load_ask(question):
+        return True
+    q = (question or "").lower()
+    if "bookmark" not in q:
+        return False
+    return any(
+        p in q
+        for p in (
+            "incremental",
+            "persistent stream",
+            "pstream",
+            "save",
+            "load",
+            "resume",
+            "how far",
+        )
+    )
+
+
+def _canonicalize_bot_tokens_to_excerpts(
+    answer: str,
+    kb_entries: list[dict] | None,
+    chunks: list[dict] | None,
+) -> str:
+    """
+    Rewrite @family:op tokens to the punctuation form that appears in excerpts.
+
+    Ungrounded checks treat underscore/hyphen as equivalent, so the model can
+    leave `@dm:save_bookmark` when docs say `@dm:save-bookmark`. Prefer the
+    documented spelling for user-facing answers (cycle 30).
+    """
+    text = answer or ""
+    if not text.strip():
+        return text
+    blob = _retrieved_context_blob(kb_entries, chunks)
+    if not blob.strip():
+        return text
+    # Collect observed spellings per fam:op (hyphen-normalized key).
+    observed: dict[str, set[str]] = {}
+    for m in BOT_FULL_TOKEN_RE.finditer(blob):
+        fam, op = m.group(1).lower(), m.group(2).lower()
+        key = f"{fam}:{op.replace('_', '-')}"
+        observed.setdefault(key, set()).add(f"{fam}:{op}")
+    if not observed:
+        return text
+
+    preferred: dict[str, str] = {}
+    for key, forms in observed.items():
+        # Prefer hyphenated bot spellings when both appear in excerpts.
+        hyphen = next((f for f in forms if "-" in f.split(":", 1)[1]), None)
+        preferred[key] = hyphen or sorted(forms)[0]
+
+    def _repl(m: re.Match[str]) -> str:
+        fam, op = m.group(1), m.group(2)
+        key = f"{fam.lower()}:{op.lower().replace('_', '-')}"
+        canon = preferred.get(key)
+        if not canon:
+            return m.group(0)
+        return f"@{canon}"
+
+    return BOT_FULL_TOKEN_RE.sub(_repl, text)
+
+
 def _is_general_secrets_management_ask(question: str) -> bool:
     """
     Conceptual secrets/credentials how-to (not a named-integration auth ask).
@@ -3275,9 +3345,14 @@ def _normalize_question_typos(question: str) -> str:
         q = q.rstrip() + " bot package unique naming SDK"
         low = q.lower()
     # Incremental load/sync → bookmarks terminology (docs name, user vocabulary differs).
-    if _is_incremental_load_ask(q) and "bookmark" not in low:
-        q = q.rstrip() + " bookmark save load persistent stream"
-        low = q.lower()
+    if _is_bookmark_resume_ask(q):
+        if "bookmark" not in low:
+            q = q.rstrip() + " bookmark save load persistent stream"
+            low = q.lower()
+        # Do not inject @family:op tokens — that trips bot-param fast-path.
+        if "save-bookmark" not in low and "load-bookmark" not in low:
+            q = q.rstrip() + " dm save-bookmark load-bookmark"
+            low = q.lower()
     # General secrets/credentials across pipelines → Vault / rdac secret.
     if _is_general_secrets_management_ask(q) and "vault" not in low:
         q = q.rstrip() + " Vault rdac secret credential encryption"
@@ -4800,13 +4875,13 @@ def answer(question: str, client: QdrantClient | None = None) -> AgentResponse:
         logger.info("bot naming uniqueness retrieve bias")
         use_facets = True
 
-    # Incremental loads → bookmarks / persistent-stream resume (vocab mismatch)
-    if _is_incremental_load_ask(question):
+    # Incremental loads / bookmark resume → bookmarks (vocab mismatch + token fidelity)
+    if _is_bookmark_resume_ask(question):
         queries0 = list(facet_plan["search_queries"] or [])
         for seed in (
             "bookmark save load persistent stream",
             "RDA Fabric Bookmarks how far data stream has been read",
-            "dm:save-bookmark dm:load-bookmark bookmark-loop",
+            "dm:save-bookmark dm:load-bookmark persistent stream resume",
         ):
             if seed not in queries0:
                 queries0 = [seed] + queries0
@@ -5227,6 +5302,27 @@ def answer(question: str, client: QdrantClient | None = None) -> AgentResponse:
                     "text": pipe_text,
                 }]
                 logger.info("page_expand: pipeline-builder UI %s", pipe_rel)
+    # Bookmark / incremental-resume: force data_control + cfxdm so save/load-bookmark
+    # tokens are present with documented hyphen spelling (cycle 30).
+    if _is_bookmark_resume_ask(question):
+        from page_expand import expand_page as _expand_page
+        from doc_urls import public_doc_url as _pub
+
+        for rel, max_chars in (
+            ("beginners_guide/data_control.md", 16_000),
+            # cfxdm is huge; raise limit so save/load-bookmark sections are included.
+            ("Bots/cfxdm.md", 48_000),
+        ):
+            if any((p.get("path") or "") == rel for p in (expanded_pages or [])):
+                continue
+            page_text = _expand_page(rel, max_chars=max_chars)
+            if page_text:
+                expanded_pages = list(expanded_pages or []) + [{
+                    "path": rel,
+                    "url": _pub(rel),
+                    "text": page_text,
+                }]
+                logger.info("page_expand: bookmark resume %s", rel)
     # Integration wiring: load bot catalog pages so answers can cite real @family:op tokens
     if _is_integration_wiring_ask(question):
         from page_expand import expand_page as _expand_page
@@ -5917,6 +6013,17 @@ def answer(question: str, client: QdrantClient | None = None) -> AgentResponse:
             gaps = [gap] + list(gaps or [])
         used_inference = True
         logger.info("stripped ungrounded bots after revision: %s", still_ungrounded)
+
+    # Prefer documented @family:op punctuation (hyphen vs underscore) from excerpts.
+    if not abstained and (kb_entries or chunks):
+        canon = _canonicalize_bot_tokens_to_excerpts(answer_text, kb_entries, chunks)
+        if canon != answer_text:
+            answer_text = canon
+            logger.info("canonicalized bot tokens to excerpt spelling")
+        examples = [
+            _canonicalize_bot_tokens_to_excerpts(ex, kb_entries, chunks)
+            for ex in (examples or [])
+        ]
 
     # Critique/revision can re-abstain on Fabio capability asks — deterministic honesty
     if (
