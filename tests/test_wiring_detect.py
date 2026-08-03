@@ -202,6 +202,7 @@ def test_oia_memory_config_is_not_live_incident_ask():
 def test_pipeline_builder_ui_ask_expands_to_pipe_builder():
     from agent import (
         _is_pipeline_builder_ui_ask,
+        _is_published_pipeline_reedit_ask,
         _normalize_question_typos,
     )
 
@@ -220,11 +221,18 @@ def test_pipeline_builder_ui_ask_expands_to_pipe_builder():
         "What are the documented steps to deploy a Service Blueprint using "
         "the RDAC CLI, starting from service-blueprint.yml?"
     )
-    expanded = _normalize_question_typos(
-        "In Pipeline Builder, how do I clone a bot configuration?"
-    ).lower()
-    assert "pipeline builder" in expanded
-    assert "clone" in expanded
+    reedit = (
+        "After I publish a pipeline, where do edited versions go and what do I "
+        "need to do before using it again in a Service Blueprint?"
+    )
+    assert _is_published_pipeline_reedit_ask(reedit)
+    assert _is_pipeline_builder_ui_ask(reedit)
+    assert not _is_published_pipeline_reedit_ask(
+        "How do I publish a draft pipeline for the first time?"
+    )
+    expanded = _normalize_question_typos(reedit).lower()
+    assert "published pipelines" in expanded
+    assert "draft pipelines" in expanded
 
 
 def test_service_pipeline_category_ask_expands_to_blueprint():

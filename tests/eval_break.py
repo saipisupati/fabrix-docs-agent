@@ -2240,6 +2240,22 @@ BREAK_CASES = [
             "@dm:load_bookmark",
         ],
     },
+    {
+        "id": "c31_published_edit_returns_to_draft",
+        "attack": "wrong_facet",
+        "cycle": 31,
+        "question": (
+            "After I publish a pipeline, where do edited versions go and what do I "
+            "need to do before using it again in a Service Blueprint?"
+        ),
+        "need_any": ["Published Pipelines", "published pipelines"],
+        "need_also_any": ["Draft Pipelines", "draft pipelines"],
+        "forbid": [
+            "go back to Draft Pipelines, locate the pipeline, and click on the edit",
+            "go back to draft pipelines to edit",
+            "edit the pipeline from Draft Pipelines",
+        ],
+    },
 ]
 
 

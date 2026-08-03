@@ -2039,6 +2039,45 @@ def _is_pipeline_builder_ui_ask(question: str) -> bool:
     return not cli_only
 
 
+def _is_published_pipeline_reedit_ask(question: str) -> bool:
+    """
+    Edit-after-publish asks (cycle 31).
+
+    Docs: edit from Published Pipelines → saves back to Draft → Publish again
+    before Service Blueprint use. Models often invent "go edit in Draft" instead.
+    """
+    q = (question or "").lower()
+    if not q.strip():
+        return False
+    if "pipeline" not in q:
+        return False
+    published = any(
+        p in q
+        for p in (
+            "after i publish",
+            "after publish",
+            "once published",
+            "published pipeline",
+            "after publishing",
+        )
+    )
+    if not published and not (
+        "publish" in q and any(w in q for w in ("edit", "edited", "editing"))
+    ):
+        return False
+    return any(
+        w in q
+        for w in (
+            "edit",
+            "edited",
+            "editing",
+            "where do",
+            "service blueprint",
+            "again",
+        )
+    )
+
+
 def _is_pipeline_schedule_ask(question: str) -> bool:
     q = (question or "").lower()
     if ("schedule" in q or "cron" in q) and (
@@ -2915,6 +2954,12 @@ Fabrix mental model (use when relevant; do not keyword-stuff):
 - Instead: give the documented distinction that DOES exist (service vs scheduled), then state plainly that the named category is not a documented blueprint pipeline type. Only mention adjacent documented features (e.g. AI Fabric event-based triggers) if excerpts support them, and label them as a separate feature rather than a pipeline category.
 """
 
+    published_reedit_guardrail = ""
+    if _is_published_pipeline_reedit_ask(question):
+        published_reedit_guardrail = """
+- Edit-after-publish (Pipeline Builder): when excerpts say a published pipeline is edited from the Published Pipelines report, that edit is saved again in Draft Pipelines and must be published again for Service Blueprint use — do NOT invent a path like "go back to Draft Pipelines to edit" the published one.
+"""
+
     specificity_guardrail = """
 - CRITICAL: a topic being documented does not mean every specific detail about it is documented. Before stating a specific number, version, exact comparison, or precise technical claim, verify that exact detail appears in the excerpts -- not just the general topic.
 - If the excerpts discuss a topic broadly (e.g., "integrates with Kubernetes") but do NOT state a specific requested detail (e.g., a version number, a named comparison to another product, an exact limit), say so explicitly: name the topic that IS documented, then clearly state the specific detail is not specified in the docs.
@@ -2927,7 +2972,7 @@ Fabrix mental model (use when relevant; do not keyword-stuff):
   technical synthesis implied by the docs.
 - Cite documented claims with [1], [2], … Do NOT put [n] on inferred reasoning.
 - Set used_inference=true and fill inferred_summary when you synthesize beyond verbatim docs.
-{objects_line}{full_page_line}{fidelity_line}{ungrounded_line}{path_first}{code_gen_guardrail}{procedure_grounding_guardrail}{behavior_certainty_guardrail}{tool_equivalence_guardrail}{pipeline_category_guardrail}{specificity_guardrail}
+{objects_line}{full_page_line}{fidelity_line}{ungrounded_line}{path_first}{code_gen_guardrail}{procedure_grounding_guardrail}{behavior_certainty_guardrail}{tool_equivalence_guardrail}{pipeline_category_guardrail}{published_reedit_guardrail}{specificity_guardrail}
 """
     else:
         infer_guidance = f"""
@@ -2935,7 +2980,7 @@ Fabrix mental model (use when relevant; do not keyword-stuff):
 - If you add connective technical reasoning beyond a single excerpt, set used_inference=true
   and fill inferred_summary. Otherwise used_inference=false and inferred_summary="".
 - Do NOT put [n] on inferred reasoning.
-{objects_line}{full_page_line}{fidelity_line}{ungrounded_line}{path_first}{code_gen_guardrail}{procedure_grounding_guardrail}{behavior_certainty_guardrail}{tool_equivalence_guardrail}{pipeline_category_guardrail}{specificity_guardrail}
+{objects_line}{full_page_line}{fidelity_line}{ungrounded_line}{path_first}{code_gen_guardrail}{procedure_grounding_guardrail}{behavior_certainty_guardrail}{tool_equivalence_guardrail}{pipeline_category_guardrail}{published_reedit_guardrail}{specificity_guardrail}
 """
 
     revision_block = ""
@@ -3364,6 +3409,14 @@ def _normalize_question_typos(question: str) -> str:
     # Pipeline Builder UI (verify / publish draft / clone bot) → pipe_builder page.
     if _is_pipeline_builder_ui_ask(q) and "pipe_builder" not in low and "pipeline builder" not in low:
         q = q.rstrip() + " Pipeline Builder Draft Pipelines Verify Publish Clone bot"
+        low = q.lower()
+    # Edit-after-publish: Published Pipelines → Draft → Publish again (cycle 31).
+    if _is_published_pipeline_reedit_ask(q) and "published pipelines" not in low:
+        q = (
+            q.rstrip()
+            + " Published Pipelines report edited saved again in Draft Pipelines "
+            "published again Service Blueprint"
+        )
     return q
 
 
@@ -4964,6 +5017,25 @@ def answer(question: str, client: QdrantClient | None = None) -> AgentResponse:
                 objs.insert(0, term)
         facet_plan["primary_objects"] = objs[:8]
         logger.info("pipeline-builder UI retrieve bias")
+        use_facets = True
+
+    # Edit-after-publish path: Published Pipelines → Draft → Publish again
+    if _is_published_pipeline_reedit_ask(question):
+        queries0 = list(facet_plan["search_queries"] or [])
+        for seed in (
+            "When a published pipeline from Published Pipelines report is edited "
+            "it is saved again in Draft Pipelines published again Service Blueprint",
+            "Published Pipelines report edited Draft Pipelines Publish again",
+        ):
+            if seed not in queries0:
+                queries0 = [seed] + queries0
+        facet_plan["search_queries"] = queries0
+        objs = list(facet_plan.get("primary_objects") or [])
+        for term in ("published pipelines", "draft pipelines", "publish"):
+            if term not in objs:
+                objs.insert(0, term)
+        facet_plan["primary_objects"] = objs[:8]
+        logger.info("published-pipeline re-edit retrieve bias")
         use_facets = True
 
     # Worker scale / capacity asks
