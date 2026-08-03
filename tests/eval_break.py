@@ -2187,6 +2187,44 @@ BREAK_CASES = [
         "question": "What's the difference between a Pipeline and a Blueprint in RDA Fabric?",
         "forbid_in_sources": ["####", "| Artifac"],
     },
+    {
+        "id": "c29_pipeline_builder_verify_syntax",
+        "attack": "wrong_facet",
+        "cycle": 29,
+        "question": (
+            "In RDA Portal, where do I go to verify a pipeline's syntax "
+            "and what does the verification check for?"
+        ),
+        "need_any": ["verify", "syntax"],
+        "need_also_any": ["source", "sink", "bot"],
+        "forbid": ["navigate to the respective pipeline configuration or editing interface"],
+    },
+    {
+        "id": "c29_pipeline_builder_clone_bot",
+        "attack": "abstain_fail",
+        "cycle": 29,
+        "question": (
+            "In Pipeline Builder, how do I clone a bot configuration "
+            "to add multiple similar steps?"
+        ),
+        "need_any": ["clone"],
+        "forbid": [
+            "don't see a documented procedure",
+            "do not see a documented procedure",
+            "won't invent parameters",
+        ],
+    },
+    {
+        "id": "c29_publish_draft_not_invented_cli",
+        "attack": "invented_procedure",
+        "cycle": 29,
+        "question": (
+            "Walk me through the documented steps to publish a draft pipeline "
+            "and then use it in a Service Blueprint in RDA Fabric."
+        ),
+        "need_any": ["publish", "draft"],
+        "forbid": ["rdac.py pipeline publish", "pipeline publish --name"],
+    },
 ]
 
 

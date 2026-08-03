@@ -350,8 +350,22 @@ def _excerpts_describe_asked_procedure(
                 "audit who",
             )
         )
-    # Clone-a-pipeline: builder "Clone" clones a bot row — not a pipeline copy.
+    # Clone-a-pipeline vs clone-a-bot: Builder "Clone" clones a bot row — not a
+    # whole pipeline. "Pipeline Builder … clone a bot" must ground on bot-clone
+    # wording; bare "clone a pipeline" stays undocumented unless excerpts say so.
     if "clone" in q and "pipeline" in q:
+        if "bot" in q:
+            return any(
+                t in blob
+                for t in (
+                    "clone the bot",
+                    "clone a bot",
+                    "clone action",
+                    "click on clone",
+                    "**clone** action",
+                    "clone** action",
+                )
+            )
         return any(
             t in blob
             for t in (
@@ -1919,6 +1933,42 @@ def _is_service_pipeline_category_ask(question: str) -> bool:
     )
 
 
+def _is_pipeline_builder_ui_ask(question: str) -> bool:
+    """
+    Studio / Pipeline Builder UI how-tos (cycle 29).
+
+    Natural phrasing for verify / publish-draft / clone-bot often misses
+    `beginners_guide/pipe_builder`, which holds the documented Verify /
+    Draft Pipelines → Publish / Clone actions. Pure RDAC CLI deploy asks
+    (service-blueprint.yml only) stay off this bias.
+    """
+    q = (question or "").lower()
+    if not q.strip():
+        return False
+    if "pipeline builder" in q or "pipe builder" in q:
+        return True
+    if "pipeline" not in q and "draft pipeline" not in q:
+        return False
+    ui_cues = (
+        "verify",
+        "syntax",
+        "clone",
+        "publish",
+        "draft pipeline",
+        "draft pipelines",
+        "similar steps",
+        "multiple similar",
+    )
+    if not any(c in q for c in ui_cues):
+        return False
+    # Pure CLI / yaml deploy without publish/draft/verify/clone → leave alone.
+    cli_only = (
+        ("rdac" in q or "service-blueprint.yml" in q or "service blueprint.yml" in q)
+        and not any(c in q for c in ("publish", "draft", "verify", "clone", "syntax"))
+    )
+    return not cli_only
+
+
 def _is_pipeline_schedule_ask(question: str) -> bool:
     q = (question or "").lower()
     if ("schedule" in q or "cron" in q) and (
@@ -3235,6 +3285,10 @@ def _normalize_question_typos(question: str) -> str:
     # Service-pipeline comparison → blueprint execution modes (not AI Fabric triggers).
     if _is_service_pipeline_category_ask(q) and "service_pipelines" not in low:
         q = q.rstrip() + " service_pipelines blueprint always-running restart scheduled_pipelines"
+        low = q.lower()
+    # Pipeline Builder UI (verify / publish draft / clone bot) → pipe_builder page.
+    if _is_pipeline_builder_ui_ask(q) and "pipe_builder" not in low and "pipeline builder" not in low:
+        q = q.rstrip() + " Pipeline Builder Draft Pipelines Verify Publish Clone bot"
     return q
 
 
@@ -4810,6 +4864,33 @@ def answer(question: str, client: QdrantClient | None = None) -> AgentResponse:
         logger.info("service-pipeline blueprint retrieve bias")
         use_facets = True
 
+    # Pipeline Builder UI: verify / publish draft / clone → pipe_builder.md
+    if _is_pipeline_builder_ui_ask(question):
+        queries0 = list(facet_plan["search_queries"] or [])
+        for seed in (
+            "Pipeline Builder Draft Pipelines Verify Publish Clone bot",
+            "To verify if pipeline is using correct syntax click Verify source sink bots",
+            "Draft Pipelines report click on Publish Service Blueprint",
+            "Click on Clone action on the top right side of the pane to clone the bot",
+            "Building Pipelines Using Pipeline Builder Publish Draft Pipelines",
+        ):
+            if seed not in queries0:
+                queries0 = [seed] + queries0
+        facet_plan["search_queries"] = queries0
+        objs = list(facet_plan.get("primary_objects") or [])
+        for term in (
+            "pipeline builder",
+            "draft pipelines",
+            "verify",
+            "publish",
+            "clone",
+        ):
+            if term not in objs:
+                objs.insert(0, term)
+        facet_plan["primary_objects"] = objs[:8]
+        logger.info("pipeline-builder UI retrieve bias")
+        use_facets = True
+
     # Worker scale / capacity asks
     if "worker" in qlow_seed and any(
         w in qlow_seed for w in ("scale", "site", "limit", "max", "capacity", "busy")
@@ -5127,6 +5208,25 @@ def answer(question: str, client: QdrantClient | None = None) -> AgentResponse:
                     "url": _pub("beginners_guide/scheduled_pipelines.md"),
                     "text": sched_text,
                 }]
+    # Pipeline Builder UI: KB often only holds the page intro card — force the
+    # full pipe_builder guide so Verify / Clone bot / Draft→Publish are grounded.
+    if _is_pipeline_builder_ui_ask(question):
+        from page_expand import expand_page as _expand_page
+        from doc_urls import public_doc_url as _pub
+
+        pipe_rel = "beginners_guide/pipe_builder.md"
+        has_pipe = any(
+            (p.get("path") or "") == pipe_rel for p in (expanded_pages or [])
+        )
+        if not has_pipe:
+            pipe_text = _expand_page(pipe_rel)
+            if pipe_text:
+                expanded_pages = list(expanded_pages or []) + [{
+                    "path": pipe_rel,
+                    "url": _pub(pipe_rel),
+                    "text": pipe_text,
+                }]
+                logger.info("page_expand: pipeline-builder UI %s", pipe_rel)
     # Integration wiring: load bot catalog pages so answers can cite real @family:op tokens
     if _is_integration_wiring_ask(question):
         from page_expand import expand_page as _expand_page

@@ -199,6 +199,34 @@ def test_oia_memory_config_is_not_live_incident_ask():
     )
 
 
+def test_pipeline_builder_ui_ask_expands_to_pipe_builder():
+    from agent import (
+        _is_pipeline_builder_ui_ask,
+        _normalize_question_typos,
+    )
+
+    assert _is_pipeline_builder_ui_ask(
+        "In Pipeline Builder, how do I clone a bot configuration to add multiple similar steps?"
+    )
+    assert _is_pipeline_builder_ui_ask(
+        "In RDA Portal, where do I go to verify a pipeline's syntax?"
+    )
+    assert _is_pipeline_builder_ui_ask(
+        "Walk me through the documented steps to publish a draft pipeline "
+        "and then use it in a Service Blueprint."
+    )
+    # Pure RDAC CLI deploy (no UI publish/verify/clone) must stay off the bias.
+    assert not _is_pipeline_builder_ui_ask(
+        "What are the documented steps to deploy a Service Blueprint using "
+        "the RDAC CLI, starting from service-blueprint.yml?"
+    )
+    expanded = _normalize_question_typos(
+        "In Pipeline Builder, how do I clone a bot configuration?"
+    ).lower()
+    assert "pipeline builder" in expanded
+    assert "clone" in expanded
+
+
 def test_service_pipeline_category_ask_expands_to_blueprint():
     from agent import (
         _is_service_pipeline_category_ask,
@@ -569,8 +597,16 @@ def test_excerpts_procedure_grounding_clone_and_pause():
             ),
         }
     ]
+    # Whole-pipeline clone remains undocumented even when bot-clone text is nearby.
     assert not _excerpts_describe_asked_procedure(
         "How do I clone a pipeline in Fabrix?", adjacent, []
+    )
+    # Pipeline Builder "clone a bot" must ground on the documented Clone action.
+    assert _excerpts_describe_asked_procedure(
+        "In Pipeline Builder, how do I clone a bot configuration "
+        "to add multiple similar steps?",
+        adjacent,
+        [],
     )
     schedules = [
         {
