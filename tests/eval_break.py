@@ -2256,6 +2256,17 @@ BREAK_CASES = [
             "edit the pipeline from Draft Pipelines",
         ],
     },
+    {
+        "id": "c32_temp_dataset_prefix_fidelity",
+        "attack": "contamination",
+        "cycle": 32,
+        "question": (
+            "What's the difference between saving a dataset with temp: prefix "
+            "versus ordinary object storage?"
+        ),
+        "need_any": ["temp:"],
+        "forbid": ["`temp-`", "temp- prefix", "prefix `temp-`", "a temp- prefix"],
+    },
 ]
 
 

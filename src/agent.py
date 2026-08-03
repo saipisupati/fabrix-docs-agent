@@ -1935,6 +1935,57 @@ def _canonicalize_bot_tokens_to_excerpts(
     return BOT_FULL_TOKEN_RE.sub(_repl, text)
 
 
+def _is_temp_dataset_prefix_ask(question: str) -> bool:
+    """Dataset temp: memory-prefix vs persistent object-storage asks (cycle 32)."""
+    q = (question or "").lower()
+    if not q.strip():
+        return False
+    if "dataset" not in q and "datasets" not in q:
+        return False
+    return any(
+        p in q
+        for p in (
+            "temp:",
+            "temp prefix",
+            "temp- prefix",
+            "temporary dataset",
+            "interim dataset",
+            "in memory",
+            "in-memory",
+        )
+    )
+
+
+def _canonicalize_temp_dataset_prefix(
+    answer: str,
+    kb_entries: list[dict] | None,
+    chunks: list[dict] | None,
+) -> str:
+    """
+    Docs write the in-memory dataset prefix as `temp:` (colon). Models often
+    invent `temp-` (hyphen). Prefer the excerpt form when present (cycle 32).
+    """
+    text = answer or ""
+    if not text.strip():
+        return text
+    blob = _retrieved_context_blob(kb_entries, chunks)
+    if "temp:" not in blob:
+        return text
+    out = text
+    out = re.sub(r"`temp-`", "`temp:`", out)
+    out = re.sub(r"'temp-'", "'temp:'", out)
+    out = re.sub(r'"temp-"', '"temp:"', out)
+    out = re.sub(r"\btemp-\s*prefix\b", "temp: prefix", out, flags=re.IGNORECASE)
+    out = re.sub(r"\bprefix\s+temp-\b", "prefix temp:", out, flags=re.IGNORECASE)
+    out = re.sub(
+        r"\bwith a temp-\b", "with a temp:", out, flags=re.IGNORECASE
+    )
+    out = re.sub(
+        r"\bwithout the temp-\b", "without the temp:", out, flags=re.IGNORECASE
+    )
+    return out
+
+
 def _is_general_secrets_management_ask(question: str) -> bool:
     """
     Conceptual secrets/credentials how-to (not a named-integration auth ask).
@@ -2076,6 +2127,35 @@ def _is_published_pipeline_reedit_ask(question: str) -> bool:
             "again",
         )
     )
+
+
+def _answer_has_published_reedit_path(answer: str) -> bool:
+    """True when the answer names Published Pipelines as the edit surface."""
+    low = (answer or "").lower()
+    return "published pipelines" in low
+
+
+def _published_pipeline_reedit_fallback(
+    kb_entries: list[dict] | None,
+    chunks: list[dict] | None,
+    existing_gaps: list[str] | None = None,
+) -> tuple[str, list[str]] | None:
+    """
+    Deterministic documented path when the model omits Published Pipelines
+    (cycle 31/32 spot-check). Only fires if excerpts contain the real line.
+    """
+    blob = _retrieved_context_blob(kb_entries, chunks)
+    if "published pipelines" not in blob or "draft pipelines" not in blob:
+        return None
+    if "edited" not in blob and "publish" not in blob:
+        return None
+    text = (
+        "When a published pipeline from the **Published Pipelines** report is edited, "
+        "it is saved again in **Draft Pipelines**. It has to be published again to use "
+        "it in a Service Blueprint."
+    )
+    gaps = list(existing_gaps or [])
+    return text, gaps[:8]
 
 
 def _is_pipeline_schedule_ask(question: str) -> bool:
@@ -3417,6 +3497,10 @@ def _normalize_question_typos(question: str) -> str:
             + " Published Pipelines report edited saved again in Draft Pipelines "
             "published again Service Blueprint"
         )
+        low = q.lower()
+    # temp: in-memory dataset prefix lives on pipe_builder (cycle 32).
+    if _is_temp_dataset_prefix_ask(q) and "temp:" not in low:
+        q = q.rstrip() + " temp: interim dataset in memory Object Storage pipe_builder"
     return q
 
 
@@ -5038,6 +5122,25 @@ def answer(question: str, client: QdrantClient | None = None) -> AgentResponse:
         logger.info("published-pipeline re-edit retrieve bias")
         use_facets = True
 
+    # temp: in-memory dataset prefix (pipe_builder) vs object storage
+    if _is_temp_dataset_prefix_ask(question):
+        queries0 = list(facet_plan["search_queries"] or [])
+        for seed in (
+            "save it in memory with a prefix temp: Object Storage interim dataset",
+            "temp: prefix RDA will delete the dataset once pipeline execution is complete",
+            "Building Pipelines Using Pipeline Builder dm:save temp:",
+        ):
+            if seed not in queries0:
+                queries0 = [seed] + queries0
+        facet_plan["search_queries"] = queries0
+        objs = list(facet_plan.get("primary_objects") or [])
+        for term in ("temp:", "dataset", "object storage", "dm:save"):
+            if term not in objs:
+                objs.insert(0, term)
+        facet_plan["primary_objects"] = objs[:8]
+        logger.info("temp-dataset prefix retrieve bias")
+        use_facets = True
+
     # Worker scale / capacity asks
     if "worker" in qlow_seed and any(
         w in qlow_seed for w in ("scale", "site", "limit", "max", "capacity", "busy")
@@ -5355,9 +5458,8 @@ def answer(question: str, client: QdrantClient | None = None) -> AgentResponse:
                     "url": _pub("beginners_guide/scheduled_pipelines.md"),
                     "text": sched_text,
                 }]
-    # Pipeline Builder UI: KB often only holds the page intro card — force the
-    # full pipe_builder guide so Verify / Clone bot / Draft→Publish are grounded.
-    if _is_pipeline_builder_ui_ask(question):
+    # Pipeline Builder UI / temp: prefix: KB intro is thin — force full pipe_builder.
+    if _is_pipeline_builder_ui_ask(question) or _is_temp_dataset_prefix_ask(question):
         from page_expand import expand_page as _expand_page
         from doc_urls import public_doc_url as _pub
 
@@ -5373,7 +5475,7 @@ def answer(question: str, client: QdrantClient | None = None) -> AgentResponse:
                     "url": _pub(pipe_rel),
                     "text": pipe_text,
                 }]
-                logger.info("page_expand: pipeline-builder UI %s", pipe_rel)
+                logger.info("page_expand: pipeline-builder / temp-prefix %s", pipe_rel)
     # Bookmark / incremental-resume: force data_control + cfxdm so save/load-bookmark
     # tokens are present with documented hyphen spelling (cycle 30).
     if _is_bookmark_resume_ask(question):
@@ -6096,6 +6198,33 @@ def answer(question: str, client: QdrantClient | None = None) -> AgentResponse:
             _canonicalize_bot_tokens_to_excerpts(ex, kb_entries, chunks)
             for ex in (examples or [])
         ]
+
+    # Prefer documented temp: dataset prefix spelling over invented temp-.
+    if not abstained and (kb_entries or chunks):
+        temp_canon = _canonicalize_temp_dataset_prefix(
+            answer_text, kb_entries, chunks
+        )
+        if temp_canon != answer_text:
+            answer_text = temp_canon
+            logger.info("canonicalized temp dataset prefix to excerpt spelling")
+        examples = [
+            _canonicalize_temp_dataset_prefix(ex, kb_entries, chunks)
+            for ex in (examples or [])
+        ]
+
+    # Edit-after-publish: if model skipped Published Pipelines, use documented line.
+    if (
+        _is_published_pipeline_reedit_ask(question)
+        and not abstained
+        and (kb_entries or chunks)
+        and not _answer_has_published_reedit_path(answer_text)
+    ):
+        fb = _published_pipeline_reedit_fallback(kb_entries, chunks, gaps)
+        if fb:
+            answer_text, gaps = fb
+            used_inference = False
+            inferred_summary = ""
+            logger.info("published-pipeline re-edit fallback applied")
 
     # Critique/revision can re-abstain on Fabio capability asks — deterministic honesty
     if (

@@ -329,6 +329,42 @@ def test_incremental_load_expands_to_bookmarks():
     assert "persistent stream" in expanded
 
 
+def test_canonicalize_temp_dataset_prefix_from_excerpts():
+    from agent import (
+        _canonicalize_temp_dataset_prefix,
+        _is_temp_dataset_prefix_ask,
+        _normalize_question_typos,
+    )
+
+    q = (
+        "What's the difference between saving a dataset with temp: prefix "
+        "versus ordinary object storage?"
+    )
+    assert _is_temp_dataset_prefix_ask(q)
+    assert not _is_temp_dataset_prefix_ask("How do I save a dataset to MinIO?")
+    expanded = _normalize_question_typos(q).lower()
+    assert "temp:" in expanded
+
+    kb = [
+        {
+            "title": "pipe_builder",
+            "text": (
+                "If this is an interim dataset, save it in memory with a prefix "
+                "`temp:`, and RDA will delete the dataset once pipeline execution "
+                "is complete."
+            ),
+        }
+    ]
+    ans = (
+        "A dataset with a `temp-` prefix is stored only in memory. "
+        "Ordinary datasets without the temp- prefix persist in object storage."
+    )
+    out = _canonicalize_temp_dataset_prefix(ans, kb, [])
+    assert "`temp:`" in out
+    assert "`temp-`" not in out
+    assert "temp- prefix" not in out
+
+
 def test_canonicalize_bot_tokens_prefers_excerpt_hyphen_form():
     from agent import _canonicalize_bot_tokens_to_excerpts
 
