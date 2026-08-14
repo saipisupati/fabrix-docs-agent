@@ -575,6 +575,67 @@
         display: none;
       }
 
+      .starterChips {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        justify-content: center;
+        margin: 10px 0 4px;
+      }
+
+      .starterChips.hidden {
+        display: none;
+      }
+
+      .starterChip {
+        appearance: none;
+        border: 1px solid var(--border);
+        background: rgba(255, 255, 255, 0.04);
+        color: var(--muted);
+        font-size: 12px;
+        padding: 6px 10px;
+        border-radius: 999px;
+        cursor: pointer;
+        max-width: 100%;
+        text-align: left;
+        line-height: 1.35;
+      }
+
+      .starterChip:hover {
+        border-color: rgba(240, 90, 40, 0.45);
+        color: var(--text);
+        background: rgba(240, 90, 40, 0.08);
+      }
+
+      .agentSteps {
+        margin-top: 10px;
+        width: 100%;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px 10px;
+        align-items: center;
+        font-size: 11px;
+        color: var(--muted2);
+      }
+
+      .agentSteps .stepPill {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        padding: 3px 8px;
+        border-radius: 999px;
+        border: 1px solid var(--border);
+        background: rgba(255, 255, 255, 0.03);
+        color: var(--muted);
+      }
+
+      .agentSteps .stepLabel {
+        color: var(--muted2);
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        font-size: 10px;
+      }
+
       .footer {
         padding: 0 20px 12px;
         text-align: center;
@@ -642,6 +703,7 @@
             </svg>
           </button>
         </div>
+        <div id="starterChips" class="starterChips" aria-label="Suggested questions"></div>
         <div id="hint" class="hint">
           Press Enter to send, Shift+Enter for newline
         </div>
@@ -686,6 +748,22 @@
       let activeAbort = null;
       let elapsedTimer = null;
       const hintEl = document.getElementById("hint");
+      const starterChipsEl = document.getElementById("starterChips");
+      const LOADING_STAGES = [
+        { afterMs: 0, label: "Planning retrieval…" },
+        { afterMs: 2500, label: "Searching docs…" },
+        { afterMs: 8000, label: "Drafting answer…" },
+        { afterMs: 18000, label: "Checking grounding…" },
+      ];
+      const STARTER_PROMPTS = [
+        "What parameters does the timed-loop bot take?",
+        "How do I add Zabbix as a datasource?",
+        "How do bookmarks help with incremental reads from a persistent stream?",
+        "Walk me through publishing a draft pipeline in Pipeline Builder.",
+        "What's the difference between a service pipeline and a scheduled pipeline?",
+        "How do Jinja templates work for dynamic pipelines?",
+        "How do I get SN ticketing into a Fabrix stream?",
+      ];
 
       let hasSent = false;
 
@@ -963,7 +1041,50 @@
         container.appendChild(block);
       }
 
-      function addMessage({ role, text, sources, examples, gaps, usedInference, isError, isLoading }) {
+      function renderAgentSteps({ scope, planFacets, timing }, container) {
+        const facets = Array.isArray(planFacets) ? planFacets.filter(Boolean) : [];
+        const totalMs = timing && typeof timing.total_ms === "number" ? timing.total_ms : null;
+        if (!scope && !facets.length && totalMs == null) return;
+
+        const block = el("div", "agentSteps");
+        block.appendChild(el("span", "stepLabel", "Agent"));
+
+        if (scope) {
+          const pill = el("span", "stepPill", "");
+          pill.appendChild(document.createTextNode("scope: " + scope));
+          block.appendChild(pill);
+        }
+        if (facets.length) {
+          const pill = el("span", "stepPill", "");
+          pill.appendChild(document.createTextNode("facets: " + facets.slice(0, 4).join(", ")));
+          block.appendChild(pill);
+        }
+        if (totalMs != null) {
+          const pill = el("span", "stepPill", "");
+          const sec = (totalMs / 1000).toFixed(1);
+          const parts = ["total " + sec + "s"];
+          if (timing.scope_ms != null) parts.push("plan " + Math.round(timing.scope_ms) + "ms");
+          if (timing.retrieve_ms != null) parts.push("retrieve " + Math.round(timing.retrieve_ms) + "ms");
+          if (timing.generate_ms != null) parts.push("gen " + Math.round(timing.generate_ms) + "ms");
+          pill.appendChild(document.createTextNode(parts.join(" · ")));
+          block.appendChild(pill);
+        }
+        container.appendChild(block);
+      }
+
+      function addMessage({
+        role,
+        text,
+        sources,
+        examples,
+        gaps,
+        usedInference,
+        isError,
+        isLoading,
+        scope,
+        planFacets,
+        timing,
+      }) {
         const row = el("div", "row " + role);
         const content = el("div", "bubble " + role + (isError ? " error" : ""));
 
@@ -972,7 +1093,9 @@
           const dots = el("div", "dots");
           dots.innerHTML = "<span></span><span></span><span></span>";
           typing.appendChild(dots);
-          typing.appendChild(el("span", "", "Searching docs"));
+          const stageEl = el("span", "", LOADING_STAGES[0].label);
+          stageEl.dataset.stage = "1";
+          typing.appendChild(stageEl);
           const elapsed = el("span", "elapsed", "0.0s");
           elapsed.dataset.elapsed = "1";
           typing.appendChild(elapsed);
@@ -1002,6 +1125,10 @@
                 "Includes inferred Fabrix guidance not stated verbatim in the docs."
               )
             );
+          }
+
+          if (!isError) {
+            renderAgentSteps({ scope, planFacets, timing }, row);
           }
 
           // ChatGPT-style: Examples → Sources → Gaps (secondary)
@@ -1076,6 +1203,7 @@
         if (!hasSent) {
           hasSent = true;
           hintEl.classList.add("hidden");
+          if (starterChipsEl) starterChipsEl.classList.add("hidden");
         }
 
         inputEl.value = "";
@@ -1090,10 +1218,19 @@
         const loadingRow = addMessage({ role: "agent", isLoading: true });
         const started = performance.now();
         const elapsedEl = loadingRow.querySelector("[data-elapsed]");
+        const stageEl = loadingRow.querySelector("[data-stage]");
         elapsedTimer = setInterval(() => {
-          if (!elapsedEl) return;
-          const sec = ((performance.now() - started) / 1000).toFixed(1);
-          elapsedEl.textContent = sec + "s";
+          const elapsedMs = performance.now() - started;
+          if (elapsedEl) {
+            elapsedEl.textContent = (elapsedMs / 1000).toFixed(1) + "s";
+          }
+          if (stageEl) {
+            let label = LOADING_STAGES[0].label;
+            for (const st of LOADING_STAGES) {
+              if (elapsedMs >= st.afterMs) label = st.label;
+            }
+            stageEl.textContent = label;
+          }
         }, 100);
 
         const controller = new AbortController();
@@ -1125,6 +1262,9 @@
           const examples = data && Array.isArray(data.examples) ? data.examples : [];
           const gaps = data && Array.isArray(data.gaps) ? data.gaps : [];
           const usedInference = !!(data && data.used_inference);
+          const scope = data && typeof data.scope === "string" ? data.scope : "";
+          const planFacets = data && Array.isArray(data.plan_facets) ? data.plan_facets : [];
+          const timing = data && data.timing && typeof data.timing === "object" ? data.timing : {};
 
           loadingRow.remove();
           addMessage({
@@ -1134,6 +1274,9 @@
             examples,
             gaps,
             usedInference,
+            scope,
+            planFacets,
+            timing,
           });
           setStatus("ok", "Connected");
         } catch (e) {
@@ -1174,8 +1317,22 @@
 
       addMessage({
         role: "agent",
-        text: 'Ask me anything about Fabrix docs. For example: "What parameters does the count loop bot take?"',
+        text: "Ask anything about Fabrix / RDA docs — I'll plan retrieval, search the knowledge base, answer with sources, and mark what isn't documented.",
       });
+
+      if (starterChipsEl) {
+        for (const prompt of STARTER_PROMPTS) {
+          const chip = el("button", "starterChip", prompt);
+          chip.type = "button";
+          chip.addEventListener("click", () => {
+            if (activeAbort) return;
+            inputEl.value = prompt;
+            autoGrow(inputEl);
+            void sendMessage();
+          });
+          starterChipsEl.appendChild(chip);
+        }
+      }
 
       void healthCheck();
       setInterval(healthCheck, 15000);

@@ -1,0 +1,166 @@
+[
+  {
+    "timestamp": "2026-08-06T21:27:19Z",
+    "id": "n1_cfxql_vs_sql",
+    "question": "What's the difference between CFXQL and SQL in Fabrix, and when should I use CFXQL?",
+    "elapsed_s": 20.6,
+    "error": null,
+    "answer": "CFXQL in Fabrix is designed as a SQL-like query language specifically for Robotic Data Automation (RDA), enabling low-code developers to interact consistently with various data sources and destinations. Here are the primary differences and use cases:\n\n1. **Syntax and Structure**: CFXQL shares similarities with SQL, such as familiar operators (e.g., `=`, `!=`, `AND`, `OR`), but it introduces specific structures tailored for RDA. For instance, CFXQL queries can be complex with a mixture of logical operators, along with a result format section that employs the `GET` keyword to define output structure \u2014 a feature not typically found in standard SQL. An example CFXQL query is:\n   ```\n   device_category is 'SWITCH' and \n       ( severity is not in [ 'INFO', 'DEBUG' ] or status != 'CLOSED' )\n   GET\n       device_category, severity, status as 'Incident Status'\n   [1], [3].\n\n2. **Bot Interaction**: CFXQL is purpose-built for RDA bots, ensuring that it can convey specific intents about data manipulation and retrieval. This means that CFXQL queries are often integrated into bot commands to retrieve or filter data from various sources, which is a more specialized use compared to SQL's general-purpose data querying capabilities.\n\n3. **Full vs. Restricted CFXQL**: CFXQL has two variants - Full CFXQL and Restricted CFXQL. The Full version supports a rich set of logical operations and result formats, while Restricted CFXQL simplifies the syntax primarily for API bots, limiting it mainly to the `=` operator and `AND` logical operations [2], [11].\n\nIn summary, CFXQL should be used when interacting with RDA bots for pulling data from or sending data to various sources in the context of automation workflows within the Fabrix environment. It allows for sophisticated queries tailored for specific data use cases in the automation process.\n\n*Includes inferred Fabrix guidance not stated verbatim in the docs.*",
+    "sources": [
+      "Full doc page: referenceguides/cfxql.md | https://docs.fabrix.ai/reference_guides/cfxql/",
+      "Full doc page: Bots/infinidat.md | https://docs.fabrix.ai/Bots/infinidat/",
+      "@cfxvault:credential-types | https://docs.fabrix.ai/Bots/cfxvault/",
+      "@dm:generate-metric-stats | https://docs.fabrix.ai/Bots/cfxdm/",
+      "@purestorage:protection-groups | https://docs.fabrix.ai/Bots/purestorage/",
+      "@zerto:events parameters: timestamp (optional, DateTime): Collects the data for | https://docs.fabrix.ai/Bots/zerto-analytics/"
+    ],
+    "gaps": [
+      "Specific SQL features or functions that may not be supported in CFXQL are not documented."
+    ],
+    "used_inference": true,
+    "scope": "related"
+  },
+  {
+    "timestamp": "2026-08-06T21:27:36Z",
+    "id": "n2_dynamic_bots",
+    "question": "How do dynamic bots work in RDA Fabric, and what's an example of configuring one?",
+    "elapsed_s": 16.4,
+    "error": null,
+    "answer": "**Documented Fabrix path**  \n1. Dynamic bots in RDA Fabric use the Mako Code Executor, which allows users to create, store, and execute custom data processing logic using Mako templates. These bots are registered with their definitions stored in a persistent stream (pstream), typically named `cfx_bots_registry`.\n2. A dynamic bot configuration includes required fields such as `bot_name` (the unique identifier for the bot), `mako_template` (the code to execute), and `version` (a version identifier). Optionally, a `json_schema` can be included for parameter validation and an `imports` list to specify allowed Python modules.\n3. For an example configuration of a dynamic bot, consider the following YAML snippet:\n\n```yaml\nbot_name: \"data_transformer\"\nmako_template: \"<%-- The Mako template code here --%>\"\nversion: \"1.0.0\"\njson_schema: { \"type\": \"object\", \"properties\": { \"input_column\": { \"type\": \"string\" } } }\nimports:\n  - {\"module\": \"pandas\", \"as\": \"pd\"}\nThis configuration defines a bot that processes data and specifies that it should use the Pandas module for data manipulation.\n\n**Next (inferred):** You may have to manage bot execution and parameter validation via the `json_schema`, which can dictate the data formats expected by your bot based on its logic.\n\n**Prerequisites** Ensure you have RDA Fabric v8.2 or above, as dynamic bots are available starting from this version.\n\n*Includes inferred Fabrix guidance not stated verbatim in the docs.*",
+    "sources": [
+      "Full doc page: beginnersguide/sdk.md | https://docs.fabrix.ai/beginners_guide/sdk/",
+      "Full doc page: beginnersguide/dynamicbotsusage.md | https://docs.fabrix.ai/beginners_guide/dynamic_bots_usage/",
+      "Extension: camunda: Camunda - Process management bots for Camunda | https://docs.fabrix.ai/Extensions/extensions_C/",
+      "Building custom agents in Fabrix.ai requires understanding and configuring three | https://docs.fabrix.ai/ai_fabric/agentic_building_guide/agentic_building_guide/",
+      "This document captures step-by-step instructions to build few simple RDA Pipelin | https://docs.fabrix.ai/beginners_guide/",
+      "Artifacts to Control Data in RDA Fabric | https://docs.fabrix.ai/beginners_guide/data_control/",
+      "2. Bots to Manage Data Inflight | https://docs.fabrix.ai/beginners_guide/data_in_motion/",
+      "RDA Fabric Architecture | https://docs.fabrix.ai/beginners_guide/architecture/"
+    ],
+    "gaps": [
+      "Detailed steps on executing or invoking these bots dynamically with parameter values are not provided."
+    ],
+    "used_inference": true,
+    "scope": "related"
+  },
+  {
+    "timestamp": "2026-08-06T21:27:51Z",
+    "id": "n3_edge_worker",
+    "question": "How do I install and register an RDA Fabric edge worker / RDA Worker?",
+    "elapsed_s": 15.8,
+    "error": null,
+    "answer": "**Documented Fabrix path**  \n1. **Prerequisites for installation**: Before deploying the RDA Worker, ensure the following prerequisites are met:\n   - Operating system: Linux\n   - Memory: 8 GB\n   - Disk space: 50 GB\n   - Docker version: 18.09.2 or above\n   - Docker Compose version: 1.27.x or above\n   - Python 3.12.x (recommended) or above\n   - pip3 utility installed [2][9].\n\n2. **Deployment Steps**:\n   - Log in to your Linux machine via SSH.\n   - Create the necessary directory structure for RDA Worker:\n     ```\n     sudo mkdir -p /opt/rda_worker/\n     sudo chown -R `id -u`:`id -g` /opt/rda_worker\n     ```\n\n   - Create a configuration file for the RDA Worker:\n     ```\n     cd /opt/rda_worker/\n     cat > rda-worker.yaml << EOF\n     version: '3.1'\n     services:\n       rda_worker:\n         image: your_docker_image_here\n         restart: unless-stopped\n         mem_limit: 8G\n         memswap_limit: 8G\n         environment:\n           RDA_ENABLE_TRACES: 'no'\n           DISABLE_REMOTE_LOGGING_CONTROL: 'no'\n           RDA_SELF_HEALTH_RESTART_AFTER_FAILURES: 3\n     EOF\n     ```\n   - You need to update `image: your_docker_image_here` with the relevant RDA Worker Docker image.\n\n3. **Register the Worker**:\n   - Execute the deployment command for the RDAF worker services:\n     ```\n     rdaf worker install\n     ```\n\n4. **Verify Installation**:\n   - After the installation, check the status of the RDA Worker to ensure it is up and running:\n     ```\n     rdaf worker status\n     ```\n\n**Next (inferred):** Ensure correct network settings and environment variables are configured properly to avoid disruptions during the worker's operation.\n\n**Prerequisites**  \n- Make sure Docker and Docker Compose versions are compliant, and the system has sufficient memory and storage as outlined above.\n\n*Includes inferred Fabrix guidance not stated verbatim in the docs.*",
+    "sources": [
+      "Full doc page: installationguides/index.md | https://docs.fabrix.ai/installation_guides/",
+      "RDA Studio / platform installation prerequisites (live docs | https://docs.fabrix.ai/installation_guides/deployment/",
+      "1. Pre-Requisites: - Docker registry should be docker1.cloudfabrix.io | https://docs.fabrix.ai/installation_guides/update_image_repository/",
+      "Important | https://docs.fabrix.ai/installation_guides/rdaf_cli/",
+      "2.1 Upgrade RDA Studio on Linux: \\\\ Step 1: | https://docs.fabrix.ai/installation_guides/rda_studio_installation/",
+      "Full doc page: beginnersguide/oiaupgrade.md | https://docs.fabrix.ai/beginners_guide/oia_upgrade/",
+      "Prerequisites: - Linux OS - Memory - 8 GB - Disk - 50 GB - Python 3.7.4 | https://docs.fabrix.ai/beginners_guide/edge_collector/",
+      "Welcome to Fabrix.ai Documentation | https://docs.fabrix.ai/"
+    ],
+    "gaps": [
+      "No explicit Docker image details are provided in the documentation for RDA Worker",
+      "No direct steps for registering the worker with specific command usage"
+    ],
+    "used_inference": true,
+    "scope": "related"
+  },
+  {
+    "timestamp": "2026-08-06T21:28:07Z",
+    "id": "n4_splunk_integration",
+    "question": "What credentials and bots do I need to pull data from Splunk into a Fabrix pipeline?",
+    "elapsed_s": 15.4,
+    "error": null,
+    "answer": "**Documented Fabrix path**  \n1. You will need a read-only service user account created in your Splunk Platform. Use the following credentials for API access:\n   - **Hostname**: IP Address or Hostname for your Splunk Instance\n   - **Username**: Your read-only username\n   - **Password**: Your password corresponding to the read-only user\n   - **Port**: Usually set to 8089\n   - **Protocol**: Use `https` for secure connections\n   \n2. To access data from Splunk, use the following bots from the Splunk bot family:\n   - **Source Bots**:\n     - `@splunkv2:search-index`: This bot queries and filters log event records within a specified index in Splunk.\n     - `@splunkv2:list-indexes`: Lists the indexes available in your Splunk instance.\n   - These bots will facilitate the retrieval of data from Splunk into your Fabrix pipelines.\n\n3. Stream or dataset handoff: You can utilize the data retrieved by these bots to create either a dataset or a persistent stream that processes and stores the data for further analysis.\n\n4. To display the data in a dashboard within Fabrix, you can connect your dataset or stream to a dashboard or integrate it into your reporting mechanisms as required.\n\n**Next (inferred):** Remember to set up the HTTP Event Collector (HEC) in Splunk and provide the HEC token in your Fabrix RDA Fabric to enable data ingestion correctly.\n\n**Prerequisites**  \n- A Splunk instance with a read-only service user account.\n\n*Includes inferred Fabrix guidance not stated verbatim in the docs.*",
+    "sources": [
+      "Full doc page: DatasourceIntegrations/splunkapi.md | https://docs.fabrix.ai/Datasource_Integrations/splunk_api/",
+      "Full doc page: installationguides/splunk.md | https://docs.fabrix.ai/installation_guides/splunk/",
+      "Full doc page: Bots/splunkv2.md | https://docs.fabrix.ai/Bots/splunk_v2/",
+      "Full doc page: DatasourceIntegrations/splunk.md | https://docs.fabrix.ai/Datasource_Integrations/splunk/",
+      "Full doc page: beginnersguide/dataatrest.md | https://docs.fabrix.ai/beginners_guide/data_at_rest/"
+    ],
+    "gaps": [
+      "No specific details on the types of datasets or streams created from the data extracted from Splunk."
+    ],
+    "used_inference": true,
+    "scope": "in_scope"
+  },
+  {
+    "timestamp": "2026-08-06T21:28:21Z",
+    "id": "n5_formatting_template",
+    "question": "How do formatting templates (Jinja) get used when sending data out of a pipeline?",
+    "elapsed_s": 14.6,
+    "error": null,
+    "answer": "**Documented Fabrix path**  \n1. Before using formatting templates in a pipeline, data is typically processed and prepared using various bots, resulting in the creation or modification of datasets. For example, you might have bots that aggregate data and output it to a dataset.  \n2. Once the data is prepared, you can apply a formatting template using the bot `@dm:apply-template-by-row` or `@dm:apply-template-all-rows`. These bots utilize the Jinja2 templating engine to format data for different integration endpoints. \n3. The `@dm:apply-template-by-row` bot formats data for each row based on the specified template, while the `@dm:apply-template-all-rows` bot applies the formatting to the entire dataset, producing a single rendered output. Each of these bots requires the `template_name` and `output_col` parameters to function properly.  \n4. Finally, the results can be sent to various destinations through additional bots or direct integrations, such as REST endpoints or reports via email.\n\n**Next (inferred):** The details regarding the specific steps for sending formatted data to various destinations using additional bots are not documented. More explicit integration examples could enhance clarity.  \n**Prerequisites** None.\n\n*Includes inferred Fabrix guidance not stated verbatim in the docs.*",
+    "sources": [
+      "Full doc page: beginnersguide/pipelinesjinjatemplates.md | https://docs.fabrix.ai/beginners_guide/pipelines_jinja_templates/",
+      "Full doc page: Bots/cfxdm.md | https://docs.fabrix.ai/Bots/cfxdm/",
+      "sample-formatting-template-example | https://docs.fabrix.ai/Pipelines/sample-formatting-template-example/",
+      "RDA uses Jinja2 Templating Engine | https://docs.fabrix.ai/Formatting-Templates/",
+      "@exec:run-pipeline-from-dict parameters: pipelinedataset (required, Text): Name | https://docs.fabrix.ai/Bots/exec/",
+      "sample-vm-analytics | https://docs.fabrix.ai/Pipelines/sample-vm-analytics/"
+    ],
+    "gaps": [
+      "Workflow details on how data is specifically sent after being formatted by templates are not covered."
+    ],
+    "used_inference": true,
+    "scope": "related"
+  },
+  {
+    "timestamp": "2026-08-06T21:28:34Z",
+    "id": "n6_agentic_toolset",
+    "question": "In AI Fabric, how do I create a toolset and attach tools an agent can call?",
+    "elapsed_s": 12.5,
+    "error": null,
+    "answer": "**Documented Fabrix path**  \n1. To create a toolset, start by planning your toolset and identifying the required tools. \n2. Next, you will create the toolset structure and add individual MCP (Model Context Protocol) tools to it, ensuring they are the functions that the agent will invoke to perform tasks.\n3. Once your tools are added, configure the necessary permissions for the toolset.\n4. After creating your toolset, you can attach it to a persona by granting the persona access to the toolset. This allows the agent to invoke the tools included in the toolset when processing requests.\n\n**Next (inferred):** The documentation does not specify detailed examples of the tool creation process or exact configuration steps beyond the general guidelines.  \n**Prerequisites**: Familiarity with the Agentic Framework concepts like Personas and MCP tools is beneficial.\n\n*Includes inferred Fabrix guidance not stated verbatim in the docs.*",
+    "sources": [
+      "Full doc page: beginnersguide/index.md | https://docs.fabrix.ai/beginners_guide/",
+      "Full doc page: aifabric/howtobuildagents/toolcreation.md | https://docs.fabrix.ai/ai_fabric/how_to_build_agents/tool_creation/",
+      "Toolsets | https://docs.fabrix.ai/ai_fabric/agentic_building_guide/toolsets/"
+    ],
+    "gaps": [
+      "Detailed step-by-step examples of tool creation and specific toolset management actions are not provided."
+    ],
+    "used_inference": true,
+    "scope": "related"
+  },
+  {
+    "timestamp": "2026-08-06T21:28:34Z",
+    "id": "n7_fake_bot_trap",
+    "question": "Walk me through configuring @autoheal:remediate-host for our production cluster.",
+    "elapsed_s": 0.0,
+    "error": null,
+    "answer": "I don't see @autoheal:remediate-host as a documented bot in the Fabrix catalog. I will not substitute a different product family's bot that happens to share a similar operation name. Check the autoheal bot catalog for the nearest documented operation, or ask about a bot that appears in the docs.",
+    "sources": [],
+    "gaps": [
+      "@autoheal:remediate-host is not a documented bot name in the public catalog"
+    ],
+    "used_inference": false,
+    "scope": "in_scope"
+  },
+  {
+    "timestamp": "2026-08-06T21:29:02Z",
+    "id": "n8_dashboard_from_pstream",
+    "question": "How do I create a dashboard that reads from a persistent stream in RDA Fabric?",
+    "elapsed_s": 28.1,
+    "error": null,
+    "answer": "To create a dashboard that reads from a persistent stream in RDA Fabric, you will follow the classic automation stack components and ensure that the data flow is correctly set up. Here\u2019s how you can structure this:\n\n1. **Prepare the Persistent Stream**: Before creating a dashboard, you need to ensure that your persistent stream is properly configured to ingest relevant data. This is achieved through the use of bots that process and send data into the persistent stream. \n\n2. **Define the Dataset**: Once your persistent stream is set up and actively collecting data, you need to create a dataset that will allow you to reference this data in your dashboard. The dataset will act as the intermediary that stores processed data fetched from the persistent stream. You can utilize CFXQL to query and structure the data as needed for your use case.\n\n3. **Create the Dashboard**:\n   - Log in to the RDA Fabric platform as a **MSP Admin**.\n   - Navigate to **Main Menu** -> **Configuration** -> **RDA Administration** -> **Dashboards**.\n   - Click on the **Add** button to create a new dashboard. The configuration needs to be provided in JSON or YAML format.\n   - In the dashboard configuration, specify the dataset as the source of data. Make sure your dashboard is set up to pull in metrics, logs, or other relevant information from your persistent stream via the dataset.\n\n4. **Ensure Data Flow**: Check that the dashboard configuration reflects the correct settings to ensure that it pulls data from the dataset, which in turn sources from the data in your persistent stream.\n\nIt\u2019s crucial that the dashboard is configured to ensure that data from the persistent stream is appropriately sourced from a dataset, as this is how the dashboard will visualize or report the data effectively.\n\nBy following these steps, you can successfully create a dashboard in RDA Fabric that reads data from a persistent stream, leveraging the automation stack's components like bots, CFXQL, datasets, and persistent streams to deliver the insights you need.\n\n*Includes inferred Fabrix guidance not stated verbatim in the docs.*",
+    "sources": [
+      "Full doc page: beginnersguide/RdaFabricPstream.md | https://docs.fabrix.ai/beginners_guide/Rda_Fabric_Pstream/",
+      "Full doc page: beginnersguide/dashboards.md | https://docs.fabrix.ai/beginners_guide/dashboards/",
+      "Artifacts to Control Data in RDA Fabric | https://docs.fabrix.ai/beginners_guide/data_control/",
+      "CloudFabrix is a trusted Cisco and Splunk Partnerverse Build partner, offeri | https://docs.fabrix.ai/Datasource_Integrations/splunk/",
+      "CloudFabrix is a trusted Cisco and Splunk Partnerverse Build partner, offeri | https://docs.fabrix.ai/installation_guides/splunk/",
+      "1. Datasets: In RDA, the term Dataset refers to tabular data and typically store | https://docs.fabrix.ai/beginners_guide/data_at_rest/",
+      "1. Overview | https://docs.fabrix.ai/installation_guides/copy_policies_from_db_to_pstream/",
+      "2. Manage persistent stream: Persistent streams can be managed through RDAF | https://docs.fabrix.ai/beginners_guide/persistent_streams/"
+    ],
+    "gaps": [
+      "Specific examples of JSON configurations for dashboards or detailed dataset properties are not provided."
+    ],
+    "used_inference": true,
+    "scope": "related"
+  }
+]

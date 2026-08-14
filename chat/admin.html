@@ -1,0 +1,196 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Fabrix Docs Agent — Admin</title>
+    <meta name="color-scheme" content="dark" />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --bg: #0b1020;
+        --bg-elevated: #172033;
+        --surface: #1e2a45;
+        --border: rgba(255, 255, 255, 0.1);
+        --text: rgba(255, 255, 255, 0.92);
+        --muted: rgba(255, 255, 255, 0.55);
+        --muted2: rgba(255, 255, 255, 0.42);
+        --accent: #f05a28;
+        --danger: #fb7185;
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+        background: linear-gradient(180deg, var(--bg) 0%, var(--bg-elevated) 100%);
+        color: var(--text);
+        font-size: 14px;
+        line-height: 1.5;
+      }
+      .app { max-width: 768px; margin: 0 auto; padding: 0 20px 40px; }
+      .header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 14px 0;
+        border-bottom: 1px solid var(--border);
+      }
+      .title { font-weight: 600; font-size: 14px; }
+      .subtitle { font-size: 11px; color: var(--muted2); }
+      a { color: var(--accent); text-decoration: none; }
+      .card {
+        margin-top: 16px;
+        padding: 14px;
+        border: 1px solid var(--border);
+        border-radius: 14px;
+        background: rgba(255, 255, 255, 0.03);
+      }
+      .row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+      input, button {
+        font: inherit;
+        border-radius: 10px;
+        border: 1px solid var(--border);
+        padding: 8px 12px;
+        background: var(--surface);
+        color: var(--text);
+      }
+      button {
+        background: var(--accent);
+        border: none;
+        cursor: pointer;
+        font-weight: 500;
+      }
+      button.ghost { background: transparent; color: var(--muted); border: 1px solid var(--border); }
+      button.danger { background: var(--danger); }
+      pre {
+        white-space: pre-wrap;
+        word-break: break-word;
+        color: var(--muted);
+        font-size: 12px;
+      }
+      ul { padding-left: 18px; margin: 8px 0; }
+      .err { color: var(--danger); }
+    </style>
+  </head>
+  <body>
+    <div class="app">
+      <header class="header">
+        <div>
+          <div class="title">Docs Agent admin</div>
+          <div class="subtitle">Freshness, retire, refresh — not a live scrape on /ask</div>
+        </div>
+        <a href="/">Chat</a>
+      </header>
+
+      <div class="card">
+        <div class="subtitle">API key (stored in this browser only)</div>
+        <div class="row">
+          <input id="apiKey" type="password" placeholder="X-API-Key" style="flex:1;min-width:180px" />
+          <button type="button" id="saveKey">Save</button>
+          <button type="button" class="ghost" id="reload">Reload status</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="title">KB status</div>
+        <pre id="status">Loading…</pre>
+        <div class="row">
+          <button type="button" id="refresh">POST /admin/refresh</button>
+          <button type="button" class="ghost" id="refreshForce">Force rebuild</button>
+        </div>
+        <div class="subtitle" style="margin-top:8px">
+          Stop uvicorn before ingest/build_kb (Qdrant file lock). Scrape can run while the API is up.
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="title">Retire a source</div>
+        <div class="row">
+          <input id="source" placeholder="Bots/cfxdm.md" style="flex:1;min-width:180px" />
+          <button type="button" class="danger" id="retire">Retire</button>
+        </div>
+        <ul id="retired"></ul>
+      </div>
+    </div>
+    <script>
+      const cfg = window.FabrixChatConfig || {};
+      function apiBase() {
+        if (cfg.apiUrl) return String(cfg.apiUrl).replace(/\/$/, "");
+        if (location.port === "5173") return "http://localhost:8080";
+        return location.origin;
+      }
+      function key() {
+        return localStorage.getItem("fabrix_admin_key") || "";
+      }
+      function headers() {
+        const h = { "Content-Type": "application/json" };
+        const k = key();
+        if (k) h["X-API-Key"] = k;
+        return h;
+      }
+      async function req(path, opts) {
+        const r = await fetch(apiBase() + path, { ...opts, headers: { ...headers(), ...(opts && opts.headers) } });
+        const text = await r.text();
+        let body;
+        try { body = JSON.parse(text); } catch { body = { raw: text }; }
+        if (!r.ok) throw new Error((body && (body.detail || body.message)) || r.status);
+        return body;
+      }
+      async function loadStatus() {
+        const el = document.getElementById("status");
+        const list = document.getElementById("retired");
+        try {
+          const s = await req("/admin/kb-status");
+          el.textContent = JSON.stringify(s, null, 2);
+          list.innerHTML = "";
+          for (const src of s.retired || []) {
+            const li = document.createElement("li");
+            li.textContent = src + " ";
+            const b = document.createElement("button");
+            b.className = "ghost";
+            b.type = "button";
+            b.textContent = "Unretire";
+            b.addEventListener("click", async () => {
+              await req("/admin/unretire", { method: "POST", body: JSON.stringify({ source: src }) });
+              await loadStatus();
+            });
+            li.appendChild(b);
+            list.appendChild(li);
+          }
+        } catch (e) {
+          el.className = "err";
+          el.textContent = String(e.message || e);
+        }
+      }
+      document.getElementById("apiKey").value = key();
+      document.getElementById("saveKey").addEventListener("click", () => {
+        localStorage.setItem("fabrix_admin_key", document.getElementById("apiKey").value.trim());
+        loadStatus();
+      });
+      document.getElementById("reload").addEventListener("click", () => loadStatus());
+      document.getElementById("retire").addEventListener("click", async () => {
+        const source = document.getElementById("source").value.trim();
+        if (!source) return;
+        await req("/admin/retire", { method: "POST", body: JSON.stringify({ source }) });
+        document.getElementById("source").value = "";
+        await loadStatus();
+      });
+      document.getElementById("refresh").addEventListener("click", async () => {
+        if (!confirm("Kick off scrape pipeline? Stop API first if you need ingest.")) return;
+        const out = await req("/admin/refresh", { method: "POST", body: JSON.stringify({ force: false }) });
+        alert(JSON.stringify(out));
+        await loadStatus();
+      });
+      document.getElementById("refreshForce").addEventListener("click", async () => {
+        if (!confirm("Force full ingest/rebuild? Stop uvicorn first (Qdrant lock).")) return;
+        const out = await req("/admin/refresh", { method: "POST", body: JSON.stringify({ force: true }) });
+        alert(JSON.stringify(out));
+        await loadStatus();
+      });
+      loadStatus();
+    </script>
+  </body>
+</html>

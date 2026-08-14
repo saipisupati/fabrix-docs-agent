@@ -1,0 +1,148 @@
+[
+  {
+    "timestamp": "2026-08-08T01:31:23Z",
+    "id": "d2_timed_loop",
+    "question": "What parameters does the timed-loop bot take?",
+    "elapsed_s": 0.0,
+    "error": null,
+    "answer": "@c:timed-loop takes the following parameters:\n- **interval** *: Wait interval in seconds between each loop iteration. Time to execute one iteration will be deducted from the interval.\n- **name**: Name of the block\n- **stop_after**: If specified, will stop after specified number of seconds have elapsed\n- **max_iterations**: If specified, will stop specified number of iterations have occured.",
+    "scope": "in_scope",
+    "plan_facets": [],
+    "plan_queries": [],
+    "timing": {
+      "scope_ms": 0.0,
+      "retrieve_ms": 0.0,
+      "generate_ms": 0.0,
+      "critique_ms": 0.0,
+      "total_ms": 8.8,
+      "llm_calls": 0
+    },
+    "used_inference": false,
+    "n_sources": 1,
+    "n_gaps": 0,
+    "gaps": []
+  },
+  {
+    "timestamp": "2026-08-08T01:31:36Z",
+    "id": "d2_sn_stream",
+    "question": "How do I get SN ticketing into a Fabrix stream for downstream bots?",
+    "elapsed_s": 13.1,
+    "error": null,
+    "answer": "**Documented Fabrix path**  \n1. Ensure you have a ServiceNow user account with read-only permissions to enable API-based access. Follow the steps to create a user if needed [6].  \n2. Use the relevant bots from the ServiceNow family, specifically for reading data. These include:  \n   - `@snowv2:list-incidents`: This will list all incidents available in your ServiceNow instance.\n   - `@snowv2:query-table`: This bot retrieves data from specified ServiceNow tables, allowing you to filter the data using CFXQL.\n3. Create a dataset using the data fetched from ServiceNow. The data can then be streamed into a persistent stream or directly utilized within a pipeline.\n4. Downstream, you can then access this dataset or persistent stream to perform further actions with other bots in your workflows.\n\n**Next (inferred):** Utilize the existing ServiceNow bots for ongoing ingestion into Fabrix streams, ensuring connectivity and proper data management. You may need network access for connecting to the ServiceNow API and ensure security groups allow the necessary traffic.\n\n**Prerequisites**: Ensure compliance with ServiceNow's API access requirements, including possessing the appropriate read-only us",
+    "scope": "related",
+    "plan_facets": [
+      "bots",
+      "pipelines",
+      "integrations",
+      "pstreams"
+    ],
+    "plan_queries": [
+      "servicenow Fabrix datasource bots integration",
+      "Fabrix bots for integration with SN ticketing",
+      "setting up pipelines for SN ticketing in Fabrix",
+      "integrating SN ticketing with Fabrix stream"
+    ],
+    "timing": {
+      "scope_ms": 2067.0,
+      "retrieve_ms": 5143.1,
+      "generate_ms": 5862.6,
+      "critique_ms": 0.0,
+      "total_ms": 13099.3,
+      "llm_calls": 2
+    },
+    "used_inference": true,
+    "n_sources": 2,
+    "n_gaps": 1,
+    "gaps": [
+      "The detailed integration setup between ServiceNow and persistent streams is not provided."
+    ]
+  },
+  {
+    "timestamp": "2026-08-08T01:31:45Z",
+    "id": "d2_zabbix",
+    "question": "How do I add Zabbix as a datasource? Our collector also runs on a Linux host if that matters.",
+    "elapsed_s": 8.9,
+    "error": null,
+    "answer": "**Documented Fabrix path**  \n1. To add Zabbix as a datasource, you'll first need to set up Zabbix for webhook alert notifications. This involves creating a webhook URL in your CloudFabrix OIA application, as Zabbix supports alert notifications via webhook [2][3]. \n2. In Zabbix, configure the webhook media type with the required parameters for alert notifications, ensuring to include the appropriate fields that map to CloudFabrix such as `Alert_ServiceEventId`, `Alert_Status`, etc. [2][3].\n3. You can utilize the Zabbix bots in the classic automation stack for integrating data into CloudFabrix:\n   - Use the source bots like `@zabbix:zabbix-hosts` or `@zabbix:zabbix-alerts` to pull specific datasets from Zabbix [1].\n   - For instance, use `@zabbix:zabbix-metrics-list` to fetch metrics and return them as a dataset or write them to a persistent stream (pstream) [1][4].\n4. Once the data is ingested, you can create datasets or pstreams for visualization in dashboards or other integrations.\n\n**Next (inferred):** Additionally, ensure your Linux host where the collector runs can communicate properly with the Zabbix API or webhook endpoints, including any necessary firewall or network setting",
+    "scope": "related",
+    "plan_facets": [],
+    "plan_queries": [
+      "zabbix Fabrix datasource bots integration",
+      "add Zabbix datasource to Fabrix.ai"
+    ],
+    "timing": {
+      "scope_ms": 1505.5,
+      "retrieve_ms": 2816.4,
+      "generate_ms": 4583.6,
+      "critique_ms": 0.0,
+      "total_ms": 8934.4,
+      "llm_calls": 2
+    },
+    "used_inference": true,
+    "n_sources": 4,
+    "n_gaps": 1,
+    "gaps": [
+      "Specific integration handoffs between the Linux collector and Zabbix API are not detailed."
+    ]
+  },
+  {
+    "timestamp": "2026-08-08T01:31:47Z",
+    "id": "d2_sla",
+    "question": "What is Fabrix's contractual P1 support SLA response time?",
+    "elapsed_s": 1.5,
+    "error": null,
+    "answer": "I couldn't find that in the Fabrix / RDA documentation. This question looks outside the public docs scope.",
+    "scope": "out_of_scope",
+    "plan_facets": [],
+    "plan_queries": [],
+    "timing": {
+      "scope_ms": 1531.6,
+      "retrieve_ms": 0.0,
+      "generate_ms": 0.0,
+      "critique_ms": 0.0,
+      "total_ms": 1532.4,
+      "llm_calls": 1
+    },
+    "used_inference": false,
+    "n_sources": 0,
+    "n_gaps": 1,
+    "gaps": [
+      "Out of scope for public Fabrix/CFX documentation"
+    ]
+  },
+  {
+    "timestamp": "2026-08-08T01:32:05Z",
+    "id": "d2_fabio",
+    "question": "Use Fabio Copilot to rewrite my Zabbix pipeline in production for me end-to-end.",
+    "elapsed_s": 18.8,
+    "error": null,
+    "answer": "To rewrite your Zabbix pipeline in production using Fabio Copilot, you'll take advantage of the Agentic components for building and orchestrating workflows with AI assistance. However, it should be noted that the documentation does not specify whether Fabio Copilot can complete the rewrite of your Zabbix pipeline end-to-end without human approval.\n\n**Documented Fabrix path**  \n1. You need to ensure you have appropriate credentials for Zabbix setup, especially if you are using webhook notifications which are critical for alert ingestion. This typically involves configuring your webhook in Zabbix as per the guidelines provided in the integrations [1].\n2. Utilize the Zabbix bots available in Fabrix, specifically the source bot `@zabbix:zabbix-alerts`, to pull in the alert data from Zabbix into your pipeline.\n3. Set up a pipeline that defines how this data will flow through your system, processing the incoming Zabbix alerts as needed and possibly writing outputs to a dataset or a persistent stream.\n4. Leverage the relevant datasets or persistent streams to store and manage the incoming data from Zabbix alerts which can then be utilized for visualization in dashboards or further analyti",
+    "scope": "related",
+    "plan_facets": [
+      "pipelines",
+      "bots",
+      "cfxql",
+      "integrations"
+    ],
+    "plan_queries": [
+      "AI Fabric Copilot pipeline audit",
+      "Fabio Copilot AI Fabric",
+      "zabbix Fabrix datasource bots integration",
+      "how to create pipelines with Fabio Copilot"
+    ],
+    "timing": {
+      "scope_ms": 2430.7,
+      "retrieve_ms": 3477.3,
+      "generate_ms": 6937.2,
+      "critique_ms": 5917.1,
+      "total_ms": 18817.5,
+      "llm_calls": 5
+    },
+    "used_inference": true,
+    "n_sources": 6,
+    "n_gaps": 1,
+    "gaps": [
+      "It is unclear if Fabio Copilot can handle the end-to-end pipeline rewriting without human intervention."
+    ]
+  }
+]

@@ -72,6 +72,9 @@ class AgentResponse:
     used_inference: bool = False
     inferred_summary: str = ""
     timing: dict = field(default_factory=dict)  # scope_ms, retrieve_ms, generate_ms, critique_ms, total_ms, llm_calls
+    # Demo / agent-loop visibility: retrieval plan after scope classification
+    plan_facets: list[str] = field(default_factory=list)
+    plan_queries: list[str] = field(default_factory=list)
 
 
 def _looks_like_abstention(answer: str) -> bool:
@@ -85,6 +88,14 @@ def _looks_like_abstention(answer: str) -> bool:
             "not in the fabrix",
             "outside the scope",
             "out of scope",
+            "don't see a documented procedure",
+            "do not see a documented procedure",
+            "don't see a documented playbook",
+            "do not see a documented playbook",
+            "i don't see a documented",
+            "i do not see a documented",
+            "won't invent parameters",
+            "will not invent parameters",
         )
     )
 
@@ -6437,6 +6448,8 @@ def answer(question: str, client: QdrantClient | None = None) -> AgentResponse:
         used_inference=used_inference and grounded,
         inferred_summary=inferred_summary if (used_inference and grounded) else "",
         timing=timing,
+        plan_facets=list(facet_plan.get("facets") or [])[:6],
+        plan_queries=list(facet_plan.get("search_queries") or [])[:6],
     )
 
 

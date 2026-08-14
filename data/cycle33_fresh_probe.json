@@ -1,0 +1,381 @@
+[
+  {
+    "timestamp": "2026-08-08T01:31:23Z",
+    "id": "d2_timed_loop",
+    "question": "What parameters does the timed-loop bot take?",
+    "elapsed_s": 0.0,
+    "error": null,
+    "answer": "@c:timed-loop takes the following parameters:\n- **interval** *: Wait interval in seconds between each loop iteration. Time to execute one iteration will be deducted from the interval.\n- **name**: Name of the block\n- **stop_after**: If specified, will stop after specified number of seconds have elapsed\n- **max_iterations**: If specified, will stop specified number of iterations have occured.",
+    "scope": "in_scope",
+    "plan_facets": [],
+    "plan_queries": [],
+    "timing": {
+      "scope_ms": 0.0,
+      "retrieve_ms": 0.0,
+      "generate_ms": 0.0,
+      "critique_ms": 0.0,
+      "total_ms": 8.8,
+      "llm_calls": 0
+    },
+    "used_inference": false,
+    "n_sources": 1,
+    "n_gaps": 0,
+    "gaps": []
+  },
+  {
+    "timestamp": "2026-08-08T01:31:36Z",
+    "id": "d2_sn_stream",
+    "question": "How do I get SN ticketing into a Fabrix stream for downstream bots?",
+    "elapsed_s": 13.1,
+    "error": null,
+    "answer": "**Documented Fabrix path**  \n1. Ensure you have a ServiceNow user account with read-only permissions to enable API-based access. Follow the steps to create a user if needed [6].  \n2. Use the relevant bots from the ServiceNow family, specifically for reading data. These include:  \n   - `@snowv2:list-incidents`: This will list all incidents available in your ServiceNow instance.\n   - `@snowv2:query-table`: This bot retrieves data from specified ServiceNow tables, allowing you to filter the data using CFXQL.\n3. Create a dataset using the data fetched from ServiceNow. The data can then be streamed into a persistent stream or directly utilized within a pipeline.\n4. Downstream, you can then access this dataset or persistent stream to perform further actions with other bots in your workflows.\n\n**Next (inferred):** Utilize the existing ServiceNow bots for ongoing ingestion into Fabrix streams, ensuring connectivity and proper data management. You may need network access for connecting to the ServiceNow API and ensure security groups allow the necessary traffic.\n\n**Prerequisites**: Ensure compliance with ServiceNow's API access requirements, including possessing the appropriate read-only us",
+    "scope": "related",
+    "plan_facets": [
+      "bots",
+      "pipelines",
+      "integrations",
+      "pstreams"
+    ],
+    "plan_queries": [
+      "servicenow Fabrix datasource bots integration",
+      "Fabrix bots for integration with SN ticketing",
+      "setting up pipelines for SN ticketing in Fabrix",
+      "integrating SN ticketing with Fabrix stream"
+    ],
+    "timing": {
+      "scope_ms": 2067.0,
+      "retrieve_ms": 5143.1,
+      "generate_ms": 5862.6,
+      "critique_ms": 0.0,
+      "total_ms": 13099.3,
+      "llm_calls": 2
+    },
+    "used_inference": true,
+    "n_sources": 2,
+    "n_gaps": 1,
+    "gaps": [
+      "The detailed integration setup between ServiceNow and persistent streams is not provided."
+    ]
+  },
+  {
+    "timestamp": "2026-08-08T01:31:45Z",
+    "id": "d2_zabbix",
+    "question": "How do I add Zabbix as a datasource? Our collector also runs on a Linux host if that matters.",
+    "elapsed_s": 8.9,
+    "error": null,
+    "answer": "**Documented Fabrix path**  \n1. To add Zabbix as a datasource, you'll first need to set up Zabbix for webhook alert notifications. This involves creating a webhook URL in your CloudFabrix OIA application, as Zabbix supports alert notifications via webhook [2][3]. \n2. In Zabbix, configure the webhook media type with the required parameters for alert notifications, ensuring to include the appropriate fields that map to CloudFabrix such as `Alert_ServiceEventId`, `Alert_Status`, etc. [2][3].\n3. You can utilize the Zabbix bots in the classic automation stack for integrating data into CloudFabrix:\n   - Use the source bots like `@zabbix:zabbix-hosts` or `@zabbix:zabbix-alerts` to pull specific datasets from Zabbix [1].\n   - For instance, use `@zabbix:zabbix-metrics-list` to fetch metrics and return them as a dataset or write them to a persistent stream (pstream) [1][4].\n4. Once the data is ingested, you can create datasets or pstreams for visualization in dashboards or other integrations.\n\n**Next (inferred):** Additionally, ensure your Linux host where the collector runs can communicate properly with the Zabbix API or webhook endpoints, including any necessary firewall or network setting",
+    "scope": "related",
+    "plan_facets": [],
+    "plan_queries": [
+      "zabbix Fabrix datasource bots integration",
+      "add Zabbix datasource to Fabrix.ai"
+    ],
+    "timing": {
+      "scope_ms": 1505.5,
+      "retrieve_ms": 2816.4,
+      "generate_ms": 4583.6,
+      "critique_ms": 0.0,
+      "total_ms": 8934.4,
+      "llm_calls": 2
+    },
+    "used_inference": true,
+    "n_sources": 4,
+    "n_gaps": 1,
+    "gaps": [
+      "Specific integration handoffs between the Linux collector and Zabbix API are not detailed."
+    ]
+  },
+  {
+    "timestamp": "2026-08-08T01:31:47Z",
+    "id": "d2_sla",
+    "question": "What is Fabrix's contractual P1 support SLA response time?",
+    "elapsed_s": 1.5,
+    "error": null,
+    "answer": "I couldn't find that in the Fabrix / RDA documentation. This question looks outside the public docs scope.",
+    "scope": "out_of_scope",
+    "plan_facets": [],
+    "plan_queries": [],
+    "timing": {
+      "scope_ms": 1531.6,
+      "retrieve_ms": 0.0,
+      "generate_ms": 0.0,
+      "critique_ms": 0.0,
+      "total_ms": 1532.4,
+      "llm_calls": 1
+    },
+    "used_inference": false,
+    "n_sources": 0,
+    "n_gaps": 1,
+    "gaps": [
+      "Out of scope for public Fabrix/CFX documentation"
+    ]
+  },
+  {
+    "timestamp": "2026-08-08T01:32:05Z",
+    "id": "d2_fabio",
+    "question": "Use Fabio Copilot to rewrite my Zabbix pipeline in production for me end-to-end.",
+    "elapsed_s": 18.8,
+    "error": null,
+    "answer": "To rewrite your Zabbix pipeline in production using Fabio Copilot, you'll take advantage of the Agentic components for building and orchestrating workflows with AI assistance. However, it should be noted that the documentation does not specify whether Fabio Copilot can complete the rewrite of your Zabbix pipeline end-to-end without human approval.\n\n**Documented Fabrix path**  \n1. You need to ensure you have appropriate credentials for Zabbix setup, especially if you are using webhook notifications which are critical for alert ingestion. This typically involves configuring your webhook in Zabbix as per the guidelines provided in the integrations [1].\n2. Utilize the Zabbix bots available in Fabrix, specifically the source bot `@zabbix:zabbix-alerts`, to pull in the alert data from Zabbix into your pipeline.\n3. Set up a pipeline that defines how this data will flow through your system, processing the incoming Zabbix alerts as needed and possibly writing outputs to a dataset or a persistent stream.\n4. Leverage the relevant datasets or persistent streams to store and manage the incoming data from Zabbix alerts which can then be utilized for visualization in dashboards or further analyti",
+    "scope": "related",
+    "plan_facets": [
+      "pipelines",
+      "bots",
+      "cfxql",
+      "integrations"
+    ],
+    "plan_queries": [
+      "AI Fabric Copilot pipeline audit",
+      "Fabio Copilot AI Fabric",
+      "zabbix Fabrix datasource bots integration",
+      "how to create pipelines with Fabio Copilot"
+    ],
+    "timing": {
+      "scope_ms": 2430.7,
+      "retrieve_ms": 3477.3,
+      "generate_ms": 6937.2,
+      "critique_ms": 5917.1,
+      "total_ms": 18817.5,
+      "llm_calls": 5
+    },
+    "used_inference": true,
+    "n_sources": 6,
+    "n_gaps": 1,
+    "gaps": [
+      "It is unclear if Fabio Copilot can handle the end-to-end pipeline rewriting without human intervention."
+    ]
+  },
+  {
+    "timestamp": "2026-08-08T01:32:32Z",
+    "id": "p33_1_multi_nr",
+    "question": "Pull New Relic alerts into a Fabrix stream, then show them on a dashboard \u2014 what bots and steps are documented?",
+    "elapsed_s": 26.3,
+    "error": null,
+    "answer": "**Documented Fabrix path** \n1. First, ensure that you have the required credentials for accessing New Relic, including your API key.\n2. Use the bot to pull alerts from New Relic. This bot collects current or historical alerts from managed devices.\n3. Store the gathered alert data in a dataset or persistent stream (pstream) as the output.\n4. Create a dashboard that utilizes the dataset or pstream containing the New Relic alerts for visualization purposes.\n\n**Next (inferred):** Detailed specifics on configuring the dataset or stream are not documented, including any customization or specific dashboard configurations required for displaying the alerts.\n\n**Prerequisites** Ensure you have the necessary API key for New Relic to authenticate the connection properly.\n\n*Includes inferred Fabrix guidance not stated verbatim in the docs.*",
+    "scope": "related",
+    "plan_facets": [
+      "bots",
+      "pipelines",
+      "dashboards",
+      "integrations"
+    ],
+    "plan_queries": [
+      "newrelic Fabrix datasource bots integration",
+      "New Relic alert bot configuration",
+      "creating a dashboard with alerts from Fabrix",
+      "setting up integration for New Relic and Fabrix"
+    ],
+    "timing": {
+      "scope_ms": 2405.7,
+      "retrieve_ms": 4825.2,
+      "generate_ms": 3344.2,
+      "critique_ms": 15678.1,
+      "total_ms": 26305.5,
+      "llm_calls": 5
+    },
+    "used_inference": true,
+    "n_sources": 5,
+    "n_gaps": 3,
+    "gaps": [
+      "Invented bot names were removed because they do not appear in retrieved excerpts: @newrelic:alerts",
+      "Specific implementation details for stream and dataset configurations",
+      "Dashboard display configurations"
+    ]
+  },
+  {
+    "timestamp": "2026-08-08T01:32:32Z",
+    "id": "p33_2_fake_bot",
+    "question": "Configure @fabricops:auto-remediate-node for our Kubernetes workers with the documented parameters.",
+    "elapsed_s": 0.0,
+    "error": null,
+    "answer": "I don't see @fabricops:auto-remediate-node as a documented bot in the Fabrix catalog. I will not substitute a different product family's bot that happens to share a similar operation name. Check the fabricops bot catalog for the nearest documented operation, or ask about a bot that appears in the docs.",
+    "scope": "in_scope",
+    "plan_facets": [],
+    "plan_queries": [],
+    "timing": {
+      "scope_ms": 0.0,
+      "retrieve_ms": 0.0,
+      "generate_ms": 0.0,
+      "critique_ms": 0.0,
+      "total_ms": 4.4,
+      "llm_calls": 0
+    },
+    "used_inference": false,
+    "n_sources": 0,
+    "n_gaps": 1,
+    "gaps": [
+      "@fabricops:auto-remediate-node is not a documented bot name in the public catalog"
+    ]
+  },
+  {
+    "timestamp": "2026-08-08T01:32:51Z",
+    "id": "p33_3_classic_vs_ai",
+    "question": "For a classic RDA data pipeline that loads CSV and saves a dataset, do I build that as an AI Fabric agent toolset or in Pipeline Builder?",
+    "elapsed_s": 19.8,
+    "error": null,
+    "answer": "For building a classic RDA data pipeline that loads a CSV and saves a dataset, you should use the Pipeline Builder, not the AI Fabric agent toolset. \n\nIn the classic RDA automation stack, you would initiate by using a bot to load the CSV file and then use another bot to save the data as a dataset. Here\u2019s how the process typically works:\n\n1. **Bots**: Start with a source bot like `@files:loadfile` to load your CSV file. This bot will fetch the data and present it for further processing.\n2. **Pipeline**: You define a pipeline that connects this source bot to a sink bot, such as `@dm:save`, which saves the loaded data into a persistent dataset.\n3. **Datasets/Persistent Streams**: The data you save through the sink bot becomes part of a dataset, making it available for further analysis or reporting.\n\nUsing the Pipeline Builder allows you to structure these steps visually and ensures the correct sequence of execution in your pipeline design. On the other hand, the AI Fabric agent toolsets are more focused on agent functionalities and are not designed for creating pipelines that handle data loading and storage in the way described.\n\nThus, for a classic data pipeline that loads CSV and sa",
+    "scope": "related",
+    "plan_facets": [
+      "pipelines",
+      "ai_fabric",
+      "datasets",
+      "integrations"
+    ],
+    "plan_queries": [
+      "Building Pipelines Using Pipeline Builder Publish Draft Pipelines",
+      "Click on Clone action on the top right side of the pane to clone the bot",
+      "Draft Pipelines report click on Publish Service Blueprint",
+      "To verify if pipeline is using correct syntax click Verify source sink bots"
+    ],
+    "timing": {
+      "scope_ms": 1925.0,
+      "retrieve_ms": 3290.5,
+      "generate_ms": 8790.9,
+      "critique_ms": 5751.7,
+      "total_ms": 19790.4,
+      "llm_calls": 5
+    },
+    "used_inference": true,
+    "n_sources": 6,
+    "n_gaps": 1,
+    "gaps": [
+      "No details on any specific features of AI Fabric agent toolsets for this use case."
+    ]
+  },
+  {
+    "timestamp": "2026-08-08T01:33:03Z",
+    "id": "p33_4_sn_pd",
+    "question": "SN incidents into Fabrix then PD pages when severity is high \u2014 what's the documented wiring?",
+    "elapsed_s": 11.4,
+    "error": null,
+    "answer": "**Documented Fabrix path**  \n1. First, ensure you have the necessary credentials set up for ServiceNow by creating a ServiceNow user account with read-only permissions for the integration. Ensure to use a username and password to authenticate [1].  \n2. Integrate ServiceNow using the relevant bots, specifically from the ServiceNow bot family (`@snowv2`). You can use the following bots to read, create, and update incidents:  \n   - **`@snowv2:list-incidents`**: To retrieve existing incidents, using CFXQL to filter data.  \n   - **`@snowv2:create-incident`**: To create new incidents based on the criteria defined in your dataset.  \n3. Hand off the processed incident data to a persistent stream or dataset for further processing and analysis. This could involve creating a dataset from the ServiceNow incidents or streaming it using bots like `@snowv2:query-table-stream` for continuous data flow.  \n4. Use PagerDuty bots to create pages for high-severity incidents:  \n   - **`@pagerduty:create-incident`**: This bot allows you to create an incident in PagerDuty based on the input from the previous stream or dataset that includes severity information. Utilize this as a sink in your pipeline to s",
+    "scope": "related",
+    "plan_facets": [
+      "pipelines",
+      "bots",
+      "cfxql",
+      "integrations"
+    ],
+    "plan_queries": [
+      "servicenow Fabrix datasource bots integration",
+      "pagerduty Fabrix datasource bots integration",
+      "high severity incident response pipelines in Fabrix",
+      "automating SN incidents with Fabrix bots"
+    ],
+    "timing": {
+      "scope_ms": 1859.0,
+      "retrieve_ms": 4276.7,
+      "generate_ms": 5185.3,
+      "critique_ms": 0.0,
+      "total_ms": 11361.8,
+      "llm_calls": 2
+    },
+    "used_inference": true,
+    "n_sources": 3,
+    "n_gaps": 2,
+    "gaps": [
+      "Exact criteria for what constitutes 'high severity' is not specified.",
+      "Handoff details for analyzing severity from ServiceNow data to PagerDuty are not detailed."
+    ]
+  },
+  {
+    "timestamp": "2026-08-08T01:33:06Z",
+    "id": "p33_5_clone_pipeline",
+    "question": "How do I clone an entire draft pipeline to a new name in Pipeline Builder?",
+    "elapsed_s": 3.3,
+    "error": null,
+    "answer": "I don't see a documented procedure for this specific ask in the Fabrix / RDA public docs. Related bots or pages may exist for adjacent tasks, but the excerpts do not describe this exact step-by-step workflow \u2014 I won't invent parameters or combine real bot names into an undocumented procedure. Related documented pages that may be adjacent (not a substitute procedure): Full doc page: Bots/exec.md; Full doc page: beginners_guide/pipe_builder.md; @exec:end-if.",
+    "scope": "related",
+    "plan_facets": [],
+    "plan_queries": [],
+    "timing": {
+      "scope_ms": 2143.0,
+      "retrieve_ms": 1143.4,
+      "generate_ms": 0,
+      "critique_ms": 0.0,
+      "total_ms": 3290.0,
+      "llm_calls": 1
+    },
+    "used_inference": false,
+    "n_sources": 8,
+    "n_gaps": 1,
+    "gaps": [
+      "No documented procedure for this specific how-to ask in the retrieved public docs"
+    ]
+  },
+  {
+    "timestamp": "2026-08-08T01:33:07Z",
+    "id": "p33_6_worker_max",
+    "question": "What's the maximum number of RDA workers a single Fabric deployment can run?",
+    "elapsed_s": 1.2,
+    "error": null,
+    "answer": "I couldn't find that in the Fabrix / RDA documentation. This question looks outside the public docs scope.",
+    "scope": "out_of_scope",
+    "plan_facets": [],
+    "plan_queries": [],
+    "timing": {
+      "scope_ms": 1180.6,
+      "retrieve_ms": 0.0,
+      "generate_ms": 0.0,
+      "critique_ms": 0.0,
+      "total_ms": 1181.4,
+      "llm_calls": 1
+    },
+    "used_inference": false,
+    "n_sources": 0,
+    "n_gaps": 1,
+    "gaps": [
+      "Out of scope for public Fabrix/CFX documentation"
+    ]
+  },
+  {
+    "timestamp": "2026-08-08T01:33:14Z",
+    "id": "p33_7_disk_incident",
+    "question": "Our OpenSearch disk is full right now in production \u2014 give me the exact remediation playbook from the public docs.",
+    "elapsed_s": 7.1,
+    "error": null,
+    "answer": "I don't see a documented playbook for this specific live-incident scenario in the Fabrix / RDA public docs. Here's what IS documented that may be related: Full doc page: beginners_guide/backup_pvmount.md; Full doc page: beginners_guide/backup_pvmount_1.1.8_1.1.9.1.md; ****Prerequisites****: - For using backup-restore, we need below nfs mounts to b. Related pages (if any) are general reference, not a step-by-step incident remediation procedure. For a live incident, verify with your on-call process / support runbook rather than treating this chat as an executable playbook.",
+    "scope": "in_scope",
+    "plan_facets": [],
+    "plan_queries": [],
+    "timing": {
+      "scope_ms": 1328.7,
+      "retrieve_ms": 5763.5,
+      "generate_ms": 0,
+      "critique_ms": 0.0,
+      "total_ms": 7097.6,
+      "llm_calls": 1
+    },
+    "used_inference": false,
+    "n_sources": 8,
+    "n_gaps": 1,
+    "gaps": [
+      "No documented live-incident playbook/runbook for this scenario in public docs"
+    ]
+  },
+  {
+    "timestamp": "2026-08-08T01:33:16Z",
+    "id": "p33_8_saas_ips",
+    "question": "What CloudFabrix SaaS egress IPs should we allowlist on our firewall?",
+    "elapsed_s": 1.3,
+    "error": null,
+    "answer": "I couldn't find that in the Fabrix / RDA documentation. This question looks outside the public docs scope.",
+    "scope": "out_of_scope",
+    "plan_facets": [],
+    "plan_queries": [],
+    "timing": {
+      "scope_ms": 1278.3,
+      "retrieve_ms": 0.0,
+      "generate_ms": 0.0,
+      "critique_ms": 0.0,
+      "total_ms": 1279.1,
+      "llm_calls": 1
+    },
+    "used_inference": false,
+    "n_sources": 0,
+    "n_gaps": 1,
+    "gaps": [
+      "Out of scope for public Fabrix/CFX documentation"
+    ]
+  }
+]

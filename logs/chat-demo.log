@@ -1,0 +1,32 @@
+::ffff:127.0.0.1 - - [07/Aug/2026 18:33:30] "GET / HTTP/1.1" 200 -
+::ffff:127.0.0.1 - - [07/Aug/2026 18:35:54] "GET / HTTP/1.1" 200 -
+::ffff:127.0.0.1 - - [08/Aug/2026 12:45:49] "GET / HTTP/1.1" 200 -
+::ffff:127.0.0.1 - - [08/Aug/2026 12:45:50] "GET / HTTP/1.1" 200 -
+::ffff:127.0.0.1 - - [08/Aug/2026 12:47:03] "GET / HTTP/1.1" 200 -
+::ffff:127.0.0.1 - - [10/Aug/2026 13:48:37] "GET / HTTP/1.1" 200 -
+::ffff:127.0.0.1 - - [11/Aug/2026 12:20:40] "GET / HTTP/1.1" 200 -
+::ffff:127.0.0.1 - - [11/Aug/2026 12:20:49] "GET / HTTP/1.1" 200 -
+::ffff:127.0.0.1 - - [11/Aug/2026 12:32:09] "GET / HTTP/1.1" 304 -
+::ffff:127.0.0.1 - - [11/Aug/2026 12:32:22] "GET / HTTP/1.1" 200 -
+::ffff:127.0.0.1 - - [11/Aug/2026 12:32:22] code 404, message File not found
+::ffff:127.0.0.1 - - [11/Aug/2026 12:32:22] "GET /api/v1/courses?per_page=2 HTTP/1.1" 404 -
+::ffff:127.0.0.1 - - [11/Aug/2026 12:32:22] code 404, message File not found
+::ffff:127.0.0.1 - - [11/Aug/2026 12:32:22] "GET /d2l/api/lp/1.0/enrollments/myenrollments/?orgUnitTypeId=3 HTTP/1.1" 404 -
+::ffff:127.0.0.1 - - [11/Aug/2026 12:32:22] code 404, message File not found
+::ffff:127.0.0.1 - - [11/Aug/2026 12:32:22] "GET /login/token.php HTTP/1.1" 404 -
+::ffff:127.0.0.1 - - [11/Aug/2026 12:32:22] code 404, message File not found
+::ffff:127.0.0.1 - - [11/Aug/2026 12:32:22] "GET /favicon.ico HTTP/1.1" 404 -
+::ffff:127.0.0.1 - - [11/Aug/2026 14:26:39] "GET / HTTP/1.1" 304 -
+::ffff:127.0.0.1 - - [11/Aug/2026 14:26:39] code 404, message File not found
+::ffff:127.0.0.1 - - [11/Aug/2026 14:26:39] "GET /api/v1/courses?per_page=2 HTTP/1.1" 404 -
+::ffff:127.0.0.1 - - [11/Aug/2026 14:26:39] code 404, message File not found
+::ffff:127.0.0.1 - - [11/Aug/2026 14:26:39] "GET /d2l/api/lp/1.0/enrollments/myenrollments/?orgUnitTypeId=3 HTTP/1.1" 404 -
+::ffff:127.0.0.1 - - [11/Aug/2026 14:26:39] code 404, message File not found
+::ffff:127.0.0.1 - - [11/Aug/2026 14:26:39] "GET /login/token.php HTTP/1.1" 404 -
+::ffff:127.0.0.1 - - [11/Aug/2026 14:39:26] "GET / HTTP/1.1" 304 -
+::ffff:127.0.0.1 - - [11/Aug/2026 14:39:26] code 404, message File not found
+::ffff:127.0.0.1 - - [11/Aug/2026 14:39:26] "GET /api/v1/courses?per_page=2 HTTP/1.1" 404 -
+::ffff:127.0.0.1 - - [11/Aug/2026 14:39:26] code 404, message File not found
+::ffff:127.0.0.1 - - [11/Aug/2026 14:39:26] "GET /d2l/api/lp/1.0/enrollments/myenrollments/?orgUnitTypeId=3 HTTP/1.1" 404 -
+::ffff:127.0.0.1 - - [11/Aug/2026 14:39:26] code 404, message File not found
+::ffff:127.0.0.1 - - [11/Aug/2026 14:39:26] "GET /login/token.php HTTP/1.1" 404 -

@@ -28,6 +28,9 @@ load_dotenv()
 
 QDRANT_DIR = os.path.join(_PROJECT_ROOT, "data", "qdrant_db")
 KB_DIR = os.path.join(_PROJECT_ROOT, "data", "kb")
+SCRAPE_MANIFEST_PATH = os.path.join(_PROJECT_ROOT, "data", "scrape_manifest.json")
+RETIRED_SOURCES_PATH = os.path.join(_PROJECT_ROOT, "data", "retired_sources.json")
+FRESHNESS_STATUS_PATH = os.path.join(_PROJECT_ROOT, "data", "freshness_status.json")
 COLLECTION_NAME = os.environ.get("COLLECTION_NAME", "fabrix_docs")
 KB_COLLECTION_NAME = os.environ.get("KB_COLLECTION_NAME", "fabrix_kb")
 EMBEDDING_MODEL = os.environ.get(

@@ -33,6 +33,13 @@ ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 sys.path.insert(0, os.path.join(ROOT, "src"))
 
 from doc_urls import PUBLIC_DOCS_BASE  # noqa: E402
+from freshness import (  # noqa: E402
+    diff_manifests,
+    hash_bytes,
+    load_manifest,
+    page_record,
+    utc_now,
+)
 
 try:
     from bs4 import BeautifulSoup
@@ -351,8 +358,8 @@ def scrape_one(
     timeout: float,
     ctx: ssl.SSLContext,
     dry_run: bool,
-) -> tuple[str, str, int]:
-    """Returns (page_path, status, bytes_written)."""
+) -> tuple[str, str, int, str, str]:
+    """Returns (page_path, status, bytes_written, sha256, md_rel)."""
     if not page_path:
         url = base.rstrip("/") + "/"
     else:
@@ -361,21 +368,23 @@ def scrape_one(
     try:
         raw, final = fetch_bytes(url, timeout, ctx)
     except HTTPError as e:
-        return page_path, f"http_{e.code}", 0
+        return page_path, f"http_{e.code}", 0, "", ""
     except (URLError, TimeoutError, OSError) as e:
-        return page_path, f"err:{type(e).__name__}", 0
+        return page_path, f"err:{type(e).__name__}", 0, "", ""
 
     html = raw.decode("utf-8", errors="replace")
     title, article_html = extract_article_html(html)
     md = article_to_markdown(title, article_html, final)
     rel = path_to_md_rel(page_path)
+    raw_md = md.encode("utf-8")
+    digest = hash_bytes(raw_md)
     dest = os.path.join(out_root, rel)
     if dry_run:
-        return page_path, f"dry:{rel}", len(md.encode("utf-8"))
+        return page_path, f"dry:{rel}", len(raw_md), digest, rel
     os.makedirs(os.path.dirname(dest), exist_ok=True)
     with open(dest, "w", encoding="utf-8") as f:
         f.write(md)
-    return page_path, f"ok:{rel}", len(md.encode("utf-8"))
+    return page_path, f"ok:{rel}", len(raw_md), digest, rel
 
 
 def main() -> int:
@@ -440,6 +449,8 @@ def main() -> int:
     ok = fail = 0
     written = 0
     failures: list[str] = []
+    pages_meta: dict = {}
+    prev = {} if args.dry_run else load_manifest()
     with ThreadPoolExecutor(max_workers=max(1, args.workers)) as pool:
         futs = {
             pool.submit(
@@ -455,8 +466,17 @@ def main() -> int:
         }
         done = 0
         for fut in as_completed(futs):
-            page_path, status, nbytes = fut.result()
+            page_path, status, nbytes, digest, md_rel = fut.result()
             done += 1
+            rec = page_record(
+                page_path or "(home)",
+                b"",
+                status=status.split(":", 1)[0],
+                md_rel=md_rel,
+            )
+            rec["sha256"] = digest
+            rec["bytes"] = nbytes
+            pages_meta[page_path or "(home)"] = rec
             if status.startswith("ok") or status.startswith("dry"):
                 ok += 1
                 written += nbytes
@@ -478,22 +498,29 @@ def main() -> int:
     manifest = os.path.join(ROOT, "data", "scrape_manifest.json")
     if not args.dry_run:
         os.makedirs(os.path.dirname(manifest), exist_ok=True)
+        diff = diff_manifests(prev, {"pages_meta": pages_meta})
+        payload = {
+            "base": base,
+            "out": args.out,
+            "pages": len(pages_list),
+            "ok": ok,
+            "fail": fail,
+            "elapsed_s": round(elapsed, 1),
+            "failures": failures,
+            "page_paths": pages_list,
+            "pages_meta": pages_meta,
+            "prev_scraped_at": prev.get("scraped_at"),
+            "scraped_at": utc_now(),
+            **diff,
+        }
         with open(manifest, "w", encoding="utf-8") as f:
-            json.dump(
-                {
-                    "base": base,
-                    "out": args.out,
-                    "pages": len(pages_list),
-                    "ok": ok,
-                    "fail": fail,
-                    "elapsed_s": round(elapsed, 1),
-                    "failures": failures,
-                    "page_paths": pages_list,
-                },
-                f,
-                indent=2,
-            )
-        print(f"Manifest: {manifest}")
+            json.dump(payload, f, indent=2)
+        print(
+            f"Manifest: {manifest} "
+            f"changed={len(diff['changed_paths'])} "
+            f"added={len(diff['added_paths'])} "
+            f"removed={len(diff['removed_paths'])}"
+        )
     return 0 if fail == 0 else 1
 
 

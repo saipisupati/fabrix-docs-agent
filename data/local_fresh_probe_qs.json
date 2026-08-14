@@ -1,0 +1,10 @@
+[
+  {"id": "n1_cfxql_vs_sql", "question": "What's the difference between CFXQL and SQL in Fabrix, and when should I use CFXQL?"},
+  {"id": "n2_dynamic_bots", "question": "How do dynamic bots work in RDA Fabric, and what's an example of configuring one?"},
+  {"id": "n3_edge_worker", "question": "How do I install and register an RDA Fabric edge worker / RDA Worker?"},
+  {"id": "n4_splunk_integration", "question": "What credentials and bots do I need to pull data from Splunk into a Fabrix pipeline?"},
+  {"id": "n5_formatting_template", "question": "How do formatting templates (Jinja) get used when sending data out of a pipeline?"},
+  {"id": "n6_agentic_toolset", "question": "In AI Fabric, how do I create a toolset and attach tools an agent can call?"},
+  {"id": "n7_fake_bot_trap", "question": "Walk me through configuring @autoheal:remediate-host for our production cluster."},
+  {"id": "n8_dashboard_from_pstream", "question": "How do I create a dashboard that reads from a persistent stream in RDA Fabric?"}
+]

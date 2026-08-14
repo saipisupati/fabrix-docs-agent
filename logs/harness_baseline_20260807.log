@@ -1,0 +1,223 @@
+
+========== eval_production.py ==========
+
+Production ops eval: 2026-08-08 00:55 UTC
+cases=52
+
+[synth_k8s] PASS scope=related used=True src=6 ex=2
+  Q: How would I chain a Kubernetes inventory collection into a dashboard-friendly dataset?
+  A: **Documented Fabrix path**   1. To connect to the Kubernetes cluster for inventory data collection, create a service user account with SSH privileges or HTTP API access. For HTTP A
+
+[synth_snow] PASS scope=related used=True src=4 ex=2
+  Q: Our NOC wants ServiceNow incidents in a Fabrix persistent stream for downstream bots — how should we set that up?
+  A: **Documented Fabrix path**   1. First, ensure you have credentials for ServiceNow. You’ll need to create a read-only user account in ServiceNow with appropriate permissions. This u
+
+[synth_agentic] PASS scope=related used=True src=4 ex=2
+  Q: For an on-call triage agent in Fabrix Agentic AI, should I start with a Toolset or a Persona?
+  A: To build an on-call triage agent in Fabrix's Agentic AI framework, you should start with a **Persona**.   **Documented Fabrix path** 1. **Persona Creation**: Personas define the be
+
+[synth_pipeline] PASS scope=related used=True src=9 ex=3
+  Q: How do I schedule an inner pipeline like aws-dependency-mapper and what interval does the docs use?
+  A: **Documented Fabrix path**   1. To schedule an inner pipeline like `aws-dependency-mapper`, you can define it within a Service Blueprint using the `scheduled_pipelines` section. 2.
+
+[ops_backup] PASS scope=in_scope used=False src=4 ex=1
+  Q: What time does daily backup run for pstream data retention archival?
+  A: The daily backup for pstream data retention archival is configured to run at **12 AM UTC Time** [1][5]. This means that every day at midnight UTC, the system is set to automaticall
+
+[ops_ext] PASS scope=in_scope used=False src=5 ex=1
+  Q: Does the agentic_ai extension need manual configuration before use?
+  A: **Documented Fabrix path**   1. The agentic_ai extension requires manual configuration, specifically updating the `values.yaml` file with the `PORTAL_HOST` and ensuring necessary p
+
+[lookup_bot] PASS scope=in_scope used=False src=1 ex=0
+  Q: What parameters does the timed-loop bot take?
+  A: @c:timed-loop takes the following parameters: - **interval** *: Wait interval in seconds between each loop iteration. Time to execute one iteration will be deducted from the interv
+
+[sql_to_cfxql] PASS scope=in_scope used=False src=7 ex=1
+  Q: Can I use SQL to query my datasets directly?
+  A: You cannot directly use SQL CFXQL to query datasets. Instead, you should use Full CFXQL, which serves as the query language within the Fabrix environment. Full CFXQL allows you to 
+
+[lookup_cfxql] PASS scope=related used=True src=8 ex=2
+  Q: Which CFXQL style do API bots (@) use versus source filtering bots (#)?
+  A: **Documented Fabrix path**   1. API bots (denoted by `@`) utilize **Restricted CFXQL**, which is a simpler parameter style that mainly employs the `=` operator and the `AND` logica
+
+[vague_tools] PASS scope=related used=True src=9 ex=0
+  Q: What are the most important building blocks for automation in Fabrix?
+  A: The most important building blocks for automation in Fabrix are part of the classic RDA automation stack, which includes:  1. **Bots**: These are the automated agents that perform 
+  - classic automation layers present (ok)
+
+[vague_dash] PASS scope=related used=True src=3 ex=2
+  Q: How do dashboards get their data in RDA Fabric?
+  A: Dashboards in RDA Fabric retrieve their data through a structured pipeline that involves several key components from the classic RDA automation stack. First, data is typically coll
+  - dataset/pstream path present (ok)
+
+[gap_workers] PASS scope=out_of_scope used=False src=0 ex=0
+  Q: What is the hard max number of RDA workers per site?
+  A: I couldn't find that in the Fabrix / RDA documentation. This question looks outside the public docs scope.
+
+[oos_billing] PASS scope=out_of_scope used=False src=0 ex=0
+  Q: How do I cancel my Fabrix subscription and get a refund?
+  A: I couldn't find that in the Fabrix / RDA documentation. This question looks outside the public docs scope.
+
+[break_format_pstream] PASS scope=related used=True src=7 ex=2
+  Q: Explain how persistent streams differ from datasets in RDA Fabric in exactly 8 numbered steps, with a blank line between each step.
+  A: 1. **Definition**: Persistent streams in RDA Fabric are designed for automated data persistence of streamed data, while datasets represent tabular data typically stored within RDA 
+
+[break_slang_sn] PASS scope=related used=True src=4 ex=0
+  Q: How do I get SN ticketing into a Fabrix stream for downstream bots?
+  A: **Documented Fabrix path**   1. Ensure you have credentials set up: You need a ServiceNow user account with read-only permissions for API-based access [7]. 2. Use the appropriate S
+
+[break_zabbix_linux] PASS scope=related used=True src=3 ex=1
+  Q: How do I add Zabbix as a datasource? Our collector also runs on a Linux host if that matters.
+  A: **Documented Fabrix path**   1. To add Zabbix as a datasource, you first need to set up the webhook notifications in Zabbix. This involves creating a media type in Zabbix that send
+
+[break_trap_sla] PASS scope=out_of_scope used=False src=0 ex=0
+  Q: What is Fabrix's contractual P1 support SLA response time?
+  A: I couldn't find that in the Fabrix / RDA documentation. This question looks outside the public docs scope.
+
+[break_day2_pstream] PASS scope=related used=True src=4 ex=2
+  Q: When should an engineer use a persistent stream instead of a regular dataset in RDA Fabric?
+  A: In RDA Fabric, the choice between using a persistent stream and a regular dataset largely depends on the specific use case and operational requirements. Here are some key considera
+
+[break_prometheus_ubuntu] PASS scope=related used=True src=2 ex=2
+  Q: How do I wire Prometheus into Fabrix? Our jump box is Ubuntu if that helps.
+  A: **Documented Fabrix path**   1. To integrate Prometheus with Fabrix, start by configuring API access in your Prometheus setup to allow connections from Fabrix. Ensure your Promethe
+
+[c2_format_cfxql] PASS scope=related used=True src=7 ex=1
+  Q: List operators available in Full CFXQL as exactly 10 numbered steps, with a blank line between each step.
+  A: **Documented Fabrix path**    1. **Equality Operators**      - **=**: Compares if the left side column value is equal to the right side constant or column value.      - **!=**: Com
+
+[c2_trap_quote] PASS scope=out_of_scope used=False src=0 ex=0
+  Q: Can you generate an enterprise quote for Fabrix AIOps for 50 sites?
+  A: I couldn't find that in the Fabrix / RDA documentation. This question looks outside the public docs scope.
+
+[c2_wire_datadog] PASS scope=related used=True src=6 ex=2
+  Q: Add Datadog as a Fabrix datasource end-to-end — credentials through bots into a stream or dataset.
+  A: **Documented Fabrix path**   1. To use Datadog as a datasource, you will need the following credentials: a Datadog API token that has sufficient permissions for the required data a
+
+[c2_contam_pagerduty_rhel] PASS scope=related used=True src=1 ex=2
+  Q: How do I wire PagerDuty into Fabrix? Our collector is on RHEL if that matters.
+  A: **Documented Fabrix path**   1. For integrating PagerDuty with Fabrix, you need to authenticate using an API token from your PagerDuty account.  2. Use the following PagerDuty bots
+
+[c4_trap_soc2] PASS scope=out_of_scope used=False src=0 ex=0
+  Q: What's Fabrix's SOC2 Type II report download link for auditors?
+  A: I couldn't find that in the Fabrix / RDA documentation. This question looks outside the public docs scope.
+
+[c4_trap_root_password] PASS scope=out_of_scope used=False src=0 ex=0
+  Q: How do I reset the root password on the private RDA control plane VM we host ourselves?
+  A: I couldn't find that in the Fabrix / RDA documentation. This question looks outside the public docs scope.
+
+[c4_slang_pd_dataset] PASS scope=related used=True src=3 ex=2
+  Q: PD alerts into Fabrix then into a dataset for dashboards — walk me through it.
+  A: **Documented Fabrix path**   1. First, configure authentication for PagerDuty using an API token that allows access to your PagerDuty account.   2. Use the following concrete bots 
+
+[c4_contam_newrelic_debian] PASS scope=related used=True src=2 ex=1
+  Q: Wire New Relic into Fabrix as a datasource — our edge box is Debian if that matters.
+  A: **Documented Fabrix path**  1. Credentials / auth for New Relic: You will need your API token to enable access for integration with Fabrix.  2. Concrete bots from the New Relic fam
+
+[c5_trap_hipaa] PASS scope=out_of_scope used=False src=0 ex=0
+  Q: Is Fabrix HIPAA certified and where do I download the BAA?
+  A: I couldn't find that in the Fabrix / RDA documentation. This question looks outside the public docs scope.
+
+[c5_slang_snow_cmdb] PASS scope=related used=True src=4 ex=2
+  Q: SNOW CMDB into Fabrix then to a dashboard — what's the path?
+  A: **Documented Fabrix path**   1. Start by creating a ServiceNow user account with read-only permissions to enable API-based access for integration [7].   2. Use a concrete bot from 
+
+[c5_contam_dynatrace_fedora] PASS scope=related used=True src=2 ex=3
+  Q: Wire Dynatrace into Fabrix — collector happens to run on Fedora if that helps.
+  A: **Documented Fabrix path**   1. Ensure you have a Dynatrace SaaS Account, an API Key (created on the Dynatrace portal), and your Dynatrace instance is accessible for integration. T
+
+[c5_agentic_prompt_template] PASS scope=related used=True src=2 ex=2
+  Q: In Fabrix Agentic AI, when should I customize a Prompt Template versus changing the Persona?
+  A: To determine when to customize a Prompt Template versus changing a Persona in Fabrix's Agentic AI environment, consider the following documented insights on both components:  **Doc
+
+[c6_trap_gdpr_dpa] PASS scope=out_of_scope used=False src=0 ex=0
+  Q: Is Fabrix GDPR certified and where do I download the signed DPA for our EU customers?
+  A: I couldn't find that in the Fabrix / RDA documentation. This question looks outside the public docs scope.
+
+[c6_slang_opsgenie] PASS scope=related used=True src=3 ex=2
+  Q: OG pages into Fabrix then toward Slack — what's the documented path?
+  A: **Documented Fabrix path**   1. Start by authenticating with OpsGenie using the necessary API token or credentials required to access the OpsGenie integration.   2. Utilize the app
+
+[c6_thin_kafka] PASS scope=related used=True src=5 ex=2
+  Q: Walk me through wiring Kafka into Fabrix with the credentials and bots involved.
+  A: **Documented Fabrix path**    1. First, add the Kafka credentials necessary to access your Kafka platform. You will need to provide the `bootstrap.servers` configuration, which spe
+
+[c6_agentic_auto_heal] PASS scope=related used=True src=1 ex=1
+  Q: Configure Fabio Copilot to auto-remediate production outages end-to-end with no human approval.
+  A: To configure Fabio Copilot for end-to-end auto-remediation of production outages without human approval, you would typically leverage the classic RDA automation stack. This involve
+
+[c7_install_platform_prereqs] PASS scope=related used=True src=10 ex=1
+  Q: Can you give me prerequisites if I want to install Fabrix.ai platform
+  A: **Documented Fabrix path**   1. **Operating System**: You need a supported OS, which includes Windows 10, Linux, or Mac OS X. 2. **CPU Requirements**: At least 2 CPU cores. 3. **Me
+
+[c7_install_vm_agents] PASS scope=related used=True src=10 ex=1
+  Q: Can you give me VM requirements if I want to install Fabrix.ai agents
+  A: **Documented Fabrix path**   1. For installing Fabrix.ai agents, ensure that your virtual machine (VM) meets the following requirements:      - **CPU**: At least 2 cores.      - **
+
+[c7_install_virtual_machine] PASS scope=related used=True src=10 ex=1
+  Q: What virtual machine specs do I need before installing Fabrix RDA Studio?
+  A: **Documented Fabrix path**   1. The virtual machine requirements for installing Fabrix RDA Studio are as follows:    - CPU: 2 cores    - Memory: 8 GB    - Disk: 50 GB    - Operatin
+
+[c7_upgrade_rdaf_site] PASS scope=related used=True src=10 ex=6
+  Q: How do I upgrade the RDAF platform on a site?
+  A: To upgrade the RDAF platform, you need to follow these essential steps, ensuring the underlying components like MariaDB are compatible and properly managed throughout the upgrade p
+
+[bakeoff_kafka_params] PASS scope=in_scope used=False src=1 ex=0
+  Q: What parameters does the kafka-v2 consume / read bot take?
+  A: @kafka-v2:read-stream takes the following parameters: - **name** *: Stream name - **group** *: Data receiver (consumer) group name - **offset_reset**: Stream offset reset position.
+
+[bakeoff_pipeline_15m] PASS scope=related used=True src=5 ex=2
+  Q: How do I schedule an RDA Fabric pipeline to run every 15 minutes?
+  A: **Documented Fabrix path**   1. Use the RDA Studio to define your pipeline that you want to schedule. Ensure it consists of the required bots, such as data sources and processing b
+
+[bakeoff_cfxql] PASS scope=related used=True src=6 ex=2
+  Q: What is the difference between Full CFXQL and Restricted CFXQL?
+  A: **Documented Fabrix path**  1. Full CFXQL supports a wide range of SQL-like operators, allowing developers to create complex queries with logical combinations, such as AND and OR. 
+
+[bakeoff_p1_sla] PASS scope=out_of_scope used=False src=0 ex=0
+  Q: What is Fabrix's contractual P1 support SLA response time?
+  A: I couldn't find that in the Fabrix / RDA documentation. This question looks outside the public docs scope.
+
+[c14_schedule_debug] PARTIAL scope=related used=False src=10 ex=1
+  Q: What's the right way to debug why a scheduled pipeline didn't fire last night?
+  A: I don't see a documented procedure specifically addressing how to debug why a scheduled pipeline didn't fire. However, you can check the status and logs related to scheduled pipeli
+  - expected inference disclosure
+
+[c14_snowv2_list_params] PASS scope=in_scope used=False src=0 ex=0
+  Q: What parameters does @snowv2:list-incidents take?
+  A: I don't see @snowv2:list-incidents as a documented bot in the Fabrix catalog. I will not substitute a different product family's bot that happens to share a similar operation name.
+
+[c14_dashboard_kickoff] PASS scope=related used=True src=10 ex=2
+  Q: Is there a documented way for dashboards to kick off remediation pipelines when an alert fires?
+  A: Public Fabrix docs describe dashboards (analytics on datasets / pstreams) and pipelines / alerts as related but separate building blocks. They do **not** document a turnkey path wh
+
+[c15_splunk_ops_dashboard] PASS scope=related used=True src=6 ex=1
+  Q: Ops wants Splunk log events landing in a Fabrix dashboard they can watch during incidents — what documented building blocks should I use?
+  A: **Documented Fabrix path**   1. Start by configuring an authentication method for Splunk in the CloudFabrix (CFX) environment. You'll need a read-only service user account in Splun
+
+[c15_datadog_to_slack_alert] PASS scope=related used=True src=6 ex=1
+  Q: Map Datadog metrics into a Fabrix persistent stream and then notify Slack when thresholds trip — walk the documented path.
+  A: **Documented Fabrix path**   1. Configure your Datadog integration by providing the necessary credentials:    - API Key    - Application Key      These parameters are required for 
+
+[c15_kafka_searchable_dataset] PASS scope=in_scope used=True src=6 ex=2
+  Q: I need Kafka topic messages to become a searchable Fabrix dataset — which credentials, bots, and handoffs does the docs describe?
+  A: **Documented Fabrix path**   1. For Kafka integrations, you need to authenticate with the broker using the appropriate credentials (e.g., username/password or API token, depending 
+
+[c16_windows_inventory_readonly] PASS scope=related used=True src=2 ex=1
+  Q: How do I set up Windows inventory discovery in Fabrix, and should the discovery account be a read-only user?
+  A: **Documented Fabrix path**   1. For Windows inventory discovery in Fabrix, you need to configure the target Windows Server hosts with WinRM for remote management. This involves ens
+
+[c16_pipeline_not_triggered] PASS scope=related used=True src=9 ex=1
+  Q: A production scheduled pipeline did not trigger overnight — what documented checks should I run first?
+  A: **Documented Fabrix path**   1. Check the cron expression defined in your scheduled pipeline to ensure it is correctly set up and formatted. For example:    - `cron_expression: 0 1
+
+[c16_fake_prb_hostname_wire] PASS scope=related used=False src=8 ex=0
+  Q: How do I wire PRB0105428-SIFY host 198.18.29.83 into a Fabrix dashboard end to end?
+  A: I don't see 'PRB0105428-SIFY host 198.18.29.83', 'PRB0105428', 'SIFY' in the Fabrix / RDA documentation excerpts. I won't invent how to enable, configure, or use a feature or bot t
+
+Summary: PASS=51 PARTIAL=1 FAIL=0 (scored 52)
+
+Wrote /Users/supersaiyan.06/Downloads/fabrix-docs-agent/tests/eval_production_results.txt
+
+========== eval_break.py ==========
+

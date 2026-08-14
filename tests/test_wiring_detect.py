@@ -755,3 +755,17 @@ def test_git_pipeline_versioning_ask_detected():
     assert "export to git" not in low
     assert any("version history" in g.lower() for g in gaps)
 
+
+def test_looks_like_abstention_covers_documented_procedure_phrase():
+    from agent import _looks_like_abstention
+
+    assert _looks_like_abstention(
+        "I don't see a documented procedure for this specific ask in the Fabrix docs."
+    )
+    assert _looks_like_abstention(
+        "I don't see a documented playbook for this live-incident scenario."
+    )
+    assert not _looks_like_abstention(
+        "**Documented Fabrix path**\n1. Use scheduled_pipelines with cron_expression."
+    )
+
