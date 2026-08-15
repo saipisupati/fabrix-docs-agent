@@ -1,0 +1,676 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Fabrix Docs Agent — Admin</title>
+    <meta name="color-scheme" content="dark" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --bg: #0b1020;
+        --bg-elevated: #172033;
+        --surface: #1e2a45;
+        --border: rgba(255, 255, 255, 0.1);
+        --text: rgba(255, 255, 255, 0.92);
+        --muted: rgba(255, 255, 255, 0.55);
+        --muted2: rgba(255, 255, 255, 0.42);
+        --accent: #f05a28;
+        --accent-hover: #e84e1b;
+        --danger: #fb7185;
+        --ok: #34d399;
+        --warn: #fbbf24;
+        --shadow: 0 2px 12px rgba(0, 0, 0, 0.35);
+        --radius-lg: 20px;
+        --radius-md: 14px;
+      }
+
+      * { box-sizing: border-box; }
+
+      body {
+        margin: 0;
+        font-family: Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial,
+          "Apple Color Emoji", "Segoe UI Emoji";
+        background: linear-gradient(180deg, var(--bg) 0%, var(--bg-elevated) 100%);
+        color: var(--text);
+        font-size: 15px;
+        line-height: 1.6;
+        min-height: 100vh;
+      }
+
+      .app {
+        max-width: 768px;
+        margin: 0 auto;
+        padding: 0 20px 48px;
+      }
+
+      .header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 14px 0;
+        border-bottom: 1px solid var(--border);
+        box-shadow: inset 0 -1px 0 rgba(240, 90, 40, 0.2);
+      }
+
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        min-width: 0;
+      }
+
+      .brand img {
+        height: 22px;
+        width: auto;
+        flex-shrink: 0;
+      }
+
+      .titleBlock {
+        display: flex;
+        flex-direction: column;
+        line-height: 1.2;
+        min-width: 0;
+      }
+
+      .title {
+        font-weight: 600;
+        font-size: 14px;
+        letter-spacing: 0.1px;
+      }
+
+      .subtitle {
+        font-size: 11px;
+        color: var(--muted2);
+        letter-spacing: 0.2px;
+      }
+
+      .header a {
+        color: var(--muted);
+        text-decoration: none;
+        font-size: 12px;
+      }
+
+      .header a:hover { color: var(--accent); }
+
+      .banner {
+        display: none;
+        margin-top: 14px;
+        padding: 10px 14px;
+        border-radius: var(--radius-md);
+        font-size: 13px;
+      }
+
+      .banner.show { display: block; }
+      .banner.ok {
+        background: rgba(52, 211, 153, 0.12);
+        border: 1px solid rgba(52, 211, 153, 0.28);
+      }
+      .banner.err {
+        background: rgba(251, 113, 133, 0.1);
+        border: 1px solid rgba(251, 113, 133, 0.25);
+        color: var(--danger);
+      }
+      .banner.warn {
+        background: rgba(251, 191, 36, 0.12);
+        border: 1px solid rgba(251, 191, 36, 0.28);
+      }
+
+      .card {
+        margin-top: 16px;
+        padding: 16px;
+        border: 1px solid var(--border);
+        border-radius: var(--radius-md);
+        background: rgba(255, 255, 255, 0.03);
+        box-shadow: var(--shadow);
+      }
+
+      .card h2 {
+        margin: 0 0 6px;
+        font-size: 14px;
+        font-weight: 600;
+      }
+
+      .help {
+        color: var(--muted2);
+        font-size: 12px;
+        margin: 0 0 12px;
+      }
+
+      .row {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+        align-items: center;
+      }
+
+      input, button {
+        font: inherit;
+        border-radius: 10px;
+        border: 1px solid var(--border);
+        padding: 8px 12px;
+        background: var(--surface);
+        color: var(--text);
+      }
+
+      input { flex: 1; min-width: 160px; }
+
+      button {
+        background: var(--accent);
+        border: none;
+        cursor: pointer;
+        font-weight: 500;
+        font-size: 13px;
+      }
+      button:hover { background: var(--accent-hover); }
+      button:disabled { opacity: 0.45; cursor: not-allowed; }
+      button.ghost {
+        background: transparent;
+        color: var(--muted);
+        border: 1px solid var(--border);
+      }
+      button.ghost:hover { color: var(--text); background: rgba(255,255,255,0.04); }
+      button.danger { background: var(--danger); }
+      button.danger:hover { filter: brightness(1.05); }
+
+      .stats {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 10px;
+      }
+
+      @media (min-width: 560px) {
+        .stats { grid-template-columns: repeat(4, 1fr); }
+      }
+
+      .stat {
+        padding: 12px;
+        border-radius: 12px;
+        border: 1px solid var(--border);
+        background: rgba(255, 255, 255, 0.02);
+      }
+
+      .stat .n {
+        font-size: 20px;
+        font-weight: 600;
+        letter-spacing: -0.02em;
+      }
+
+      .stat .l {
+        font-size: 11px;
+        color: var(--muted2);
+        margin-top: 2px;
+      }
+
+      .kv {
+        display: grid;
+        gap: 8px;
+        font-size: 13px;
+      }
+
+      .kv div {
+        display: flex;
+        justify-content: space-between;
+        gap: 12px;
+        flex-wrap: wrap;
+      }
+
+      .kv span:last-child { color: var(--muted); }
+
+      .pill {
+        display: inline-flex;
+        align-items: center;
+        padding: 2px 8px;
+        border-radius: 999px;
+        font-size: 11px;
+        font-weight: 500;
+        border: 1px solid var(--border);
+        color: var(--muted);
+      }
+      .pill.changed { color: var(--warn); border-color: rgba(251, 191, 36, 0.4); }
+      .pill.unchanged { color: var(--ok); border-color: rgba(52, 211, 153, 0.4); }
+      .pill.running { color: var(--accent); border-color: rgba(240, 90, 40, 0.45); }
+      .pill.locked { color: var(--danger); border-color: rgba(251, 113, 133, 0.4); }
+
+      details {
+        margin-top: 10px;
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        padding: 8px 12px;
+        font-size: 13px;
+      }
+
+      details summary {
+        cursor: pointer;
+        color: var(--muted);
+        font-size: 12px;
+      }
+
+      details ul {
+        margin: 8px 0 0;
+        padding-left: 18px;
+        color: var(--muted);
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+        font-size: 12px;
+      }
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 13px;
+      }
+
+      th, td {
+        text-align: left;
+        padding: 8px 0;
+        border-bottom: 1px solid var(--border);
+      }
+
+      th { color: var(--muted2); font-weight: 500; font-size: 11px; }
+
+      td pathlike, .mono {
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+        font-size: 12px;
+      }
+
+      .empty { color: var(--muted2); font-size: 13px; margin: 8px 0 0; }
+
+      .footer {
+        margin-top: 24px;
+        font-size: 11px;
+        color: var(--muted2);
+      }
+
+      .footer a { color: var(--accent); text-decoration: none; }
+    </style>
+  </head>
+  <body>
+    <div class="app">
+      <header class="header">
+        <div class="brand">
+          <img
+            src="https://fabrix.ai/images/logo-light.svg"
+            alt="Fabrix"
+            width="120"
+            height="22"
+          />
+          <div class="titleBlock">
+            <div class="title">Docs Agent admin</div>
+            <div class="subtitle">Freshness, retire, refresh — not a live scrape on /ask</div>
+          </div>
+        </div>
+        <a href="/">Chat</a>
+      </header>
+
+      <div id="banner" class="banner" role="status"></div>
+
+      <div class="card">
+        <h2>API key</h2>
+        <p class="help">Stored in this browser only. Must match the API process <code>API_KEY</code>.</p>
+        <div class="row">
+          <input id="apiKey" type="password" placeholder="X-API-Key" autocomplete="off" />
+          <button type="button" id="saveKey">Save</button>
+          <button type="button" class="ghost" id="clearKey">Clear key</button>
+          <button type="button" class="ghost" id="reload">Reload</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>KB status</h2>
+        <p class="help">From <code>GET /admin/kb-status</code>. Auto-reloads every 30s while this tab is visible.</p>
+        <div id="stats" class="stats"></div>
+        <div id="freshness" class="kv" style="margin-top:14px"></div>
+        <div id="pipeline" class="kv" style="margin-top:10px"></div>
+        <div id="deltas"></div>
+      </div>
+
+      <div class="card">
+        <h2>Refresh pipeline</h2>
+        <p class="help">
+          Scrape can run while the API is up. Stop uvicorn before ingest/build_kb (Qdrant file lock).
+          Pipeline logs stay in the shell — this page does not tail them.
+          Operator notes: <code>docs/KB_FRESHNESS_ADMIN.md</code>.
+        </p>
+        <div id="lockBanner" class="banner warn" style="margin:0 0 12px"></div>
+        <div class="row">
+          <button type="button" id="refresh">Scrape + gate</button>
+          <button type="button" class="ghost" id="refreshForce">Force rebuild</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Retire a source</h2>
+        <p class="help">
+          Use ingest <code>metadata.source</code> path or basename (e.g. <code>Bots/cfxdm.md</code> or
+          <code>cfxdm.md</code>). Retrieval filter only — does not delete Qdrant points.
+        </p>
+        <div class="row">
+          <input id="source" placeholder="Bots/cfxdm.md" />
+          <button type="button" class="danger" id="retire">Retire</button>
+        </div>
+        <div id="retiredWrap" style="margin-top:12px"></div>
+      </div>
+
+      <div class="footer">Operator console. Not linked from the demo chat opening page.</div>
+    </div>
+
+    <script>
+      const cfg = window.FabrixChatConfig || {};
+
+      function resolveApiUrl() {
+        const configured = (cfg.apiUrl ?? "").replace(/\/$/, "");
+        if (configured) return configured;
+        if (window.location.protocol === "file:") return "http://localhost:8080";
+        const host = window.location.hostname;
+        if (host === "localhost" || host === "127.0.0.1") {
+          if (window.location.port === "8080") return window.location.origin;
+          return "http://localhost:8080";
+        }
+        return window.location.origin;
+      }
+
+      const API_URL = resolveApiUrl();
+      const KEY_STORE = "fabrix_admin_key";
+      let fastPollUntil = 0;
+      let fastTimer = null;
+      let slowTimer = null;
+
+      function key() {
+        return localStorage.getItem(KEY_STORE) || cfg.apiKey || "";
+      }
+
+      function headers() {
+        const h = { "Content-Type": "application/json" };
+        const k = key();
+        if (k) h["X-API-Key"] = k;
+        return h;
+      }
+
+      function showBanner(msg, kind) {
+        const el = document.getElementById("banner");
+        el.className = "banner show " + (kind || "ok");
+        el.textContent = msg;
+      }
+
+      function hideBanner() {
+        const el = document.getElementById("banner");
+        el.className = "banner";
+        el.textContent = "";
+      }
+
+      function dash(v) {
+        if (v === null || v === undefined || v === "") return "—";
+        return String(v);
+      }
+
+      function escapeHtml(input) {
+        return String(input)
+          .replaceAll("&", "&amp;")
+          .replaceAll("<", "&lt;")
+          .replaceAll(">", "&gt;")
+          .replaceAll('"', "&quot;");
+      }
+
+      async function req(path, opts) {
+        const r = await fetch(API_URL + path, {
+          ...opts,
+          headers: { ...headers(), ...((opts && opts.headers) || {}) },
+        });
+        const text = await r.text();
+        let body;
+        try {
+          body = JSON.parse(text);
+        } catch {
+          body = { raw: text };
+        }
+        if (!r.ok) {
+          const detail = (body && (body.detail || body.message)) || r.status;
+          const err = new Error(typeof detail === "string" ? detail : JSON.stringify(detail));
+          err.status = r.status;
+          throw err;
+        }
+        return body;
+      }
+
+      function renderStats(s) {
+        const items = [
+          ["Chunks", s.chunk_count],
+          ["KB topics", s.kb_topics],
+          ["KB entities", s.kb_entities],
+          ["Collection", s.qdrant_collection],
+        ];
+        document.getElementById("stats").innerHTML = items
+          .map(
+            ([l, n]) =>
+              `<div class="stat"><div class="n">${escapeHtml(dash(n))}</div><div class="l">${l}</div></div>`
+          )
+          .join("");
+      }
+
+      function freshnessBadge(s) {
+        if (s.has_content_changes === true) return '<span class="pill changed">changed</span>';
+        if (s.has_content_changes === false) return '<span class="pill unchanged">unchanged</span>';
+        return '<span class="pill">unknown</span>';
+      }
+
+      function pipelinePill(rb) {
+        if (!rb || typeof rb !== "object" || !Object.keys(rb).length) {
+          return '<span class="pill">idle</span>';
+        }
+        if (rb.running) return '<span class="pill running">running</span>';
+        if (rb.rebuild_error) return '<span class="pill locked">error</span>';
+        if (rb.rebuild === false) return '<span class="pill unchanged">scrape-only</span>';
+        if (rb.rebuild) return '<span class="pill unchanged">rebuilt</span>';
+        return '<span class="pill">idle</span>';
+      }
+
+      function pipelineLine(rb) {
+        if (!rb || typeof rb !== "object") return "No pipeline run recorded yet.";
+        if (rb.running) {
+          return "Started " + dash(rb.started_at) + (rb.forced ? " (forced)" : "");
+        }
+        if (rb.rebuild_error) return String(rb.rebuild_error);
+        const bits = [];
+        if (rb.finished_at) bits.push("Finished " + rb.finished_at);
+        if (rb.forced) bits.push("forced");
+        if (rb.rebuild === false) bits.push("hashes unchanged — ingest skipped");
+        if (rb.rebuild === true) bits.push("ingest/KB ran");
+        return bits.join(" · ") || "No pipeline run recorded yet.";
+      }
+
+      function renderFreshness(s) {
+        document.getElementById("freshness").innerHTML = `
+          <div><span>Last scrape</span><span>${escapeHtml(dash(s.last_scrape_at))} ${freshnessBadge(s)}</span></div>
+          <div><span>Manifest</span><span>ok ${dash(s.manifest_ok)} · fail ${dash(s.manifest_fail)} · pages ${dash(s.manifest_pages)}</span></div>
+        `;
+        const rb = s.last_rebuild || {};
+        document.getElementById("pipeline").innerHTML = `
+          <div><span>Last pipeline</span><span>${pipelinePill(rb)}</span></div>
+          <div><span></span><span>${escapeHtml(pipelineLine(rb))}</span></div>
+        `;
+        const lock = document.getElementById("lockBanner");
+        if (s.qdrant_locked) {
+          lock.className = "banner show warn";
+          lock.textContent = "API holding Qdrant lock — stop uvicorn before ingest.";
+        } else {
+          lock.className = "banner warn";
+          lock.textContent = "";
+        }
+      }
+
+      function pathList(title, paths) {
+        const list = paths || [];
+        const items = list.map((p) => `<li>${escapeHtml(p)}</li>`).join("") || "<li>(none)</li>";
+        return `<details><summary>${title} (${list.length})</summary><ul>${items}</ul></details>`;
+      }
+
+      function renderDeltas(s) {
+        document.getElementById("deltas").innerHTML =
+          pathList("Changed paths", s.changed_paths) +
+          pathList("Added paths", s.added_paths) +
+          pathList("Removed paths", s.removed_paths);
+      }
+
+      function renderRetired(s) {
+        const wrap = document.getElementById("retiredWrap");
+        const retired = s.retired || [];
+        if (!retired.length) {
+          wrap.innerHTML = '<p class="empty">No retired sources.</p>';
+          return;
+        }
+        wrap.innerHTML = `
+          <table>
+            <thead><tr><th>Source</th><th></th></tr></thead>
+            <tbody>
+              ${retired
+                .map(
+                  (src) => `<tr>
+                    <td class="mono">${escapeHtml(src)}</td>
+                    <td style="width:1%;white-space:nowrap">
+                      <button type="button" class="ghost unretire" data-source="${escapeHtml(src)}">Unretire</button>
+                    </td>
+                  </tr>`
+                )
+                .join("")}
+            </tbody>
+          </table>
+        `;
+        wrap.querySelectorAll(".unretire").forEach((b) => {
+          b.addEventListener("click", async () => {
+            try {
+              await req("/admin/unretire", {
+                method: "POST",
+                body: JSON.stringify({ source: b.dataset.source }),
+              });
+              showBanner("Unretired " + b.dataset.source, "ok");
+              await loadStatus();
+            } catch (e) {
+              showBanner(String(e.message || e), "err");
+            }
+          });
+        });
+      }
+
+      async function loadStatus() {
+        try {
+          const s = await req("/admin/kb-status");
+          renderStats(s);
+          renderFreshness(s);
+          renderDeltas(s);
+          renderRetired(s);
+          const rb = s.last_rebuild || {};
+          if (rb.running === false && Date.now() < fastPollUntil) {
+            stopFastPoll();
+            showBanner("Pipeline status updated.", "ok");
+          }
+        } catch (e) {
+          const msg =
+            e.status === 503
+              ? "Set API_KEY on the API server, then save the same key here."
+              : e.status === 401
+                ? "Invalid key — check X-API-Key against the API process API_KEY."
+                : String(e.message || e);
+          showBanner(msg, "err");
+        }
+      }
+
+      function stopFastPoll() {
+        fastPollUntil = 0;
+        if (fastTimer) {
+          clearInterval(fastTimer);
+          fastTimer = null;
+        }
+      }
+
+      function startFastPoll() {
+        stopFastPoll();
+        fastPollUntil = Date.now() + 120000;
+        fastTimer = setInterval(() => {
+          if (Date.now() > fastPollUntil) {
+            stopFastPoll();
+            return;
+          }
+          loadStatus();
+        }, 5000);
+      }
+
+      function setRefreshDisabled(off) {
+        document.getElementById("refresh").disabled = off;
+        document.getElementById("refreshForce").disabled = off;
+      }
+
+      async function kickRefresh(force) {
+        const copy = force
+          ? "Always runs ingest + build_kb + evals. Stop uvicorn first (Qdrant lock)."
+          : "Runs check-live, scrape, audit. Rebuild only if page hashes changed. Stop API first if you need ingest.";
+        if (!confirm(copy)) return;
+        setRefreshDisabled(true);
+        try {
+          const out = await req("/admin/refresh", {
+            method: "POST",
+            body: JSON.stringify({ force: !!force }),
+          });
+          const bits = ["Accepted pid " + out.pid];
+          if (out.warning) bits.push(out.warning);
+          showBanner(bits.join(" — "), out.warning ? "warn" : "ok");
+          startFastPoll();
+          await loadStatus();
+        } catch (e) {
+          showBanner(String(e.message || e), "err");
+        } finally {
+          setTimeout(() => setRefreshDisabled(false), 2500);
+        }
+      }
+
+      document.getElementById("apiKey").value = key();
+      document.getElementById("saveKey").addEventListener("click", () => {
+        localStorage.setItem(KEY_STORE, document.getElementById("apiKey").value.trim());
+        hideBanner();
+        loadStatus();
+      });
+      document.getElementById("clearKey").addEventListener("click", () => {
+        localStorage.removeItem(KEY_STORE);
+        document.getElementById("apiKey").value = "";
+        showBanner("Key cleared from this browser.", "ok");
+      });
+      document.getElementById("reload").addEventListener("click", () => loadStatus());
+      document.getElementById("retire").addEventListener("click", async () => {
+        const source = document.getElementById("source").value.trim();
+        if (!source) {
+          showBanner("Enter a source path or basename to retire.", "err");
+          return;
+        }
+        try {
+          await req("/admin/retire", { method: "POST", body: JSON.stringify({ source }) });
+          document.getElementById("source").value = "";
+          showBanner("Retired " + source, "ok");
+          await loadStatus();
+        } catch (e) {
+          showBanner(String(e.message || e), "err");
+        }
+      });
+      document.getElementById("refresh").addEventListener("click", () => kickRefresh(false));
+      document.getElementById("refreshForce").addEventListener("click", () => kickRefresh(true));
+
+      document.addEventListener("visibilitychange", () => {
+        if (document.hidden) {
+          if (slowTimer) {
+            clearInterval(slowTimer);
+            slowTimer = null;
+          }
+        } else if (!slowTimer) {
+          slowTimer = setInterval(loadStatus, 30000);
+          loadStatus();
+        }
+      });
+      slowTimer = setInterval(loadStatus, 30000);
+      loadStatus();
+    </script>
+  </body>
+</html>

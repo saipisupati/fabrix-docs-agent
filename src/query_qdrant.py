@@ -255,6 +255,9 @@ def retrieve(question, client, top_k=3, filter_dict=None):
         hints = bot_name_hints(question) or bot_family_hints(question)
         remote_limit = max(top_k * 10, 300) if hints else top_k
         chunks = retrieve_remote(question, top_k=remote_limit, filter_dict=filter_dict)
+        from freshness import filter_retired_chunks
+
+        chunks = filter_retired_chunks(chunks)
         return rerank_by_bot_name(question, chunks)[:top_k]
 
     hints = bot_name_hints(question) or bot_family_hints(question)
@@ -275,6 +278,9 @@ def retrieve(question, client, top_k=3, filter_dict=None):
             "metadata": {k: v for k, v in payload.items() if k != "text"},
             "score": point.score,
         })
+    from freshness import filter_retired_chunks
+
+    chunks = filter_retired_chunks(chunks)
     return rerank_by_bot_name(question, chunks)[:top_k]
 
 

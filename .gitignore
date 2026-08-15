@@ -18,11 +18,13 @@ data/chroma_db/
 data/qdrant_db/
 data/kb/
 data/scrape_manifest.json
+data/freshness_status.json
 fabrix_qdrant_db.tar.gz
 fabrix_runtime_data.tar.gz
 
 # Local logs
 ingestion_log.txt
+logs/
 tests/eval_baseline_results.txt
 tests/eval_generation_results.txt
 tests/eval_agent_results.txt

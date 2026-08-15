@@ -239,6 +239,20 @@ def retrieve_kb(question: str, top_k: int = 8) -> list[dict[str, Any]]:
     if not ordered:
         return []
 
+    from freshness import source_is_retired, retired_set
+
+    retired = retired_set()
+    if retired:
+        keep_idx = [
+            n
+            for n, e in enumerate(ordered)
+            if not source_is_retired(str(e.get("source") or ""), retired)
+        ]
+        if not keep_idx:
+            return []
+        matrix = matrix[keep_idx]
+        ordered = [ordered[n] for n in keep_idx]
+
     model = kb.embedding_model or EMBEDDING_MODEL
     q = np.array(embed_query(question, model), dtype=np.float32)
     # cosine similarity

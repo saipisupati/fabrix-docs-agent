@@ -200,7 +200,7 @@ CI cannot run ingest without your doc export (except the weekly freshness workfl
 - Without data or keys: exits 0 with `HARNESS SKIP` so PRs do not false-fail (`HARNESS_SKIP_IF_NO_DATA=1`).
 - Weekly freshness fails the job if scrape/rebuild/bakeoff regresses; upload artifact on success for `RUNTIME_DATA_URL` refresh.
 - Local pre-deploy still uses the ×2 readiness streak; see [docs/QUALITY_LOOP.md](docs/QUALITY_LOOP.md) and [docs/CONTINUOUS_QUALITY.md](docs/CONTINUOUS_QUALITY.md) Phase 6.
-Standalone chat UI for local or hosted testing: [docs/HOSTING_BETA.md](docs/HOSTING_BETA.md) (chat UI hosting guide).
+Standalone chat UI for local or hosted testing: [docs/HOSTING_BETA.md](docs/HOSTING_BETA.md). Operator freshness/retire UI: `chat/admin.html` ([docs/KB_FRESHNESS_ADMIN.md](docs/KB_FRESHNESS_ADMIN.md)).
 
 ## Eval
 
@@ -214,7 +214,7 @@ Standalone chat UI for local or hosted testing: [docs/HOSTING_BETA.md](docs/HOST
 | `tests/benchmark_phases.py` | Phase 1–5 regression (page expand, bot lookup, KB params, family retrieve, critique) |
 | `tests/eval_customer_bakeoff.py` | Public customer bakeoff (8/8); `BAKEOFF_MODE=local` when API is down |
 | `tests/run_quality_harness.py` | Raised bar: production 100% + break ≥95%/0 FAIL + readiness GREEN ×2 + Phase 1–5 + bakeoff |
-| `scripts/run_freshness_pipeline.py` | Phase 6: scrape → rebuild → benchmarks + bakeoff |
+| `scripts/run_freshness_pipeline.py` | Phase 6: scrape → rebuild (skipped if hashes unchanged) → benchmarks + bakeoff |
 
 **Legacy / development evals:**
 

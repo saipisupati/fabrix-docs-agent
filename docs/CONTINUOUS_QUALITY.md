@@ -7,6 +7,7 @@ Companion docs:
 - Mechanical harness steps: [QUALITY_LOOP.md](QUALITY_LOOP.md)
 - Demo 2 talking points: [DEMO_2.md](DEMO_2.md)
 - General demo script: [DEMO_SCRIPT.md](DEMO_SCRIPT.md)
+- Post-demo KB freshness/admin: [KB_FRESHNESS_ADMIN.md](KB_FRESHNESS_ADMIN.md)
 
 **Hard rule:** fix with generic families / honesty / retrieve bias — never `if question == "..."` in `src/agent.py`.
 
@@ -133,16 +134,19 @@ PYTHONPATH=src python3 tests/benchmark_phases.py
 | Gate | When | What |
 |------|------|------|
 | PR / push | [`.github/workflows/quality-harness.yml`](../.github/workflows/quality-harness.yml) | Existing harness **plus** `benchmark_phases` + `eval_customer_bakeoff` (local) against private `RUNTIME_DATA_URL` tarball — **no scrape** |
-| Weekly + manual | [`.github/workflows/docs-freshness.yml`](../.github/workflows/docs-freshness.yml) | `run_freshness_pipeline.py`: check-live → scrape → audit → ingest → KB → benchmarks → bakeoff; uploads `fabrix_runtime_data.tar.gz` artifact |
+| Weekly + manual | [`.github/workflows/docs-freshness.yml`](../.github/workflows/docs-freshness.yml) | `run_freshness_pipeline.py`: check-live → scrape → audit; ingest/KB/evals only if page hashes changed (or `--force`); uploads `fabrix_runtime_data.tar.gz` artifact |
 
 Local refresh (stop API first — Qdrant lock):
 
 ```bash
 python3 scripts/sync_docs_and_rebuild.py --check-live
 python3 scripts/sync_docs_and_rebuild.py --scrape-rebuild
-# or end-to-end (long / costs embeddings):
+# or end-to-end (skips ingest/KB when scrape hashes are unchanged):
 python3 scripts/run_freshness_pipeline.py
+python3 scripts/run_freshness_pipeline.py --force   # always rebuild
 ```
+
+Operator UI: `chat/admin.html` (`/admin/kb-status`, retire, refresh). See [KB_FRESHNESS_ADMIN.md](KB_FRESHNESS_ADMIN.md).
 
 After a successful weekly run, download the artifact and refresh private `RUNTIME_DATA_URL` (same rule as README — **do not** publish publicly):
 
