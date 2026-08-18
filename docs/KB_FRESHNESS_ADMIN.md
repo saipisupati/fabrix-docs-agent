@@ -4,7 +4,7 @@ Operator-facing guide. **Not live scrape-on-`/ask`.** Retrieval still uses local
 
 ## What shipped
 
-1. Per-page SHA-256 helpers in `src/freshness.py` (manifest diffs, rebuild gate)
+1. Per-page SHA-256 on `data/scrape_manifest.json` (`pages_meta`, `changed_paths` / `added_paths` / `removed_paths`) — written by `scripts/scrape_docs_site.py`
 2. `scripts/run_freshness_pipeline.py` skips ingest/`build_kb`/evals when hashes are unchanged (`--force` or `FORCE_REBUILD=1` to override)
 3. `data/retired_sources.json` — retrieval-time filter in `retrieve()` and `retrieve_kb()`
 4. `/admin/kb-status`, `/admin/refresh`, `/admin/retire`, `/admin/unretire` behind `API_KEY`
