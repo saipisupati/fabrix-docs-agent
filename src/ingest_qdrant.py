@@ -3,13 +3,19 @@ ingest_qdrant.py, chunk all docs, embed via OpenRouter, store in local Qdrant.
 
 Run once (or after doc updates): python3 src/ingest_qdrant.py
 Requires OPENROUTER_API_KEY. Output lands in data/qdrant_db/.
+
+  python3 src/ingest_qdrant.py --full          # wipe collection + full ingest (default)
+  python3 src/ingest_qdrant.py --incremental   # upsert only manifest changed/added pages
 """
 
+import argparse
 import os
 import sys
+import uuid
+
 import requests
 from qdrant_client import QdrantClient
-from qdrant_client.models import Distance, VectorParams, PointStruct
+from qdrant_client.models import Distance, FieldCondition, Filter, MatchValue, PointStruct, VectorParams
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 
 sys.path.insert(0, os.path.dirname(__file__))
@@ -27,6 +33,12 @@ from config import (
     EMBEDDINGS_URL,
     QDRANT_DIR,
     QDRANT_UPLOAD_BATCH_SIZE,
+    SCRAPE_MANIFEST_PATH,
+)
+from freshness import (
+    ingest_sources_from_manifest,
+    load_manifest,
+    manifest_has_page_hashes,
 )
 
 RAW_DIR = os.path.join(os.path.dirname(__file__), "..", "data", "raw")
@@ -408,13 +420,103 @@ def _char_limited_batches(texts, max_chars, max_items):
         yield batch
 
 
+def chunk_for_ingest_source(source: str) -> list[dict]:
+    """Chunk one ingest metadata.source (bot basename or narrative rel path)."""
+    source = (source or "").replace("\\", "/").strip()
+    if not source:
+        return []
+
+    if os.path.isfile(CFXQL_FILE) and source == os.path.basename(CFXQL_FILE):
+        return chunk_cfxql_markdown(CFXQL_FILE)
+
+    if BOTS_DIR and source.endswith(".md") and "/" not in source:
+        bot_path = os.path.join(BOTS_DIR, source)
+        if os.path.isfile(bot_path):
+            return chunk_bot_catalog_markdown(bot_path, source)
+
+    if DOCS_ROOT:
+        narr_path = os.path.join(DOCS_ROOT, source)
+        if os.path.isfile(narr_path):
+            doc_section = source.split("/")[0]
+            return chunk_narrative_markdown(narr_path, source, doc_section)
+
+    return []
+
+
+def load_and_chunk_sources(sources: set[str]) -> list[dict]:
+    all_chunks = []
+    for source in sorted(sources):
+        try:
+            chunks = chunk_for_ingest_source(source)
+        except Exception as e:
+            print(f"  FAILED {source}: {e}")
+            continue
+        if chunks:
+            print(f"  {source}: {len(chunks)} chunks")
+            all_chunks.extend(chunks)
+        else:
+            print(f"  {source}: skipped (not found)")
+    return split_oversized_chunks(all_chunks)
+
+
+def make_point_id(source: str, chunk_index: int) -> str:
+    return str(uuid.uuid5(uuid.NAMESPACE_URL, f"fabrix-ingest:{source}#{chunk_index}"))
+
+
+def _write_embedding_model_file() -> None:
+    os.makedirs(QDRANT_DIR, exist_ok=True)
+    with open(os.path.join(QDRANT_DIR, "embedding_model.txt"), "w", encoding="utf-8") as f:
+        f.write(EMBEDDING_MODEL)
+
+
+def ensure_collection(client: QdrantClient, vector_size: int) -> None:
+    if client.collection_exists(COLLECTION_NAME):
+        info = client.get_collection(COLLECTION_NAME)
+        existing = info.config.params.vectors.size
+        if int(existing) != int(vector_size):
+            raise RuntimeError(
+                f"Collection vector size {existing} != embed size {vector_size}; run --full ingest"
+            )
+        return
+    client.create_collection(
+        collection_name=COLLECTION_NAME,
+        vectors_config=VectorParams(size=vector_size, distance=Distance.COSINE),
+    )
+
+
+def delete_points_by_source(client: QdrantClient, source: str) -> None:
+    client.delete(
+        collection_name=COLLECTION_NAME,
+        points_selector=Filter(
+            must=[FieldCondition(key="source", match=MatchValue(value=source))]
+        ),
+    )
+
+
+def upsert_chunk_points(client: QdrantClient, chunks: list[dict], vectors: list) -> None:
+    per_source_idx: dict[str, int] = {}
+    points = []
+    for chunk, vec in zip(chunks, vectors):
+        src = chunk["metadata"]["source"]
+        idx = per_source_idx.get(src, 0)
+        per_source_idx[src] = idx + 1
+        points.append(
+            PointStruct(
+                id=make_point_id(src, idx),
+                vector=vec,
+                payload={**chunk["metadata"], "text": chunk["text"]},
+            )
+        )
+    for i in range(0, len(points), QDRANT_UPLOAD_BATCH_SIZE):
+        batch = points[i : i + QDRANT_UPLOAD_BATCH_SIZE]
+        client.upsert(collection_name=COLLECTION_NAME, points=batch)
+        print(f"  Upserted {min(i + QDRANT_UPLOAD_BATCH_SIZE, len(points))}/{len(points)} points")
+
+
 def store_in_qdrant(all_chunks, vectors):
     # wipe + recreate collection, upload points, save embedding_model.txt for queries
     vector_size = len(vectors[0])
-    os.makedirs(QDRANT_DIR, exist_ok=True)
-
-    with open(os.path.join(QDRANT_DIR, "embedding_model.txt"), "w") as f:
-        f.write(EMBEDDING_MODEL)
+    _write_embedding_model_file()
 
     print(f"\nSetting up Qdrant collection (vector size={vector_size})...")
     client = QdrantClient(path=QDRANT_DIR)
@@ -425,31 +527,55 @@ def store_in_qdrant(all_chunks, vectors):
         vectors_config=VectorParams(size=vector_size, distance=Distance.COSINE),
     )
 
-    points = [
-        PointStruct(id=i, vector=vec, payload={**chunk["metadata"], "text": chunk["text"]})
-        for i, (chunk, vec) in enumerate(zip(all_chunks, vectors))
-    ]
-
-    for i in range(0, len(points), QDRANT_UPLOAD_BATCH_SIZE):
-        batch = points[i:i + QDRANT_UPLOAD_BATCH_SIZE]
-        client.upsert(collection_name=COLLECTION_NAME, points=batch)
-        print(f"  Uploaded {min(i + QDRANT_UPLOAD_BATCH_SIZE, len(points))}/{len(points)} points")
-
+    upsert_chunk_points(client, all_chunks, vectors)
     return client.count(COLLECTION_NAME).count
 
 
-def main():
-    if "OPENROUTER_API_KEY" not in os.environ:
-        print("Error: OPENROUTER_API_KEY is required.")
-        sys.exit(1)
+def run_incremental_ingest() -> int:
+    manifest = load_manifest(SCRAPE_MANIFEST_PATH)
+    if not manifest_has_page_hashes(manifest):
+        print("Manifest has no pages_meta — falling back to full ingest.")
+        return run_full_ingest()
 
+    delete_sources, upsert_sources = ingest_sources_from_manifest(manifest)
+    if not delete_sources and not upsert_sources:
+        print("No manifest page diffs — nothing to incrementally ingest.")
+        return 0
+
+    client = QdrantClient(path=QDRANT_DIR)
+    if not client.collection_exists(COLLECTION_NAME):
+        print("Qdrant collection missing — falling back to full ingest.")
+        return run_full_ingest()
+
+    print(f"Incremental ingest: delete {len(delete_sources)} source(s), upsert {len(upsert_sources)} source(s)")
+    for src in sorted(delete_sources):
+        print(f"  delete {src}")
+        delete_points_by_source(client, src)
+
+    chunks = load_and_chunk_sources(upsert_sources)
+    if not chunks:
+        count = client.count(COLLECTION_NAME).count
+        print(f"\nDone (delete-only). {count} chunks at {QDRANT_DIR}")
+        return 0
+
+    print(f"\nEmbedding {len(chunks)} chunk(s) with {EMBEDDING_MODEL}...")
+    vectors = embed_all_chunks(chunks)
+    _write_embedding_model_file()
+    ensure_collection(client, len(vectors[0]))
+    upsert_chunk_points(client, chunks, vectors)
+    count = client.count(COLLECTION_NAME).count
+    print(f"\nDone. Stored {count} chunks at {QDRANT_DIR}")
+    return 0
+
+
+def run_full_ingest() -> int:
     print("Loading and chunking documents...")
     all_chunks = split_oversized_chunks(load_and_chunk_all())
     print(f"Total chunks: {len(all_chunks)}\n")
 
     if not all_chunks:
         print("No chunks produced: check BOTS_DIR and data/raw/.")
-        sys.exit(1)
+        return 1
 
     print(f"Embedding with {EMBEDDING_MODEL} (batches of {EMBED_BATCH_SIZE})...")
     vectors = embed_all_chunks(all_chunks)
@@ -457,6 +583,30 @@ def main():
 
     count = store_in_qdrant(all_chunks, vectors)
     print(f"\nDone. Stored {count} chunks at {QDRANT_DIR}")
+    return 0
+
+
+def main():
+    if "OPENROUTER_API_KEY" not in os.environ:
+        print("Error: OPENROUTER_API_KEY is required.")
+        sys.exit(1)
+
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(
+        "--incremental",
+        action="store_true",
+        help="Upsert only pages changed/added in scrape manifest (delete changed/removed)",
+    )
+    parser.add_argument(
+        "--full",
+        action="store_true",
+        help="Force full collection wipe + ingest",
+    )
+    args = parser.parse_args()
+
+    if args.incremental and not args.full:
+        raise SystemExit(run_incremental_ingest())
+    raise SystemExit(run_full_ingest())
 
 
 if __name__ == "__main__":

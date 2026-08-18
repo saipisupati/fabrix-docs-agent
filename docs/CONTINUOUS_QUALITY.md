@@ -141,7 +141,8 @@ Local refresh (stop API first — Qdrant lock):
 ```bash
 python3 scripts/sync_docs_and_rebuild.py --check-live
 python3 scripts/sync_docs_and_rebuild.py --scrape-rebuild
-# or end-to-end (skips ingest/KB when scrape hashes are unchanged):
+# or end-to-end (skips ingest/KB when scrape hashes are unchanged;
+# otherwise incremental ingest; --force wipes Qdrant):
 python3 scripts/run_freshness_pipeline.py
 python3 scripts/run_freshness_pipeline.py --force   # always rebuild
 ```

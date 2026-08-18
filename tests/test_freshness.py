@@ -43,6 +43,39 @@ class HashAndDiffTests(unittest.TestCase):
         self.assertFalse(fr.should_rebuild({"has_content_changes": False, "fail": 0}))
         self.assertTrue(fr.should_rebuild(None))
 
+    def test_md_rel_to_ingest_source(self):
+        self.assertEqual(fr.md_rel_to_ingest_source("Bots/cfxdm.md"), "cfxdm.md")
+        self.assertEqual(
+            fr.md_rel_to_ingest_source("beginners_guide/scheduled_pipelines.md"),
+            "beginners_guide/scheduled_pipelines.md",
+        )
+        self.assertEqual(fr.md_rel_to_ingest_source("index.md"), "index.md")
+        self.assertEqual(fr.md_rel_to_ingest_source(""), "")
+
+    def test_ingest_sources_from_manifest(self):
+        man = {
+            "changed_paths": ["Bots/cfxdm"],
+            "added_paths": ["beginners_guide/foo"],
+            "removed_paths": ["Pipelines/old"],
+            "pages_meta": {
+                "Bots/cfxdm": {"md_rel": "Bots/cfxdm.md"},
+                "beginners_guide/foo": {"md_rel": "beginners_guide/foo.md"},
+                "Pipelines/old": {"md_rel": "Pipelines/old.md"},
+            },
+        }
+        delete_sources, upsert_sources = fr.ingest_sources_from_manifest(man)
+        self.assertEqual(delete_sources, {"cfxdm.md", "Pipelines/old.md"})
+        self.assertEqual(upsert_sources, {"cfxdm.md", "beginners_guide/foo.md"})
+
+    def test_make_point_id_stable(self):
+        from ingest_qdrant import make_point_id
+
+        a = make_point_id("cfxdm.md", 0)
+        b = make_point_id("cfxdm.md", 0)
+        c = make_point_id("cfxdm.md", 1)
+        self.assertEqual(a, b)
+        self.assertNotEqual(a, c)
+
 
 class RetireFilterTests(unittest.TestCase):
     def setUp(self):
@@ -85,6 +118,46 @@ class StatusLockTests(unittest.TestCase):
         self.assertIn("qdrant_locked", status)
         self.assertIsInstance(status["qdrant_locked"], bool)
         self.assertIn("retired", status)
+
+
+class IncrementalIngestTests(unittest.TestCase):
+    def test_delete_points_by_source_uses_source_filter(self):
+        from ingest_qdrant import delete_points_by_source
+
+        class FakeClient:
+            def __init__(self):
+                self.calls = []
+
+            def delete(self, collection_name, points_selector):
+                self.calls.append((collection_name, points_selector))
+
+        client = FakeClient()
+        delete_points_by_source(client, "cfxdm.md")
+        self.assertEqual(len(client.calls), 1)
+        name, selector = client.calls[0]
+        self.assertEqual(name, "fabrix_docs")
+        cond = selector.must[0]
+        self.assertEqual(cond.key, "source")
+        self.assertEqual(cond.match.value, "cfxdm.md")
+
+    def test_upsert_chunk_points_uses_stable_ids(self):
+        from ingest_qdrant import make_point_id, upsert_chunk_points
+
+        class FakeClient:
+            def __init__(self):
+                self.points = []
+
+            def upsert(self, collection_name, points):
+                self.points.extend(points)
+
+        chunks = [
+            {"text": "a", "metadata": {"source": "cfxdm.md"}},
+            {"text": "b", "metadata": {"source": "cfxdm.md"}},
+        ]
+        client = FakeClient()
+        upsert_chunk_points(client, chunks, [[0.1], [0.2]])
+        self.assertEqual(client.points[0].id, make_point_id("cfxdm.md", 0))
+        self.assertEqual(client.points[1].id, make_point_id("cfxdm.md", 1))
 
 
 if __name__ == "__main__":

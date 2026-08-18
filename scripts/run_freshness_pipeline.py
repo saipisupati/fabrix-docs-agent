@@ -76,7 +76,14 @@ def main() -> int:
         ([py, sync, "--audit-only"], None),
     ]
     rebuild_steps: list[tuple[list[str], dict | None]] = [
-        ([py, os.path.join(ROOT, "src", "ingest_qdrant.py")], None),
+        (
+            [
+                py,
+                os.path.join(ROOT, "src", "ingest_qdrant.py"),
+                "--full" if force else "--incremental",
+            ],
+            None,
+        ),
         ([py, os.path.join(ROOT, "src", "build_kb.py")], None),
         (
             [py, os.path.join(TESTS, "benchmark_phases.py")],
@@ -114,6 +121,7 @@ def main() -> int:
         "removed_n": len(man.get("removed_paths") or []),
         "rebuild": rebuild,
         "forced": force,
+        "incremental": bool(rebuild and not force),
         "running": False,
         "finished_at": utc_now(),
     }

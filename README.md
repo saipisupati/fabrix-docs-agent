@@ -82,8 +82,9 @@ Set `BOTS_DIR`, `DOCS_ROOT`, and `CFXQL_FILE` in `.env` (see `.env.example`).
 # pre-ingest checkpoint: fail if sources escape the public docs export
 python3 scripts/audit_ingest_sources.py
 
-# chunk + embed + store
+# chunk + embed + store (full wipe). After a hashed scrape: --incremental
 python3 src/ingest_qdrant.py
+python3 src/ingest_qdrant.py --incremental
 
 # build structured KB (after ingest; writes data/kb/)
 python3 src/build_kb.py
@@ -214,7 +215,7 @@ Standalone chat UI for local or hosted testing: [docs/HOSTING_BETA.md](docs/HOST
 | `tests/benchmark_phases.py` | Phase 1–5 regression (page expand, bot lookup, KB params, family retrieve, critique) |
 | `tests/eval_customer_bakeoff.py` | Public customer bakeoff (8/8); `BAKEOFF_MODE=local` when API is down |
 | `tests/run_quality_harness.py` | Raised bar: production 100% + break ≥95%/0 FAIL + readiness GREEN ×2 + Phase 1–5 + bakeoff |
-| `scripts/run_freshness_pipeline.py` | Phase 6: scrape → rebuild (skipped if hashes unchanged) → benchmarks + bakeoff |
+| `scripts/run_freshness_pipeline.py` | Phase 6: scrape → incremental ingest if hashes changed → benchmarks + bakeoff |
 
 **Legacy / development evals:**
 

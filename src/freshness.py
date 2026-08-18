@@ -78,6 +78,40 @@ def should_rebuild(manifest: dict | None) -> bool:
     return True
 
 
+def md_rel_to_ingest_source(md_rel: str) -> str:
+    """Map scraped markdown path to ingest metadata.source."""
+    rel = (md_rel or "").replace("\\", "/").strip()
+    if not rel:
+        return ""
+    if rel.startswith("Bots/"):
+        return rel.rsplit("/", 1)[-1]
+    return rel
+
+
+def ingest_sources_from_manifest(manifest: dict | None) -> tuple[set[str], set[str]]:
+    """Return (delete_sources, upsert_sources) from manifest page diffs."""
+    man = manifest or {}
+    pages_meta = man.get("pages_meta") or {}
+
+    def page_paths_to_sources(page_paths: list[str] | set[str]) -> set[str]:
+        out: set[str] = set()
+        for page_path in page_paths or []:
+            rec = pages_meta.get(page_path) or {}
+            md_rel = rec.get("md_rel") or ""
+            src = md_rel_to_ingest_source(md_rel)
+            if src:
+                out.add(src)
+        return out
+
+    delete_paths = set(man.get("removed_paths") or []) | set(man.get("changed_paths") or [])
+    upsert_paths = set(man.get("changed_paths") or []) | set(man.get("added_paths") or [])
+    return page_paths_to_sources(delete_paths), page_paths_to_sources(upsert_paths)
+
+
+def manifest_has_page_hashes(manifest: dict | None) -> bool:
+    return bool((manifest or {}).get("pages_meta"))
+
+
 def load_json(path: str, default: Any = None) -> Any:
     if not os.path.isfile(path):
         return default

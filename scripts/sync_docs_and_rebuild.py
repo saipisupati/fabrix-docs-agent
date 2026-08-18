@@ -127,7 +127,7 @@ def run_rebuild() -> int:
     """Ingest Qdrant + build KB. Stop the API first (local Qdrant file lock)."""
     print("NOTE: Stop uvicorn/API before rebuild (Qdrant file lock).")
     steps = [
-        [sys.executable, os.path.join(ROOT, "src", "ingest_qdrant.py")],
+        [sys.executable, os.path.join(ROOT, "src", "ingest_qdrant.py"), "--incremental"],
         [sys.executable, os.path.join(ROOT, "src", "build_kb.py")],
     ]
     for cmd in steps:
