@@ -16,7 +16,7 @@ Serve the same way as chat (`python3 -m http.server 5173 --directory chat`). The
 
 ```bash
 # Chat + API locally, then open admin
-python3 -m http.server 5173 --directory chat
+./scripts/demo_start.sh
 # http://127.0.0.1:5173/admin.html
 ```
 

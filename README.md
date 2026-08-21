@@ -203,6 +203,12 @@ CI cannot run ingest without your doc export (except the weekly freshness workfl
 - Local pre-deploy still uses the ×2 readiness streak; see [docs/QUALITY_LOOP.md](docs/QUALITY_LOOP.md) and [docs/CONTINUOUS_QUALITY.md](docs/CONTINUOUS_QUALITY.md) Phase 6.
 Standalone chat UI for local or hosted testing: [docs/HOSTING_BETA.md](docs/HOSTING_BETA.md). Operator freshness/retire UI: `chat/admin.html` ([docs/KB_FRESHNESS_ADMIN.md](docs/KB_FRESHNESS_ADMIN.md)).
 
+```bash
+./scripts/demo_start.sh
+# Chat http://127.0.0.1:5173/  Admin http://127.0.0.1:5173/admin.html
+# Save API_KEY (default local-dev) on the admin page once so chat /ask works.
+```
+
 ## Eval
 
 **Primary gate:** `tests/run_quality_harness.py` runs production → full break → readiness → Phase 1–5 benchmarks → customer bakeoff (local) and tracks a readiness GREEN streak. Playbook: [docs/QUALITY_LOOP.md](docs/QUALITY_LOOP.md). Individual suites (stop API first):
