@@ -27,6 +27,8 @@ python3 -m http.server 5173 --directory chat
 5. **Scrape + gate** runs check-live → scrape → audit, then incremental ingest if page hashes changed.
 6. **Force rebuild** always wipes Qdrant and runs full ingest + `build_kb` + evals. Stop uvicorn first (Qdrant file lock).
 
+When `API_KEY` is set on the API, chat `/ask` also requires `X-API-Key`. Save the key once on the admin page (`fabrix_admin_key` in localStorage); the chat UI reuses that key automatically.
+
 After refresh, the page polls status every 5s for about two minutes. Pipeline stdout stays in the shell/CI log; the UI does not tail it.
 
 ## Operator commands

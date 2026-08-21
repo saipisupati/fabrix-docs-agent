@@ -673,7 +673,10 @@
 
       function askHeaders() {
         const headers = { "Content-Type": "application/json" };
-        if (chatConfig.apiKey) headers["X-API-Key"] = chatConfig.apiKey;
+        const key =
+          (chatConfig.apiKey || "").trim() ||
+          (localStorage.getItem("fabrix_admin_key") || "").trim();
+        if (key) headers["X-API-Key"] = key;
         return headers;
       }
 
@@ -1044,9 +1047,16 @@
       }
 
       function formatError(errText) {
+        const text = String(errText || "");
+        if (/401/.test(text) && /api key/i.test(text)) {
+          return (
+            "Request failed: API key required. Save the same API_KEY on the admin page " +
+            "(http://127.0.0.1:5173/admin.html), then try again."
+          );
+        }
         return (
           "Request failed. " +
-          (errText ? errText : "Check that the API is running and API_URL is correct.")
+          (text ? text : "Check that the API is running and API_URL is correct.")
         );
       }
 
