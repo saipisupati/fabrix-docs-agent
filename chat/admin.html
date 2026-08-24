@@ -288,10 +288,125 @@
       }
 
       .footer a { color: var(--accent); text-decoration: none; }
+
+      .loginShell {
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 24px 20px;
+      }
+
+      .loginCard {
+        width: 100%;
+        max-width: 400px;
+        padding: 28px 24px;
+        border: 1px solid var(--border);
+        border-radius: var(--radius-lg);
+        background: rgba(255, 255, 255, 0.04);
+        box-shadow: var(--shadow);
+      }
+
+      .loginCard .brand {
+        justify-content: center;
+        margin-bottom: 20px;
+      }
+
+      .loginCard h1 {
+        margin: 0 0 6px;
+        font-size: 18px;
+        font-weight: 600;
+        text-align: center;
+      }
+
+      .loginCard .help {
+        text-align: center;
+        margin-bottom: 18px;
+      }
+
+      .loginCard input {
+        width: 100%;
+        margin-bottom: 10px;
+      }
+
+      .loginCard button[type="submit"] {
+        width: 100%;
+        padding: 10px 12px;
+      }
+
+      .loginErr {
+        display: none;
+        margin-top: 12px;
+        padding: 10px 12px;
+        border-radius: 10px;
+        font-size: 13px;
+        background: rgba(251, 113, 133, 0.1);
+        border: 1px solid rgba(251, 113, 133, 0.25);
+        color: var(--danger);
+      }
+
+      .loginErr.show { display: block; }
+
+      .loginFoot {
+        margin-top: 16px;
+        text-align: center;
+        font-size: 12px;
+      }
+
+      .loginFoot a {
+        color: var(--muted);
+        text-decoration: none;
+      }
+
+      .loginFoot a:hover { color: var(--accent); }
+
+      .hidden { display: none !important; }
+
+      .headerActions {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        flex-shrink: 0;
+      }
+
+      .headerActions button.ghost {
+        padding: 6px 10px;
+        font-size: 12px;
+      }
     </style>
   </head>
   <body>
-    <div class="app">
+    <div id="loginShell" class="loginShell">
+      <div class="loginCard">
+        <div class="brand">
+          <img
+            src="https://fabrix.ai/images/logo-light.svg"
+            alt="Fabrix"
+            width="120"
+            height="22"
+          />
+        </div>
+        <h1>Admin sign in</h1>
+        <p class="help">
+          Operator access only. Enter the API key configured on the docs agent server
+          (<code>API_KEY</code>).
+        </p>
+        <form id="loginForm">
+          <input
+            id="loginKey"
+            type="password"
+            placeholder="API key"
+            autocomplete="current-password"
+            required
+          />
+          <button type="submit" id="loginBtn">Sign in</button>
+        </form>
+        <div id="loginErr" class="loginErr" role="alert"></div>
+        <p class="loginFoot"><a href="/">← Back to chat</a></p>
+      </div>
+    </div>
+
+    <div id="adminApp" class="app hidden">
       <header class="header">
         <div class="brand">
           <img
@@ -305,21 +420,14 @@
             <div class="subtitle">Freshness, retire, refresh — not a live scrape on /ask</div>
           </div>
         </div>
-        <a href="/">Chat</a>
+        <div class="headerActions">
+          <button type="button" class="ghost" id="reload">Reload</button>
+          <button type="button" class="ghost" id="signOut">Sign out</button>
+          <a href="/">Chat</a>
+        </div>
       </header>
 
       <div id="banner" class="banner" role="status"></div>
-
-      <div class="card">
-        <h2>API key</h2>
-        <p class="help">Stored in this browser only. Must match the API process <code>API_KEY</code>.</p>
-        <div class="row">
-          <input id="apiKey" type="password" placeholder="X-API-Key" autocomplete="off" />
-          <button type="button" id="saveKey">Save</button>
-          <button type="button" class="ghost" id="clearKey">Clear key</button>
-          <button type="button" class="ghost" id="reload">Reload</button>
-        </div>
-      </div>
 
       <div class="card">
         <h2>KB status</h2>
@@ -380,16 +488,89 @@
       let fastPollUntil = 0;
       let fastTimer = null;
       let slowTimer = null;
+      let sessionKey = "";
 
       function key() {
-        return localStorage.getItem(KEY_STORE) || cfg.apiKey || "";
+        return sessionKey || localStorage.getItem(KEY_STORE) || cfg.apiKey || "";
       }
 
-      function headers() {
+      function headers(overrideKey) {
         const h = { "Content-Type": "application/json" };
-        const k = key();
+        const k = overrideKey !== undefined ? overrideKey : key();
         if (k) h["X-API-Key"] = k;
         return h;
+      }
+
+      function showLogin(msg) {
+        document.getElementById("loginShell").classList.remove("hidden");
+        document.getElementById("adminApp").classList.add("hidden");
+        stopFastPoll();
+        if (slowTimer) {
+          clearInterval(slowTimer);
+          slowTimer = null;
+        }
+        sessionKey = "";
+        const err = document.getElementById("loginErr");
+        if (msg) {
+          err.textContent = msg;
+          err.classList.add("show");
+        } else {
+          err.textContent = "";
+          err.classList.remove("show");
+        }
+      }
+
+      function showAdmin() {
+        document.getElementById("loginShell").classList.add("hidden");
+        document.getElementById("adminApp").classList.remove("hidden");
+        hideBanner();
+      }
+
+      async function validateKey(candidate) {
+        const r = await fetch(API_URL + "/admin/kb-status", {
+          headers: headers(candidate),
+        });
+        const text = await r.text();
+        let body;
+        try {
+          body = JSON.parse(text);
+        } catch {
+          body = { raw: text };
+        }
+        if (!r.ok) {
+          const detail = (body && (body.detail || body.message)) || r.status;
+          const err = new Error(typeof detail === "string" ? detail : JSON.stringify(detail));
+          err.status = r.status;
+          throw err;
+        }
+        return body;
+      }
+
+      async function signIn(candidate, { persist = true } = {}) {
+        const trimmed = (candidate || "").trim();
+        if (!trimmed) {
+          throw new Error("Enter the API key.");
+        }
+        const status = await validateKey(trimmed);
+        sessionKey = trimmed;
+        if (persist) {
+          localStorage.setItem(KEY_STORE, trimmed);
+        }
+        showAdmin();
+        renderStats(status);
+        renderFreshness(status);
+        renderDeltas(status);
+        renderRetired(status);
+        if (!slowTimer) {
+          slowTimer = setInterval(loadStatus, 30000);
+        }
+        return status;
+      }
+
+      function signOut() {
+        localStorage.removeItem(KEY_STORE);
+        document.getElementById("loginKey").value = "";
+        showLogin();
       }
 
       function showBanner(msg, kind) {
@@ -570,12 +751,15 @@
             showBanner("Pipeline status updated.", "ok");
           }
         } catch (e) {
+          if (e.status === 401) {
+            signOut();
+            showLogin("Session expired or invalid key. Sign in again.");
+            return;
+          }
           const msg =
             e.status === 503
-              ? "Set API_KEY on the API server, then save the same key here."
-              : e.status === 401
-                ? "Invalid key — check X-API-Key against the API process API_KEY."
-                : String(e.message || e);
+              ? "Admin is disabled — set API_KEY on the API server."
+              : String(e.message || e);
           showBanner(msg, "err");
         }
       }
@@ -628,17 +812,31 @@
         }
       }
 
-      document.getElementById("apiKey").value = key();
-      document.getElementById("saveKey").addEventListener("click", () => {
-        localStorage.setItem(KEY_STORE, document.getElementById("apiKey").value.trim());
-        hideBanner();
-        loadStatus();
+      document.getElementById("loginForm").addEventListener("submit", async (ev) => {
+        ev.preventDefault();
+        const btn = document.getElementById("loginBtn");
+        const err = document.getElementById("loginErr");
+        err.classList.remove("show");
+        btn.disabled = true;
+        btn.textContent = "Signing in…";
+        try {
+          await signIn(document.getElementById("loginKey").value);
+        } catch (e) {
+          const msg =
+            e.status === 503
+              ? "Admin is disabled on the server (API_KEY not set)."
+              : e.status === 401
+                ? "Invalid API key. Check the value against the server API_KEY."
+                : String(e.message || e);
+          err.textContent = msg;
+          err.classList.add("show");
+        } finally {
+          btn.disabled = false;
+          btn.textContent = "Sign in";
+        }
       });
-      document.getElementById("clearKey").addEventListener("click", () => {
-        localStorage.removeItem(KEY_STORE);
-        document.getElementById("apiKey").value = "";
-        showBanner("Key cleared from this browser.", "ok");
-      });
+
+      document.getElementById("signOut").addEventListener("click", () => signOut());
       document.getElementById("reload").addEventListener("click", () => loadStatus());
       document.getElementById("retire").addEventListener("click", async () => {
         const source = document.getElementById("source").value.trim();
@@ -664,13 +862,33 @@
             clearInterval(slowTimer);
             slowTimer = null;
           }
-        } else if (!slowTimer) {
+        } else if (sessionKey && !slowTimer) {
           slowTimer = setInterval(loadStatus, 30000);
           loadStatus();
         }
       });
-      slowTimer = setInterval(loadStatus, 30000);
-      loadStatus();
+
+      (async function boot() {
+        const stored = localStorage.getItem(KEY_STORE) || cfg.apiKey || "";
+        if (stored) {
+          document.getElementById("loginKey").value = stored;
+          try {
+            await signIn(stored, { persist: false });
+            return;
+          } catch (e) {
+            localStorage.removeItem(KEY_STORE);
+            showLogin(
+              e.status === 401
+                ? "Saved key no longer valid. Sign in with the current API key."
+                : e.status === 503
+                  ? "Admin is disabled on the server (API_KEY not set)."
+                  : "Could not reach the API. Check that the server is running."
+            );
+            return;
+          }
+        }
+        showLogin();
+      })();
     </script>
   </body>
 </html>

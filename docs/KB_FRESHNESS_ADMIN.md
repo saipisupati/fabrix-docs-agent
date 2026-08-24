@@ -20,14 +20,14 @@ Serve the same way as chat (`python3 -m http.server 5173 --directory chat`). The
 # http://127.0.0.1:5173/admin.html
 ```
 
-1. Set `API_KEY` on the uvicorn process.
-2. Paste the same value into the API key field and Save (stored in this browser only as `fabrix_admin_key`).
-3. Status cards load from `GET /admin/kb-status` (auto-refresh every 30s while the tab is visible).
+1. **Sign in** with the same value as the API process `API_KEY` (validated via `GET /admin/kb-status`). Wrong or missing key keeps you on the login screen; the console is hidden until sign-in succeeds.
+2. Key is stored in this browser only (`fabrix_admin_key` in localStorage). **Sign out** clears it.
+3. Status cards load after sign-in (auto-refresh every 30s while the tab is visible).
 4. **Retire** a `metadata.source` path or basename; **Unretire** from the table. Filter is retrieve-time only — Qdrant points stay.
 5. **Scrape + gate** runs check-live → scrape → audit, then incremental ingest if page hashes changed.
 6. **Force rebuild** always wipes Qdrant and runs full ingest + `build_kb` + evals. Stop uvicorn first (Qdrant file lock).
 
-When `API_KEY` is set on the API, chat `/ask` also requires `X-API-Key`. Save the key once on the admin page (`fabrix_admin_key` in localStorage); the chat UI reuses that key automatically.
+When `API_KEY` is set on the API, chat `/ask` also requires `X-API-Key`. Sign in once on the admin page; the chat UI reuses `fabrix_admin_key` from localStorage automatically.
 
 After refresh, the page polls status every 5s for about two minutes. Pipeline stdout stays in the shell/CI log; the UI does not tail it.
 

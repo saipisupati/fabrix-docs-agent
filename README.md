@@ -70,7 +70,7 @@ All scripts load `.env` automatically via `src/config.py`. You can still `export
 | `REMOTE_BASE_URL` | Optional hosted Qdrant / fastembed wrapper URL | unset (local path) |
 | `LLM_MODEL` | OpenAI generation model | `gpt-4o-mini` |
 | `DOCS_SITE_ORIGIN` | CORS origin for your docs site | `*` (local dev) |
-| `API_KEY` | Optional `X-API-Key` auth on `POST /ask` | unset (no auth) |
+| `API_KEY` | Optional `X-API-Key` on `POST /ask` and all `/admin/*` routes | unset (no auth; admin returns 503) |
 
 Set `BOTS_DIR`, `DOCS_ROOT`, and `CFXQL_FILE` in `.env` (see `.env.example`).
 
@@ -201,12 +201,13 @@ CI cannot run ingest without your doc export (except the weekly freshness workfl
 - Without data or keys: exits 0 with `HARNESS SKIP` so PRs do not false-fail (`HARNESS_SKIP_IF_NO_DATA=1`).
 - Weekly freshness fails the job if scrape/rebuild/bakeoff regresses; upload artifact on success for `RUNTIME_DATA_URL` refresh.
 - Local pre-deploy still uses the ×2 readiness streak; see [docs/QUALITY_LOOP.md](docs/QUALITY_LOOP.md) and [docs/CONTINUOUS_QUALITY.md](docs/CONTINUOUS_QUALITY.md) Phase 6.
-Standalone chat UI for local or hosted testing: [docs/HOSTING_BETA.md](docs/HOSTING_BETA.md). Operator freshness/retire UI: `chat/admin.html` ([docs/KB_FRESHNESS_ADMIN.md](docs/KB_FRESHNESS_ADMIN.md)).
+Standalone chat UI for local or hosted testing: [docs/HOSTING_BETA.md](docs/HOSTING_BETA.md). Operator freshness/retire UI: `chat/admin.html` with a **sign-in gate** ([docs/KB_FRESHNESS_ADMIN.md](docs/KB_FRESHNESS_ADMIN.md)) — console hidden until `API_KEY` validates via `GET /admin/kb-status`.
 
 ```bash
 ./scripts/demo_start.sh
-# Chat http://127.0.0.1:5173/  Admin http://127.0.0.1:5173/admin.html
-# Save API_KEY (default local-dev) on the admin page once so chat /ask works.
+# Chat http://127.0.0.1:5173/
+# Admin http://127.0.0.1:5173/admin.html — sign in with API_KEY (default local-dev)
+# Key is stored in the browser; chat /ask reuses it automatically when API_KEY is set.
 ```
 
 ## Eval
